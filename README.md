@@ -234,6 +234,19 @@ Scarcity is built with TypeScript-first design:
 npm test
 ```
 
+## 🌐 Website & Examples
+
+Visit our beautiful website with interactive examples:
+
+**[scarcity-js.github.io/scarcity](https://scarcity-js.github.io/scarcity)**
+
+The website features:
+
+- 📖 Complete documentation and API reference
+- 🚀 Live demo with 4-level deep component hierarchy
+- 🎨 Beautiful design with Scarcity's signature orange gradient
+- 📱 Responsive design for all devices
+
 ## License
 
 MIT © [Scarcity.js](https://github.com/scarcity-js/scarcity)

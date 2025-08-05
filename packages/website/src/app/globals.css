@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+
+  /* Scarcity color palette from the image */
+  --scarcity-orange: #ff9500;
+  --scarcity-amber: #ffb92e;
+  --scarcity-yellow: #ffd60a;
+  --scarcity-red: #ff6b6b;
+  --scarcity-dark: #1a1a1a;
+  --scarcity-dark-lighter: #2a2a2a;
+  --scarcity-gray: #404040;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Custom Scarcity colors */
+  --color-scarcity-orange: var(--scarcity-orange);
+  --color-scarcity-amber: var(--scarcity-amber);
+  --color-scarcity-yellow: var(--scarcity-yellow);
+  --color-scarcity-red: var(--scarcity-red);
+  --color-scarcity-dark: var(--scarcity-dark);
+  --color-scarcity-dark-lighter: var(--scarcity-dark-lighter);
+  --color-scarcity-gray: var(--scarcity-gray);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Custom gradient classes */
+.gradient-scarcity {
+  background: linear-gradient(
+    135deg,
+    var(--scarcity-yellow) 0%,
+    var(--scarcity-amber) 25%,
+    var(--scarcity-orange) 75%,
+    var(--scarcity-red) 100%
+  );
+}
+
+.gradient-scarcity-text {
+  background: linear-gradient(
+    135deg,
+    var(--scarcity-yellow) 0%,
+    var(--scarcity-amber) 25%,
+    var(--scarcity-orange) 75%,
+    var(--scarcity-red) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+  from {
+    box-shadow: 0 0 20px rgba(255, 149, 0, 0.4);
+  }
+  to {
+    box-shadow: 0 0 30px rgba(255, 149, 0, 0.6),
+      0 0 40px rgba(255, 185, 46, 0.3);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
