@@ -5,7 +5,7 @@ import { ConfigResource } from "@/lib/config";
 // Level 4 component (deepest level) - displays config info using shared renderer
 const Level4Agent = register("level-4").asAgent({
   team: [ConfigRendererAgent],
-  factory: ($: $<[typeof ConfigRendererAgent]>) => {
+  factory: ($: $<[typeof ConfigRendererAgent, typeof ConfigResource]>) => {
     const config = $(ConfigResource.id);
     const ConfigRenderer = $(ConfigRendererAgent.id);
 

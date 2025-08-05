@@ -1,5 +1,5 @@
-import { register, type $ } from "scarcity";
-import { ConfigResource, type AppConfig } from "@/lib/config";
+import { register } from "scarcity";
+import { type AppConfig } from "@/lib/config";
 
 interface ConfigRendererProps {
   title: string;

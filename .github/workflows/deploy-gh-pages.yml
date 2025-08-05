@@ -36,8 +36,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Build packages
-        run: pnpm run build
+      - name: Build website
+        run: pnpm run build --filter=website
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
