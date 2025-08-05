@@ -1,0 +1,27 @@
+{
+  "name": "scarcity",
+  "type": "module",
+  "version": "0.0.1",
+  "description": "A library for creating and managing resources in a scarcity economy",
+  "author": "Moulin Social",
+  "license": "MIT",
+  "repository": "https://github.com/scarcity-js/scarcity",
+  "imports": {
+    "#*": "./src/*.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest",
+    "test:run": "vitest run"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.5",
+    "typescript": "latest",
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "memoize": "^10.1.0"
+  }
+}
