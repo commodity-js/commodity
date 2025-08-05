@@ -1,5 +1,6 @@
+import Level1Agent from "#components/level-1.tsx"
+import { ConfigResource, defaultConfig } from "#lib/config.ts"
 import { parcel } from "scarcity"
-import { Level1Agent, ConfigResource, defaultConfig } from "shared-components"
 
 export default function Home() {
     // Supply the config at the entrypoint and render the nested components

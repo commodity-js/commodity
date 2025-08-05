@@ -1,7 +1,15 @@
 {
-    "name": "examples",
+    "name": "@scarcity/examples-next",
     "version": "0.1.0",
     "private": true,
+    "imports": {
+        "#*": "./src/*"
+    },
+    "exports": {
+        "./components/*": "./src/components/*",
+        "./lib/*": "./src/lib/*",
+        "./app/*": "./src/app/*"
+    },
     "scripts": {
         "dev": "next dev --turbopack",
         "build": "next build",
@@ -12,8 +20,7 @@
         "react": "19.1.0",
         "react-dom": "19.1.0",
         "next": "15.4.5",
-        "scarcity": "workspace:*",
-        "shared-components": "workspace:*"
+        "scarcity": "workspace:*"
     },
     "devDependencies": {
         "typescript": "^5",

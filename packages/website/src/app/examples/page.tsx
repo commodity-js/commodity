@@ -1,15 +1,9 @@
-import { parcel } from "scarcity"
 import Link from "next/link"
 import { ArrowLeft, ExternalLink } from "lucide-react"
-import { Level1Agent, ConfigResource, defaultConfig } from "shared-components"
 import CodeExample from "@/components/CodeExample"
+import Example from "@scarcity/examples-next/app/page.tsx"
 
 export default function ExamplesPage() {
-    // Supply the config at the entrypoint and render the nested components
-    const result = Level1Agent.supply(
-        parcel(ConfigResource.supply(defaultConfig))
-    )
-
     return (
         <div className="min-h-screen bg-scarcity-dark text-white">
             {/* Header */}
@@ -58,7 +52,7 @@ export default function ExamplesPage() {
                     <h2 className="text-2xl font-semibold text-scarcity-amber mb-6">
                         🚀 Live Demo
                     </h2>
-                    {result.value}
+                    <Example />
                 </div>
 
                 {/* Explanation */}
