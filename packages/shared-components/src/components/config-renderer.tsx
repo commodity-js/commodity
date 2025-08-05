@@ -1,5 +1,5 @@
 import { register } from "scarcity";
-import { type AppConfig } from "@/lib/config";
+import { type AppConfig } from "../lib/config";
 
 interface ConfigRendererProps {
   title: string;
@@ -20,7 +20,7 @@ const ConfigRendererAgent = register("config-renderer").asAgent({
       icon = "📋"
     }: ConfigRendererProps) => (
       <div
-        className={`bg-white text-gray-900 p-4 rounded-lg shadow ${
+        className={`bg-white p-4 rounded-lg shadow ${
           borderColor ? `border-l-4 ${borderColor}` : ""
         }`}
       >

@@ -1,7 +1,7 @@
 import { register, type $, parcel } from "scarcity";
 import Level3Agent from "./level-3";
 import ConfigRendererAgent from "./config-renderer";
-import { ConfigResource } from "@/lib/config";
+import { ConfigResource } from "../lib/config";
 
 // Level 2 component - displays config and resupplies different config to Level 3+4
 const Level2Agent = register("level-2").asAgent({

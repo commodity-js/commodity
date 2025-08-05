@@ -1,6 +1,6 @@
 import { register, type $ } from "scarcity";
 import ConfigRendererAgent from "./config-renderer";
-import { ConfigResource } from "@/lib/config";
+import { ConfigResource } from "../lib/config";
 
 // Level 4 component (deepest level) - displays config info using shared renderer
 const Level4Agent = register("level-4").asAgent({
