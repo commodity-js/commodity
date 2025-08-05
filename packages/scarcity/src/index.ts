@@ -32,6 +32,7 @@ type AgentRegistration<
 > = {
     id: ID
     isAgent: true
+    preload: boolean
     hire: <TEAM extends AgentRegistration<string, any, any>[]>(
         ...team: TEAM
     ) => {
@@ -116,10 +117,12 @@ export const register = <ID extends string>(id: ID) => {
             TEAM extends AgentRegistration<string, any, any>[] = []
         >({
             factory,
-            team = [] as unknown as TEAM
+            team = [] as unknown as TEAM,
+            preload = false
         }: {
             factory: (supplies: SUPPLIES) => VALUE
             team?: TEAM
+            preload?: boolean
         }) => {
             type OptionalToSupplyParam<T> = Record<never, never> extends T
                 ? [toSupply?: T & SupplyMap]
@@ -128,6 +131,7 @@ export const register = <ID extends string>(id: ID) => {
             const agent = {
                 id,
                 isAgent: true as const,
+                preload,
                 hire: <
                     const HIRED_TEAM extends readonly AgentRegistration<
                         string,
@@ -211,6 +215,34 @@ function hire(agents: AgentRegistration<string, any, any>[]) {
                     get: memo(() => agent.supply(supplies)),
                     enumerable: true,
                     configurable: true
+                })
+            }
+
+            // Preload agents that have preload: true
+            const preloadPromises = agents
+                .filter(
+                    (agent) =>
+                        agent.preload &&
+                        !Object.prototype.hasOwnProperty.call(
+                            supplied,
+                            agent.id
+                        )
+                )
+                .map((agent) => {
+                    // Access the getter to trigger memoization
+                    try {
+                        return Promise.resolve(supplies[agent.id])
+                    } catch (error) {
+                        // If preloading fails, we don't want to break the entire supply chain
+                        // The error will be thrown again when the dependency is actually needed
+                        return Promise.resolve(null)
+                    }
+                })
+
+            // Execute preloading in parallel (non-blocking)
+            if (preloadPromises.length > 0) {
+                Promise.all(preloadPromises).catch(() => {
+                    // Silently ignore preload errors - they'll be thrown when actually accessed
                 })
             }
 

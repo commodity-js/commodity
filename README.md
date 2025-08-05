@@ -71,6 +71,12 @@ const ApiClient = register("api-client").asAgent({
     };
   }
 });
+
+// Agent with eager preloading for performance
+const DatabaseAgent = register("database").asAgent({
+  factory: () => createDatabaseConnection(),
+  preload: true // This agent will be eagerly initialized
+});
 ```
 
 ### Using the Supply Chain
@@ -134,6 +140,34 @@ const ConsumerAgent = register("consumer").asAgent({
     return { result1, result2, result3 }; // All identical
   }
 });
+```
+
+### Eager Preloading
+
+For performance-critical scenarios, you can enable eager preloading:
+
+```typescript
+// These agents will be initialized immediately when supply() is called
+const DatabaseAgent = register("database").asAgent({
+  factory: () => createDatabaseConnection(),
+  preload: true // Eager initialization
+});
+
+const CacheAgent = register("cache").asAgent({
+  factory: () => createCacheConnection(),
+  preload: true // Eager initialization
+});
+
+const ApiAgent = register("api").asAgent({
+  team: [DatabaseAgent, CacheAgent],
+  factory: ($) => {
+    // DatabaseAgent and CacheAgent are already initialized
+    return createApiService($(DatabaseAgent.id), $(CacheAgent.id));
+  }
+});
+
+// Both DatabaseAgent and CacheAgent start initializing immediately
+const api = ApiAgent.supply();
 ```
 
 ### Context Switching
