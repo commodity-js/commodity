@@ -9,9 +9,9 @@ import {
     ChevronDown
 } from "lucide-react"
 import Link from "next/link"
-import CodeExample from "@/components/CodeExample"
-import FeatureCard from "@/components/FeatureCard"
-import Logo from "@/components/Logo"
+import CodeExample from "#components/CodeExample.tsx"
+import FeatureCard from "#components/FeatureCard.tsx"
+import Logo from "#components/Logo.tsx"
 
 export default function Home() {
     return (

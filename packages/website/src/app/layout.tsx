@@ -15,7 +15,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
     title: "Solvency - Type-Safe Dependency Injection",
     description:
-        "Powerful, type-inferred, and hyper-minimalistic library for dependency injection using a novel Supply Chain Architecture. Zero runtime overhead with full TypeScript support."
+        "Powerful, type-inferred, and hyper-minimalistic library for dependency injection using a novel Supply Chain Architecture. Zero runtime overhead with full TypeScript support.",
+    icons: {
+        icon: "/favicon.ico"
+    }
 }
 
 export default function RootLayout({

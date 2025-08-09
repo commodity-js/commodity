@@ -2,6 +2,9 @@
     "name": "@solvency/website",
     "version": "0.1.0",
     "private": true,
+    "imports": {
+        "#*": "./src/*"
+    },
     "scripts": {
         "dev": "next dev --turbopack",
         "build": "next build",
