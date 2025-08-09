@@ -13,7 +13,7 @@ export interface AppConfig {
 }
 
 export const defaultConfig: AppConfig = {
-    appName: "Scarcity Example App",
+    appName: "Solvency Example App",
     version: "1.0.0",
     apiUrl: "https://api.example.com",
     theme: {
@@ -26,5 +26,5 @@ export const defaultConfig: AppConfig = {
     }
 }
 
-import { register } from "scarcity"
+import { register } from "solvency"
 export const ConfigResource = register("config").asResource<AppConfig>()

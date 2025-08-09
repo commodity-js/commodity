@@ -1,5 +1,5 @@
 {
-    "name": "@scarcity/website",
+    "name": "@solvency/website",
     "version": "0.1.0",
     "private": true,
     "scripts": {
@@ -13,9 +13,9 @@
         "react": "19.1.0",
         "react-dom": "19.1.0",
         "next": "15.4.5",
-        "scarcity": "*",
+        "solvency": "workspace:*",
         "lucide-react": "^0.469.0",
-        "@scarcity/examples-next": "workspace:*"
+        "@solvency/examples-next": "workspace:*"
     },
     "devDependencies": {
         "typescript": "^5",

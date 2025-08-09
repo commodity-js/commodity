@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { ArrowLeft, ExternalLink } from "lucide-react"
 import CodeExample from "@/components/CodeExample"
-import Example from "@scarcity/examples-next/app/page.tsx"
+import Example from "@solvency/examples-next/app/page.tsx"
 
 export default function ExamplesPage() {
     return (
@@ -22,7 +22,7 @@ export default function ExamplesPage() {
                     </h1>
 
                     <Link
-                        href="https://github.com/scarcity-js/scarcity/tree/main/packages/examples"
+                        href="https://github.com/solvency-js/solvency/tree/main/packages/examples"
                         className="flex items-center gap-2 text-gray-400 hover:text-scarcity-orange transition-colors"
                     >
                         <ExternalLink className="w-4 h-4" />
@@ -41,7 +41,7 @@ export default function ExamplesPage() {
                     </h1>
                     <p className="text-xl text-gray-300 max-w-4xl mx-auto">
                         A 4-level deep component hierarchy demonstrating
-                        Scarcity&apos;s powerful context switching capabilities.
+                        Solvency&apos;s powerful context switching capabilities.
                         Watch how configs flow and transform through the
                         component tree.
                     </p>
@@ -119,7 +119,7 @@ export default function ExamplesPage() {
                             <p className="text-gray-300 text-sm">
                                 Notice how Level 2 shows the original blue
                                 theme, but Level 4 shows a completely different
-                                emerald theme! This demonstrates Scarcity&apos;s
+                                emerald theme! This demonstrates Solvency&apos;s
                                 powerful context switching - the same component
                                 tree can work with different configurations at
                                 different levels.

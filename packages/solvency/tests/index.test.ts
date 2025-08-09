@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { register, type $, parcel } from "#index"
 
-describe("scarcity", () => {
+describe("solvency", () => {
     beforeEach(() => {
         vi.clearAllMocks()
     })
@@ -11,7 +11,7 @@ describe("scarcity", () => {
             const TestResource = register("test-resource").asResource<string>()
 
             const testValue = "test-value"
-            const result = TestResource.supply(testValue)
+            const result = TestResource.put(testValue)
 
             expect(result.value).toBe(testValue)
             expect(result.id).toBe("test-resource")
@@ -28,9 +28,9 @@ describe("scarcity", () => {
                 name: string
             }>()
 
-            const stringResult = StringResource.supply("hello")
-            const numberResult = NumberResource.supply(42)
-            const objectResult = ObjectResource.supply({ name: "test" })
+            const stringResult = StringResource.put("hello")
+            const numberResult = NumberResource.put(42)
+            const objectResult = ObjectResource.put({ name: "test" })
 
             expect(stringResult.value).toBe("hello")
             expect(numberResult.value).toBe(42)
@@ -73,7 +73,7 @@ describe("scarcity", () => {
                 }
             })
 
-            const result = TestAgent.supply()
+            const result = TestAgent.supply({})
 
             expect(result.value).toEqual({
                 dep1Value: "dep1-result",
@@ -86,7 +86,7 @@ describe("scarcity", () => {
             const NoSupplyAgent = register("no-supply").asAgent({
                 factory: () => "ok"
             })
-            const result = NoSupplyAgent.supply()
+            const result = NoSupplyAgent.supply({})
             expect(result.value).toBe("ok")
         })
     })
@@ -112,7 +112,7 @@ describe("scarcity", () => {
             })
 
             // Hire HiredDep, which should override DefaultDep
-            const result = TestAgent.hire(HiredDep).supply()
+            const result = TestAgent.hire(HiredDep).supply({})
 
             expect(result.value).toEqual({
                 dep: "hired-result", // The hired dependency should win
@@ -131,9 +131,9 @@ describe("scarcity", () => {
             })
 
             // Calling hire should be non-mutating
-            TestAgent.hire(HiredDep).supply()
+            TestAgent.hire(HiredDep).supply({})
 
-            const originalResult = TestAgent.supply()
+            const originalResult = TestAgent.supply({})
             expect(originalResult.value).toBe("default")
         })
     })
@@ -161,7 +161,7 @@ describe("scarcity", () => {
                 }
             })
 
-            const result = MainAgent.supply()
+            const result = MainAgent.supply({})
 
             expect(result.value).toEqual({
                 service1: "service1-result",
@@ -191,7 +191,7 @@ describe("scarcity", () => {
             const ServiceResource = register("service").asResource<string>()
 
             const result = MainAgent.supply(
-                parcel(ServiceResource.supply("initial-service-value"))
+                parcel(ServiceResource.put("initial-service-value"))
             )
 
             // The initial supply should be respected and not overridden by the agent
@@ -209,7 +209,7 @@ describe("scarcity", () => {
                 factory: factoryMock
             })
 
-            const agent = TestAgent.supply()
+            const agent = TestAgent.supply({})
 
             // First access should call the factory
             expect(agent.value).toBe("result")
@@ -217,7 +217,7 @@ describe("scarcity", () => {
 
             // The memoization works within the same supply context
             // Each call to supply() creates a new context, so the factory is called again
-            const secondAccess = TestAgent.supply()
+            const secondAccess = TestAgent.supply({})
             expect(secondAccess.value).toBe("result")
             // Factory is called again for the new supply context
             expect(factoryMock).toHaveBeenCalledTimes(2)
@@ -250,7 +250,7 @@ describe("scarcity", () => {
                 }
             })
 
-            const result = TeamAgent.supply()
+            const result = TeamAgent.supply({})
 
             expect(result.value).toEqual({
                 first: "memoized-result",
@@ -291,7 +291,7 @@ describe("scarcity", () => {
                 }
             })
 
-            const result = Level3Agent.supply()
+            const result = Level3Agent.supply({})
 
             expect(result.value).toEqual({
                 level1: "level1-result",
@@ -321,12 +321,12 @@ describe("scarcity", () => {
                     const configurableAgent = $[ConfigurableAgent.id]
 
                     const oldContextResult = configurableAgent.resupply(
-                        parcel(ConfigResource.supply("old-context-value"))
+                        parcel(ConfigResource.put("old-context-value"))
                     )
 
                     // Use a new context with different supplies
                     const newContextResult = configurableAgent.resupply(
-                        parcel(ConfigResource.supply("new-context-value"))
+                        parcel(ConfigResource.put("new-context-value"))
                     )
 
                     return {
@@ -339,7 +339,7 @@ describe("scarcity", () => {
             })
 
             const result = ContextSwitchingAgent.supply(
-                parcel(ConfigResource.supply("initial-context-value"))
+                parcel(ConfigResource.put("initial-context-value"))
             )
 
             // The contexts should be different because they use different supplies
@@ -386,7 +386,7 @@ describe("scarcity", () => {
                 }
             })
 
-            const result = TestAgent.supply()
+            const result = TestAgent.supply({})
 
             expect(result.value.propAccess).toEqual({
                 service1: "service1-result",
@@ -438,7 +438,7 @@ describe("scarcity", () => {
                 }
             })
 
-            const result = MainAgent.supply()
+            const result = MainAgent.supply({})
 
             // Wait a bit for preloading to complete
             await new Promise((resolve) => setTimeout(resolve, 10))
@@ -475,7 +475,7 @@ describe("scarcity", () => {
 
             // Supply the same ID as a resource instead of using the agent
             const result = MainAgent.supply(
-                parcel(PreloadResource.supply("supplied-value"))
+                parcel(PreloadResource.put("supplied-value"))
             )
 
             // Wait a bit for any potential preloading
@@ -506,7 +506,7 @@ describe("scarcity", () => {
             })
 
             // This should not throw even though ErrorAgent will fail during preload
-            const result = MainAgent.supply()
+            const result = MainAgent.supply({})
 
             // Wait a bit for preloading to complete
             await new Promise((resolve) => setTimeout(resolve, 10))
@@ -539,7 +539,7 @@ describe("scarcity", () => {
             await new Promise((resolve) => setTimeout(resolve, 10))
 
             // Accessing the agent should still throw the error
-            expect(() => MainAgent.supply()).toThrow("Agent error")
+            expect(() => MainAgent.supply({})).toThrow("Agent error")
         })
 
         it("should work with complex dependency chains and selective preloading", async () => {
@@ -581,7 +581,7 @@ describe("scarcity", () => {
                 }
             })
 
-            const result = MainAgent.supply()
+            const result = MainAgent.supply({})
 
             // Wait a bit for preloading to complete
             await new Promise((resolve) => setTimeout(resolve, 10))
@@ -614,7 +614,7 @@ describe("scarcity", () => {
             })
 
             // Hire the preloaded agent
-            const result = MainAgent.hire(HiredAgent).supply()
+            const result = MainAgent.hire(HiredAgent).supply({})
 
             // Wait a bit for preloading to complete
             await new Promise((resolve) => setTimeout(resolve, 10))
@@ -633,7 +633,7 @@ describe("scarcity", () => {
                 factory: () => "empty-team-result"
             })
 
-            const result = EmptyTeamAgent.supply()
+            const result = EmptyTeamAgent.supply({})
             expect(result.value).toBe("empty-team-result")
         })
 
@@ -642,7 +642,7 @@ describe("scarcity", () => {
                 factory: () => "no-supplies-result"
             })
 
-            const result = NoSuppliesAgent.supply()
+            const result = NoSuppliesAgent.supply({})
             expect(result.value).toBe("no-supplies-result")
         })
 
@@ -670,7 +670,7 @@ describe("scarcity", () => {
                 }
             }
 
-            const result = ComplexResource.supply(complexValue)
+            const result = ComplexResource.put(complexValue)
 
             expect(result.value).toEqual(complexValue)
         })

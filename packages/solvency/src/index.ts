@@ -10,35 +10,53 @@ type Merge<U> = (U extends any ? (k: U) => void : never) extends (
 type Resource<ID extends string, VALUE> = {
     id: ID
     value: VALUE
-    resupply: ResourceRegistration<ID, VALUE>["supply"]
 }
 
 type SupplyMap = Record<string, Resource<any, any>>
 
+type ResourceActions<ID extends string, VALUE> = {
+    put: (value: VALUE) => Resource<ID, VALUE> & ResourceActions<ID, VALUE>
+}
+
 type ResourceRegistration<ID extends string, VALUE> = {
     id: ID
     isResource: true
-    supply: (value: VALUE) => {
-        id: ID
-        value: VALUE
-        resupply: ResourceRegistration<ID, VALUE>["supply"]
-    }
+    put: (value: VALUE) => Resource<ID, VALUE> & ResourceActions<ID, VALUE>
 }
 
+type SupplyAction<
+    ID extends string,
+    VALUE,
+    TOSUPPLY extends Record<never, never>
+> = (
+    toSupply: TOSUPPLY
+) => Resource<ID, VALUE> & AgentActions<ID, TOSUPPLY, VALUE, true>
+
+type AgentActions<
+    ID extends string,
+    TOSUPPLY extends Record<never, never>,
+    VALUE,
+    RESUPPLY extends boolean = false
+> = (RESUPPLY extends true
+    ? {
+          resupply: SupplyAction<ID, VALUE, TOSUPPLY>
+      }
+    : {
+          supply: SupplyAction<ID, VALUE, TOSUPPLY>
+      }) & {
+    put: (
+        value: VALUE
+    ) => Resource<ID, VALUE> & AgentActions<ID, TOSUPPLY, VALUE, true>
+}
 type AgentRegistration<
     ID extends string,
     TOSUPPLY extends Record<never, never>,
     VALUE
-> = {
+> = AgentActions<ID, TOSUPPLY, VALUE> & {
     id: ID
     isAgent: true
     preload: boolean
-    hire: <TEAM extends AgentRegistration<string, any, any>[]>(
-        ...team: TEAM
-    ) => {
-        supply: (supplies: any) => Resource<ID, VALUE>
-    }
-    supply: (supplies: TOSUPPLY & SupplyMap) => Resource<ID, VALUE>
+    hire: (...team: any[]) => AgentActions<ID, any, VALUE>
 }
 
 type Registration<
@@ -61,10 +79,14 @@ type SupplyMapFromResources<RESOURCES extends Resource<any, any>[]> =
 type SupplyMapFromRegistrations<
     REGISTRY extends Registration<string, any, any>[]
 > = {
-    [REGISTRATION in REGISTRY[number] as REGISTRATION["id"]]: REGISTRATION extends
-        | AgentRegistration<string, any, any>
-        | ResourceRegistration<string, any>
+    [REGISTRATION in REGISTRY[number] as REGISTRATION["id"]]: REGISTRATION extends AgentRegistration<
+        string,
+        any,
+        any
+    >
         ? ReturnType<REGISTRATION["supply"]>
+        : REGISTRATION extends ResourceRegistration<string, any>
+        ? ReturnType<REGISTRATION["put"]>
         : never
 }
 
@@ -100,11 +122,11 @@ export const register = <ID extends string>(id: ID) => {
             const resource = {
                 id,
                 isResource: true as const,
-                supply: <VALUE extends CONSTRAINT>(value: VALUE) => {
+                put: <VALUE extends CONSTRAINT>(value: VALUE) => {
                     return {
                         id,
                         value,
-                        resupply: resource.supply
+                        put: resource.put
                     }
                 },
                 _constraint: null as unknown as CONSTRAINT
@@ -124,14 +146,53 @@ export const register = <ID extends string>(id: ID) => {
             team?: TEAM
             preload?: boolean
         }) => {
-            type OptionalToSupplyParam<T> = Record<never, never> extends T
-                ? [toSupply?: T & SupplyMap]
-                : [toSupply: T & SupplyMap]
+            const actions = {
+                put: (value: VALUE) => {
+                    return {
+                        id,
+                        value,
+                        resupply: actions.supply(team),
+                        put: actions.put
+                    }
+                },
+                supply:
+                    <FINALTEAM extends AgentRegistration<string, any, any>[]>(
+                        team: FINALTEAM
+                    ) =>
+                    (
+                        toSupply: Omit<
+                            SUPPLIES,
+                            keyof SupplyMapFromRegistrations<FINALTEAM>
+                        > &
+                            ToSupply<FINALTEAM>
+                    ) => {
+                        const value = factory(
+                            /**
+                             * A type assertion that tells TypeScript to trust us that the resulting
+                             * supplies is compatible with the generic type `SUPPLIES`. This is a necessary
+                             * type hole because TypeScript's static analysis can't remember that when you Omit properties
+                             * and put them back, you end up with the original type. Here toSupply is type guarded to be SUPPLIES - Services<team>,
+                             * and hire merges toSupply and team services together, so the result must extend SUPPLIES. But TS cannot guarantee it.
+                             */
+                            hire(team).supply(
+                                toSupply ?? {}
+                            ) as unknown as SUPPLIES
+                        )
+                        return {
+                            id,
+                            value,
+                            resupply: actions.supply(team),
+                            put: actions.put
+                        }
+                    }
+            }
 
             const agent = {
                 id,
                 isAgent: true as const,
                 preload,
+                put: actions.put,
+                supply: actions.supply(team),
                 hire: <
                     const HIRED_TEAM extends readonly AgentRegistration<
                         string,
@@ -141,50 +202,13 @@ export const register = <ID extends string>(id: ID) => {
                 >(
                     ...hiredTeam: HIRED_TEAM
                 ) => {
-                    const finalTeam = [...team, ...hiredTeam]
-                    type FinalTeam = typeof finalTeam
-
-                    const supply = (
-                        ...[toSupply]: OptionalToSupplyParam<
-                            Omit<
-                                SUPPLIES,
-                                keyof SupplyMapFromRegistrations<FinalTeam>
-                            > &
-                                ToSupply<FinalTeam>
-                        >
-                    ) => {
-                        const value = factory(
-                            hire(finalTeam).supply(
-                                toSupply ?? {}
-                            ) as unknown as SUPPLIES
-                        )
-                        return { id, value, resupply: supply }
-                    }
-                    return { supply }
-                },
-                supply: (
-                    ...[toSupply]: OptionalToSupplyParam<
-                        Omit<SUPPLIES, keyof SupplyMapFromRegistrations<TEAM>> &
-                            ToSupply<TEAM>
-                    >
-                ) => {
-                    const value = factory(
-                        /**
-                         * A type assertion that tells TypeScript to trust us that the resulting
-                         * supplies is compatible with the generic type `SUPPLIES`. This is a necessary
-                         * type hole because TypeScript's static analysis can't remember that when you Omit properties
-                         * and put them back, you end up with the original type. Here toSupply is type guarded to be SUPPLIES - Services<team>,
-                         * and hire merges toSupply and team services together, so the result must extend SUPPLIES. But TS cannot guarantee it.
-                         */
-                        hire(team).supply(toSupply ?? {}) as unknown as SUPPLIES
-                    )
                     return {
-                        id,
-                        value,
-                        resupply: agent.supply
+                        supply: actions.supply([...team, ...hiredTeam]),
+                        put: actions.put
                     }
                 }
             }
+
             return agent
         }
     }
@@ -194,11 +218,11 @@ function hire(agents: AgentRegistration<string, any, any>[]) {
     return {
         supply: (supplied: Record<string, any>) => {
             const supplies: any = (id: string) => {
-                const parcel = supplies[id]
-                if (!parcel?.value) {
+                const resource = supplies[id]
+                if (!resource?.value) {
                     throw new Error(`Unsatisfied dependency: ${id}`)
                 }
-                return parcel.value
+                return resource.value
             }
 
             Object.defineProperties(

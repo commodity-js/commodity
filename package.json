@@ -1,19 +1,19 @@
 {
-  "name": "scarcity-monorepo",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "build": "turbo build",
-    "dev": "turbo dev",
-    "test": "turbo test",
-    "lint": "turbo lint",
-    "clean": "turbo clean"
-  },
-  "devDependencies": {
-    "turbo": "^2.5.5"
-  },
-  "packageManager": "pnpm@10.11.0",
-  "engines": {
-    "node": ">=18"
-  }
+    "name": "solvency-monorepo",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "turbo build",
+        "dev": "turbo dev",
+        "test": "turbo test",
+        "lint": "turbo lint",
+        "clean": "turbo clean"
+    },
+    "devDependencies": {
+        "turbo": "^2.5.5"
+    },
+    "packageManager": "pnpm@10.11.0",
+    "engines": {
+        "node": ">=18"
+    }
 }

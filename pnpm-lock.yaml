@@ -23,9 +23,9 @@ importers:
       react-dom:
         specifier: 19.1.0
         version: 19.1.0(react@19.1.0)
-      scarcity:
+      solvency:
         specifier: workspace:*
-        version: link:../../scarcity
+        version: link:../../solvency
     devDependencies:
       '@eslint/eslintrc':
         specifier: ^3
@@ -55,7 +55,7 @@ importers:
         specifier: ^5
         version: 5.9.2
 
-  packages/scarcity:
+  packages/solvency:
     dependencies:
       memoize:
         specifier: ^10.1.0
@@ -76,7 +76,7 @@ importers:
 
   packages/website:
     dependencies:
-      '@scarcity/examples-next':
+      '@solvency/examples-next':
         specifier: workspace:*
         version: link:../examples/next
       lucide-react:
@@ -91,9 +91,9 @@ importers:
       react-dom:
         specifier: 19.1.0
         version: 19.1.0(react@19.1.0)
-      scarcity:
-        specifier: '*'
-        version: 0.0.2
+      solvency:
+        specifier: workspace:*
+        version: link:../solvency
     devDependencies:
       '@eslint/eslintrc':
         specifier: ^3
@@ -2159,9 +2159,6 @@ packages:
   safe-regex-test@1.1.0:
     resolution: {integrity: sha512-x/+Cz4YrimQxQccJf5mKEbIa1NzeCRNI5Ecl/ekmlYaampdNLPalVyIcCZNNH3MvmqBugV5TMYZXv0ljslUlaw==}
     engines: {node: '>= 0.4'}
-
-  scarcity@0.0.2:
-    resolution: {integrity: sha512-xqReCwTaYTdFOWaK1EcFNymLAaT+a49GDffBAZKf+OjRu101DHlF7IhKGtrc0IY7w0n7o4+BPG/eVslN1WJUow==}
 
   scheduler@0.26.0:
     resolution: {integrity: sha512-NlHwttCI/l5gCPR3D1nNXtWABUmBwvZpEQiD4IXSbIDq8BzLIK/7Ir5gTFSGZDUu37K5cMNp0hFtzO38sC7gWA==}
@@ -4677,10 +4674,6 @@ snapshots:
       call-bound: 1.0.4
       es-errors: 1.3.0
       is-regex: 1.2.1
-
-  scarcity@0.0.2:
-    dependencies:
-      memoize: 10.1.0
 
   scheduler@0.26.0: {}
 

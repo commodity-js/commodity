@@ -1,5 +1,5 @@
 {
-    "name": "@scarcity/examples-next",
+    "name": "@solvency/examples-next",
     "version": "0.1.0",
     "private": true,
     "imports": {
@@ -20,7 +20,7 @@
         "react": "19.1.0",
         "react-dom": "19.1.0",
         "next": "15.4.5",
-        "scarcity": "workspace:*"
+        "solvency": "workspace:*"
     },
     "devDependencies": {
         "typescript": "^5",

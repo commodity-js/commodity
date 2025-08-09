@@ -1,16 +1,16 @@
 {
-    "name": "scarcity",
+    "name": "solvency",
     "type": "module",
     "version": "0.0.3",
-    "description": "Powerful, type-inferred, and hyper-minimalistic library for server request propagation and dependency injection using a novel Supply Chain Architecture",
+    "description": "Achieve architectural solvency through modular dependency injection and supply chain architecture",
     "main": "dist/index.cjs",
     "module": "dist/index.js",
     "types": "dist/index.d.ts",
-    "author": "Scarcity",
+    "author": "Solvency",
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/scarcity-js/scarcity.git"
+        "url": "git+https://github.com/solvency-js/solvency.git"
     },
     "imports": {
         "#*": "./src/*.ts"

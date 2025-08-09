@@ -1,11 +1,11 @@
 import Level1Agent from "#components/level-1.tsx"
 import { ConfigResource, defaultConfig } from "#lib/config.ts"
-import { parcel } from "scarcity"
+import { parcel } from "solvency"
 
 export default function Home() {
     // Supply the config at the entrypoint and render the nested components
     const result = Level1Agent.supply(
-        parcel(ConfigResource.supply(defaultConfig))
+        parcel(ConfigResource.put(defaultConfig))
     )
 
     return (
@@ -13,11 +13,11 @@ export default function Home() {
             <div className="max-w-6xl mx-auto">
                 <div className="text-center mb-8">
                     <h1 className="text-4xl font-bold text-gray-800 mb-2">
-                        Scarcity Dependency Injection Example
+                        Solvency Dependency Injection Example
                     </h1>
                     <p className="text-gray-600">
                         A 4-level deep component hierarchy with dependency
-                        injection using Scarcity
+                        injection using Solvency
                     </p>
                 </div>
 
@@ -54,7 +54,7 @@ export default function Home() {
                             <strong>🚀 Context Switching Demo:</strong> Notice
                             how Level 2 shows the original config, but Level 4
                             shows a completely different config! This
-                            demonstrates Scarcity&apos;s powerful context
+                            demonstrates Solvency&apos;s powerful context
                             switching capability with <code>resupply()</code>.
                         </p>
                         <p className="mt-4 text-sm bg-gray-50 p-3 rounded">
