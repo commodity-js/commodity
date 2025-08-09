@@ -15,7 +15,7 @@ export default function Logo({
 }: LogoProps) {
     return (
         <Image
-            src="/Solvency-logo-crop.png"
+            src="Solvency-logo-crop.png"
             alt="Solvency Logo"
             width={width}
             height={height}
