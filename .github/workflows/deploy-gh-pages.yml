@@ -37,7 +37,7 @@ jobs:
               run: pnpm install --no-frozen-lockfile
 
             - name: Build website
-              run: pnpm run build --filter=@scarcity/website
+              run: pnpm run build --filter=@solvency/website
 
             - name: Setup Pages
               uses: actions/configure-pages@v4
