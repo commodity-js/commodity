@@ -9,7 +9,7 @@ A powerful, type-inferred, and hyper-minimalistic library for dependency injecti
 ### 🔧 **Dependency Injection**
 
 -   **Functions only** - No OOP, classes, decorators, or compiler magic,
--   **Fully type-inferred** - Full TypeScript inference using an imperative reader monad pattern
+-   **Fully typesafe and type-inferred** - Full TypeScript support with compile-time circular dependency detection.
 -   **Stateless** - No stateful container, dependencies injected via closure.
 -   **Fluent and expressive API** - Learn in minutes, designed for both developers and AI usage.
 -   **Runtime overrides** - Easily mock dependencies for testing using `.hire()`
@@ -36,32 +36,30 @@ npm install supplier
 
 ### Creating Agents
 
-Agents are factory functions that can depend on other resources or agents:
+Agents are factory functions that can depend on other resources or agents. Factory functions can return values or functions (services).
 
 ```typescript
 import { register, type $ } from "supplier"
 
 // Simple agent with no dependencies
 const LoggerAgent = register("logger").asAgent({
-    factory: () => ({
-        log: (message: string) => console.log(`[LOG] ${message}`)
-    })
+    factory: () => (message: string) => console.log(`[LOG] ${message}`)
 })
 
-// Agent with dependencies supplied in-place using the "team" array
 const ApiClient = register("api-client").asAgent({
-    team: [ConfigResource, LoggerAgent],
+    // Use $<> type utility to define the shape of the required dependencies
     factory: ($: $<[typeof ConfigResource, typeof LoggerAgent]>) => {
-        const config = $(ConfigResource.id)
-        const logger = $(LoggerAgent.id)
-
         return {
             async get(path: string) {
+                const config = $(ConfigResource.id)
+                const logger = $(LoggerAgent.id)
                 logger.log(`GET ${config.apiUrl}${path}`)
                 // ... implementation
             }
+            // ... other methods
         }
-    }
+    },
+    team: [LoggerAgent] // Agent dependencies can be provided in place using the team array. Resource dependencies (like ConfigResource) will be passed at the entry point when calling supply().
 })
 ```
 
@@ -88,10 +86,10 @@ console.log(config.value.apiUrl) // "https://api.example.com"
 console.log(config.id) // "config"
 ```
 
-### Using the Supply Chain
+### Supplying at the entry point
 
 ```typescript
-// Supply dependencies and get the result
+// ApiClient needs LoggerAgent and ConfigResource, but LoggerAgent was already provided in-place using the team array.
 const apiClient = ApiClient.supply(
     tagged(
         ConfigResource.put({
@@ -109,17 +107,16 @@ await apiClient.value.get("/users")
 
 ### Callable Object API
 
-The `$` callable object provides access to an agent's dependencies. Call $(depId) or access $[depId].value to get the dependency value.
+The `$` callable object provides access to an agent's dependencies. Call `$(depId)` or access `$[depId].value` to get the dependency value. $[] syntax is needed to call resupply() (see below)
 
 ```typescript
 const MyAgent = register("my-agent").asAgent({
     team: [SomeService],
     factory: ($: $<[typeof SomeService]>) => {
         // Both of these work:
-        const service1 = $(SomeService.id) // Function call
-        const service2 = $[SomeService.id].value // Property access
-
-        return { service1, service2 }
+        const service = $(SomeService.id) // Function call
+        const sameService = $[SomeService.id].value // Property access
+        //...
     }
 })
 ```
@@ -130,32 +127,33 @@ Use `$[agentId].resupply()` to load an agent in a different context. Example use
 
 ```typescript
 // Wallet service that depends on user session
-const WalletService = register("wallet").asAgent({
+const AcceptTransferAgent = register("transfer-agent").asAgent({
     team: [Session],
     factory: ($: $<[typeof Session]>) => {
         const session = $(Session.id)
 
-        return {
-            acceptTransfer(amount: number) {
-                // Add entry into the current user's wallet
-                // ...
-            }
+        return (amount: number) {
+            // Add entry into the current user's wallet
+            // ...
         }
     }
 })
 
 // Money transfer service that switches contexts
-const TransferService = register("transfer").asAgent({
+const TransferAgent = register("transfer").asAgent({
     team: [WalletService, Session],
     factory: ($: $<[typeof WalletService, typeof Session]>) => {
-        return {
-            transferMoney(
-                fromUserId: string,
+        function deductFromSender(amount: number) {
+            const session = $(Session.id)
+            // Deduct from current user's wallet
+        }
+
+        return (
                 toUserId: string,
                 amount: number
-            ) {
+            )=>{
                 // First, deduct from sender's wallet (current context)
-                this.deductFromSender(amount)
+                deductFromSender(amount)
 
                 // Then, switch to recipient's context to accept the transfer
                 const recipientWallet = $[WalletService.id].resupply(
@@ -171,14 +169,10 @@ const TransferService = register("transfer").asAgent({
                 recipientWallet.acceptTransfer(amount)
 
                 return { success: true, amount, fromUserId, toUserId }
-            },
-
-            deductFromSender(amount: number) {
-                // Deduct from current user's wallet
             }
-        }
     }
-})
+}
+)
 ```
 
 ### Type narrowing
@@ -208,12 +202,7 @@ const AdminDashboard = register("admin-dashboard").asAgent({
         const session = $(Session.id)
         // No runtime check needed - TypeScript ensures session.role === "admin"
         return {
-            async getSystemStats() {
-                const response = await fetch(`/api/admin/stats`, {
-                    headers: { Authorization: `Bearer ${session.token}` }
-                })
-                return response.json()
-            }
+            // Some admin only methods
         }
     }
 })
@@ -243,16 +232,14 @@ const adminDashboard = AdminDashboard.supply(
 
 ### Hiring Agents (Composition Root)
 
-Dependencies can be supplied alongside the agent definition using the "team" array, or supplied at the entry point of the application using the hire() method. This aligns with traditional DI systems and the composition root pattern, and allows to override dependencies easily for mocking and testing.
+Dependencies can be supplied alongside the agent definition using the "team" array, or supplied at the entry point of the application using the hire() method. This aligns with traditional DI systems and the composition root pattern, and allows you to override dependencies easily for mocking and testing.
 
 ```typescript
 // Create a test logger that doesn't actually log
 const TestLogger = register("logger").asAgent({
-    factory: () => ({
-        log: (message: string) => {
-            /* silent */
-        }
-    })
+    factory: () => (message: string) => {
+        /* silent */
+    }
 })
 
 // Override the logger for testing
@@ -347,7 +334,7 @@ Helper function to bundle multiple resources for supply, tagged by their id.
 Supplier is built with TypeScript-first design:
 
 -   Full type inference for dependencies
--   Compile-time dependency validation
+-   Compile-time dependency validation and circular dependency detection
 -   Zero runtime type checking overhead
 -   IntelliSense support for all APIs
 
