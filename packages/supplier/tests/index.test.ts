@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { register, type $, parcel } from "#index"
+import { register, type $, tagged } from "#index"
 
 describe("supplier", () => {
     beforeEach(() => {
@@ -191,7 +191,7 @@ describe("supplier", () => {
             const ServiceResource = register("service").asResource<string>()
 
             const result = MainAgent.supply(
-                parcel(ServiceResource.put("initial-service-value"))
+                tagged(ServiceResource.put("initial-service-value"))
             )
 
             // The initial supply should be respected and not overridden by the agent
@@ -321,12 +321,12 @@ describe("supplier", () => {
                     const configurableAgent = $[ConfigurableAgent.id]
 
                     const oldContextResult = configurableAgent.resupply(
-                        parcel(ConfigResource.put("old-context-value"))
+                        tagged(ConfigResource.put("old-context-value"))
                     )
 
                     // Use a new context with different supplies
                     const newContextResult = configurableAgent.resupply(
-                        parcel(ConfigResource.put("new-context-value"))
+                        tagged(ConfigResource.put("new-context-value"))
                     )
 
                     return {
@@ -339,7 +339,7 @@ describe("supplier", () => {
             })
 
             const result = ContextSwitchingAgent.supply(
-                parcel(ConfigResource.put("initial-context-value"))
+                tagged(ConfigResource.put("initial-context-value"))
             )
 
             // The contexts should be different because they use different supplies
@@ -475,7 +475,7 @@ describe("supplier", () => {
 
             // Supply the same ID as a resource instead of using the agent
             const result = MainAgent.supply(
-                parcel(PreloadResource.put("supplied-value"))
+                tagged(PreloadResource.put("supplied-value"))
             )
 
             // Wait a bit for any potential preloading

@@ -275,13 +275,7 @@ function hire(agents: AgentRegistration<string, any, any>[]) {
     }
 }
 
-/**
- * Parcel supplied resources into an object that can be passed to an agent's `supply` method.
- * This is a helper function to simplify the API for providing dependencies.
- * @param resources The supplied resources to bundle.
- * @returns An object with resource IDs as keys and the resources themselves as values.
- */
-export function parcel<RESOURCES extends Resource<any, any>[]>(
+export function tagged<RESOURCES extends Resource<any, any>[]>(
     ...resources: RESOURCES
 ): SupplyMapFromResources<RESOURCES> {
     return resources.reduce((acc, r) => ({ ...acc, [r.id]: r }), {}) as any
