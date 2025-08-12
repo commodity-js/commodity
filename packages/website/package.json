@@ -1,5 +1,5 @@
 {
-    "name": "@solvency/website",
+    "name": "@supplier/website",
     "version": "0.1.0",
     "private": true,
     "imports": {
@@ -16,9 +16,9 @@
         "react": "19.1.0",
         "react-dom": "19.1.0",
         "next": "15.4.5",
-        "solvency": "workspace:*",
+        "supplier": "workspace:*",
         "lucide-react": "^0.469.0",
-        "@solvency/examples-next": "workspace:*"
+        "@supplier/examples-next": "workspace:*"
     },
     "devDependencies": {
         "typescript": "^5",

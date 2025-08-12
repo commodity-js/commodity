@@ -1,4 +1,4 @@
-import { register, type $ } from "solvency"
+import { register, type $ } from "supplier"
 import Level2Agent from "#components/level-2.tsx"
 
 // Level 1 component - renders Level 2
@@ -13,7 +13,7 @@ const Level1Agent = register("level-1").asAgent({
                     Level 1 Component
                 </h1>
                 <p className="text-red-700 mb-6">
-                    Welcome to the Solvency dependency injection example! This
+                    Welcome to the Supplier dependency injection example! This
                     is the top-level component that starts our 4-level deep
                     component hierarchy.
                 </p>

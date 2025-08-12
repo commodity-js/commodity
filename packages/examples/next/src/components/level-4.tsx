@@ -1,4 +1,4 @@
-import { register, type $ } from "solvency"
+import { register, type $ } from "supplier"
 import ConfigRendererAgent from "#components/config-renderer.tsx"
 import { ConfigResource } from "#lib/config.ts"
 

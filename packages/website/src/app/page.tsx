@@ -42,7 +42,7 @@ export default function Home() {
 
                     {/* Main heading */}
                     <h1 className="text-6xl md:text-8xl font-bold mb-6">
-                        <span className="gradient-scarcity-text">Solvency</span>
+                        <span className="gradient-scarcity-text">Supplier</span>
                     </h1>
 
                     <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
@@ -65,7 +65,7 @@ export default function Home() {
                         </Link>
 
                         <Link
-                            href="https://github.com/solvency-js/solvency"
+                            href="https://github.com/supplier-js/supplier"
                             className="px-8 py-4 border-2 border-scarcity-orange text-scarcity-orange hover:bg-scarcity-orange hover:text-black transition-all duration-300 rounded-lg flex items-center gap-2"
                         >
                             <Github className="w-5 h-5" />
@@ -124,7 +124,7 @@ export default function Home() {
                             </span>
                         </h2>
                         <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-                            Get up and running with Solvency in minutes.
+                            Get up and running with Supplier in minutes.
                             Here&apos;s how easy it is to implement powerful
                             dependency injection.
                         </p>
@@ -136,7 +136,7 @@ export default function Home() {
                                 Installation
                             </h3>
                             <CodeExample
-                                code={`npm install solvency`}
+                                code={`npm install supplier`}
                                 language="bash"
                             />
 
@@ -144,7 +144,7 @@ export default function Home() {
                                 Basic Usage
                             </h3>
                             <CodeExample
-                                code={`import { register, parcel } from "solvency";
+                                code={`import { register, parcel } from "supplier";
 
 // Create a resource
 const ConfigResource = register("config")
@@ -191,7 +191,7 @@ console.log(testApi.value.fetch("/users"));
                                     💡 Pro Tip
                                 </h4>
                                 <p className="text-gray-300 text-sm">
-                                    Solvency&apos;s{" "}
+                                    Supplier&apos;s{" "}
                                     <code className="bg-scarcity-dark-lighter px-2 py-1 rounded text-scarcity-amber">
                                         resupply()
                                     </code>
@@ -297,17 +297,17 @@ console.log(testApi.value.fetch("/users"));
                         <Logo className="w-16 h-16 mx-auto opacity-60" />
                     </div>
                     <p className="text-gray-400 mb-4">
-                        Built with ❤️ by the Solvency team
+                        Built with ❤️ by the Supplier team
                     </p>
                     <div className="flex justify-center gap-6">
                         <Link
-                            href="https://github.com/solvency-js/solvency"
+                            href="https://github.com/supplier-js/supplier"
                             className="text-gray-400 hover:text-scarcity-orange transition-colors"
                         >
                             GitHub
                         </Link>
                         <Link
-                            href="https://github.com/solvency-js/solvency/blob/main/README.md"
+                            href="https://github.com/supplier-js/supplier/blob/main/README.md"
                             className="text-gray-400 hover:text-scarcity-orange transition-colors"
                         >
                             Documentation

@@ -1,6 +1,6 @@
-# solvency
+# supplier
 
-Achieve architectural solvency through modular dependency injection and supply chain architecture. A powerful, type-inferred, and hyper-minimalistic library for server request (context) propagation and dependency injection (DI).
+A powerful, type-inferred, and hyper-minimalistic library for server request (context) propagation and dependency injection (DI).
 
 ## Features
 
@@ -14,7 +14,7 @@ Achieve architectural solvency through modular dependency injection and supply c
 ## Installation
 
 ```bash
-npm install solvency
+npm install supplier
 ```
 
 ## Quick Start
@@ -24,7 +24,7 @@ npm install solvency
 Resources are simple values that can be injected into agents:
 
 ```typescript
-import { register } from "solvency"
+import { register } from "supplier"
 
 // Create a resource registration
 const ConfigResource = register("config").asResource<{
@@ -47,7 +47,7 @@ console.log(config.id) // "config"
 Agents are factory functions that can depend on other resources or agents:
 
 ```typescript
-import { register, type $ } from "solvency"
+import { register, type $ } from "supplier"
 
 // Simple agent with no dependencies
 const LoggerAgent = register("logger").asAgent({
@@ -258,7 +258,7 @@ Helper function to bundle multiple resources for supply.
 
 ## TypeScript Support
 
-Solvency is built with TypeScript-first design:
+Supplier is built with TypeScript-first design:
 
 -   Full type inference for dependencies
 -   Compile-time dependency validation
@@ -275,19 +275,19 @@ npm test
 
 Visit our beautiful website with interactive examples:
 
-**[solvency-js.github.io/solvency](https://solvency-js.github.io/solvency)**
+**[supplier-js.github.io/supplier](https://supplier-js.github.io/supplier)**
 
 The website features:
 
 -   📖 Complete documentation and API reference
 -   🚀 Live demo with 4-level deep component hierarchy
--   🎨 Beautiful design with Solvency's signature orange gradient
+-   🎨 Beautiful design with Supplier's signature orange gradient
 -   📱 Responsive design for all devices
 
 ## License
 
-MIT © [Solvency.js](https://github.com/solvency-js/solvency)
+MIT © [Supplier.js](https://github.com/supplier-js/supplier)
 
 ## Contributing
 
-Issues and pull requests welcome on [GitHub](https://github.com/solvency-js/solvency).
+Issues and pull requests welcome on [GitHub](https://github.com/supplier-js/supplier).

@@ -1,4 +1,4 @@
-import { register, type $ } from "solvency"
+import { register, type $ } from "supplier"
 import Level4Agent from "#components/level-4.tsx"
 
 // Level 3 component - renders Level 4

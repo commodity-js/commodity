@@ -1,4 +1,4 @@
-import { register } from "solvency"
+import { register } from "supplier"
 import { type AppConfig } from "#lib/config.ts"
 
 interface ConfigRendererProps {

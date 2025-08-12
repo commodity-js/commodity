@@ -1,16 +1,16 @@
 {
-    "name": "solvency",
+    "name": "supplier",
     "type": "module",
     "version": "0.0.3",
-    "description": "Achieve architectural solvency through modular dependency injection and supply chain architecture",
+    "description": "Dependency injection, context propagation and waterfall management simplified using a supply chain architecture.",
     "main": "dist/index.cjs",
     "module": "dist/index.js",
     "types": "dist/index.d.ts",
-    "author": "Solvency",
+    "author": "Supplier",
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/solvency-js/solvency.git"
+        "url": "git+https://github.com/supplier-js/supplier.git"
     },
     "imports": {
         "#*": "./src/*.ts"

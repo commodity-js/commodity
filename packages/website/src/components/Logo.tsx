@@ -16,7 +16,7 @@ export default function Logo({
     return (
         <Image
             src="Solvency-logo-crop.png"
-            alt="Solvency Logo"
+            alt="Supplier Logo"
             width={width}
             height={height}
             priority={priority}

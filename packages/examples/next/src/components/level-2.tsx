@@ -1,4 +1,4 @@
-import { register, type $, parcel } from "solvency"
+import { register, type $, parcel } from "supplier"
 import Level3Agent from "#components/level-3.tsx"
 import ConfigRendererAgent from "#components/config-renderer.tsx"
 import { ConfigResource } from "#lib/config.ts"

@@ -1,5 +1,5 @@
 {
-    "name": "solvency-monorepo",
+    "name": "supplier-monorepo",
     "private": true,
     "type": "module",
     "scripts": {

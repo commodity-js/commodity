@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { register, type $, parcel } from "#index"
 
-describe("solvency", () => {
+describe("supplier", () => {
     beforeEach(() => {
         vi.clearAllMocks()
     })
