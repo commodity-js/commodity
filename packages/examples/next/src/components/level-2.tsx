@@ -1,4 +1,4 @@
-import { register, type $, tagged } from "supplier"
+import { register, type $, index } from "supplier"
 import Level3Agent from "#components/level-3.tsx"
 import ConfigRendererAgent from "#components/config-renderer.tsx"
 import { ConfigResource } from "#lib/config.ts"
@@ -42,7 +42,7 @@ const Level2Agent = register("level-2").asAgent({
 
         // Resupply Level 3 with the modified config
         const Level3Component = level3Agent.resupply(
-            tagged(ConfigResource.put(modifiedConfig))
+            index(ConfigResource.put(modifiedConfig))
         )
 
         return (

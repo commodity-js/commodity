@@ -2,6 +2,7 @@
     "name": "@supplier/examples-next",
     "version": "0.1.0",
     "private": true,
+    "type": "module",
     "imports": {
         "#*": "./src/*"
     },
@@ -23,14 +24,12 @@
         "supplier": "workspace:*"
     },
     "devDependencies": {
-        "typescript": "^5",
         "@types/node": "^20",
         "@types/react": "^19",
         "@types/react-dom": "^19",
         "@tailwindcss/postcss": "^4",
         "tailwindcss": "^4",
-        "eslint": "^9",
-        "eslint-config-next": "15.4.5",
-        "@eslint/eslintrc": "^3"
+        "@config.supplier/typescript": "*",
+        "@config.supplier/eslint": "*"
     }
 }

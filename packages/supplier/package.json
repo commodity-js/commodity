@@ -1,7 +1,7 @@
 {
     "name": "supplier",
     "type": "module",
-    "version": "0.0.4",
+    "version": "0.0.5",
     "description": "Dependency injection, context propagation and waterfall management simplified using a supply chain architecture.",
     "main": "dist/index.cjs",
     "module": "dist/index.js",
@@ -13,10 +13,16 @@
         "url": "git+https://github.com/supplier-js/supplier.git"
     },
     "imports": {
-        "#*": "./src/*.ts"
+        "#*": {
+            "development": "./src/*.ts",
+            "types": "./dist/*.d.ts",
+            "import": "./dist/*.js",
+            "require": "./dist/*.cjs"
+        }
     },
     "exports": {
         ".": {
+            "development": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "import": "./dist/index.js",
             "require": "./dist/index.cjs"
@@ -34,8 +40,9 @@
     "devDependencies": {
         "tsup": "^8.5.0",
         "turbo": "^2.5.5",
-        "typescript": "latest",
-        "vitest": "^3.2.4"
+        "vitest": "^3.2.4",
+        "@config.supplier/typescript": "*",
+        "@config.supplier/eslint": "*"
     },
     "dependencies": {
         "memoize": "^10.1.0"

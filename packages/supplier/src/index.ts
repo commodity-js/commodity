@@ -12,8 +12,6 @@ type Resource<ID extends string, VALUE> = {
     value: VALUE
 }
 
-type SupplyMap = Record<string, Resource<any, any>>
-
 type ResourceActions<ID extends string, VALUE> = {
     put: (value: VALUE) => Resource<ID, VALUE> & ResourceActions<ID, VALUE>
 }
@@ -275,10 +273,13 @@ function hire(agents: AgentRegistration<string, any, any>[]) {
     }
 }
 
-export function tagged<RESOURCES extends Resource<any, any>[]>(
+export function index<RESOURCES extends Resource<any, any>[]>(
     ...resources: RESOURCES
-): SupplyMapFromResources<RESOURCES> {
-    return resources.reduce((acc, r) => ({ ...acc, [r.id]: r }), {}) as any
+) {
+    return resources.reduce(
+        (acc, r) => ({ ...acc, [r.id]: r }),
+        {}
+    ) as SupplyMapFromResources<RESOURCES>
 }
 
 export type Narrow<

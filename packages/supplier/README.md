@@ -91,7 +91,7 @@ console.log(config.id) // "config"
 ```typescript
 // ApiClient needs LoggerAgent and ConfigResource, but LoggerAgent was already provided in-place using the team array.
 const apiClient = ApiClient.supply(
-    tagged(
+    index(
         ConfigResource.put({
             apiUrl: "https://api.example.com",
             timeout: 5000
@@ -157,7 +157,7 @@ const TransferAgent = register("transfer").asAgent({
 
                 // Then, switch to recipient's context to accept the transfer
                 const recipientWallet = $[WalletService.id].resupply(
-                    tagged(
+                    index(
                         Session.put({
                             user: { id: toUserId, role: "user" },
                             now: new Date()
@@ -209,7 +209,7 @@ const AdminDashboard = register("admin-dashboard").asAgent({
 
 // This will create a type error
 const adminDashboard = AdminDashboard.supply(
-    tagged(
+    index(
         Session.put({
             userId: "user123",
             token: "user-token",
@@ -220,7 +220,7 @@ const adminDashboard = AdminDashboard.supply(
 
 //This will succeed
 const adminDashboard = AdminDashboard.supply(
-    tagged(
+    index(
         Session.put({
             userId: "admin456",
             token: "admin-token",
@@ -244,7 +244,7 @@ const TestLogger = register("logger").asAgent({
 
 // Override the logger for testing
 const testApiClient = ApiClient.hire(TestLogger).supply(
-    tagged(ConfigResource.put({ apiUrl: "http://localhost", timeout: 1000 }))
+    index(ConfigResource.put({ apiUrl: "http://localhost", timeout: 1000 }))
 )
 ```
 
@@ -325,9 +325,9 @@ Executes the supply chain and returns a resource with the computed value.
 
 Creates a new agent with additional or overridden dependencies.
 
-### `tagged(...resources)`
+### `index(...resources)`
 
-Helper function to bundle multiple resources for supply, tagged by their id.
+Helper function to bundle multiple resources for supply, index by their id.
 
 ## TypeScript Support
 
