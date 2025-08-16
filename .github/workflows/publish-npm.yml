@@ -36,7 +36,7 @@ jobs:
             - name: Install dependencies
               run: pnpm install --frozen-lockfile
 
-            - name: Run tests
+            - name: Run tests (and build)
               run: pnpm test --filter=supplier
 
             - name: Generate changelog
@@ -77,9 +77,6 @@ jobs:
                   git config --local user.name "GitHub Action"
                   git add package.json
                   git commit -m "chore: bump version to $VERSION [skip ci]"
-
-            - name: Build package
-              run: pnpm run build --filter=supplier
 
             - name: Publish to NPM
               working-directory: ./packages/supplier
