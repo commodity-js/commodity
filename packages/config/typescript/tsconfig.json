@@ -1,13 +1,6 @@
 {
     "compilerOptions": {
         "target": "ES2017",
-        "lib": [
-            "dom",
-            "dom.iterable",
-            "esnext",
-            "es2015.collection",
-            "es2015.iterable"
-        ],
         "downlevelIteration": true,
         "importHelpers": true,
         "allowJs": true,
@@ -20,8 +13,6 @@
         "moduleResolution": "bundler",
         "resolveJsonModule": true,
         "isolatedModules": true,
-        "incremental": true,
-        "noUncheckedIndexedAccess": true,
-        "customConditions": ["development"]
+        "noUncheckedIndexedAccess": true
     }
 }

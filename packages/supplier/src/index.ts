@@ -22,15 +22,20 @@ type ResourceRegistration<ID extends string, VALUE> = {
     put: (value: VALUE) => Resource<ID, VALUE> & ResourceActions<ID, VALUE>
 }
 
+type Service<
+    ID extends string,
+    VALUE,
+    TOSUPPLY extends Record<never, never>,
+    RESUPPLY extends boolean = false
+> = Resource<ID, VALUE> & ServiceActions<ID, TOSUPPLY, VALUE, RESUPPLY>
+
 type SupplyAction<
     ID extends string,
     VALUE,
     TOSUPPLY extends Record<never, never>
-> = (
-    toSupply: TOSUPPLY
-) => Resource<ID, VALUE> & AgentActions<ID, TOSUPPLY, VALUE, true>
+> = (toSupply: TOSUPPLY) => Service<ID, VALUE, TOSUPPLY, true>
 
-type AgentActions<
+type ServiceActions<
     ID extends string,
     TOSUPPLY extends Record<never, never>,
     VALUE,
@@ -44,24 +49,24 @@ type AgentActions<
       }) & {
     put: (
         value: VALUE
-    ) => Resource<ID, VALUE> & AgentActions<ID, TOSUPPLY, VALUE, true>
+    ) => Resource<ID, VALUE> & ServiceActions<ID, TOSUPPLY, VALUE, true>
 }
-type AgentRegistration<
+type ServiceRegistration<
     ID extends string,
     TOSUPPLY extends Record<never, never>,
     VALUE
-> = AgentActions<ID, TOSUPPLY, VALUE> & {
+> = {
     id: ID
-    isAgent: true
+    isService: true
     preload: boolean
-    hire: (...team: any[]) => AgentActions<ID, any, VALUE>
-}
+    hire: (...team: any[]) => ServiceActions<ID, any, VALUE>
+} & ServiceActions<ID, TOSUPPLY, VALUE>
 
 type Registration<
     ID extends string,
     TOSUPPLY extends Record<never, never>,
     VALUE
-> = AgentRegistration<ID, TOSUPPLY, VALUE> | ResourceRegistration<ID, VALUE>
+> = ServiceRegistration<ID, TOSUPPLY, VALUE> | ResourceRegistration<ID, VALUE>
 
 type SupplyMapFromResources<RESOURCES extends Resource<any, any>[]> =
     RESOURCES extends []
@@ -77,7 +82,7 @@ type SupplyMapFromResources<RESOURCES extends Resource<any, any>[]> =
 type SupplyMapFromRegistrations<
     REGISTRY extends Registration<string, any, any>[]
 > = {
-    [REGISTRATION in REGISTRY[number] as REGISTRATION["id"]]: REGISTRATION extends AgentRegistration<
+    [REGISTRATION in REGISTRY[number] as REGISTRATION["id"]]: REGISTRATION extends ServiceRegistration<
         string,
         any,
         any
@@ -94,17 +99,16 @@ type Supplies<REGISTRY extends Registration<string, any, any>[]> = (<
     id: ID
 ) => SupplyMapFromRegistrations<REGISTRY>[ID] extends { value: infer VALUE }
     ? VALUE
-    : never) & {
-    [ID in keyof SupplyMapFromRegistrations<REGISTRY>]: SupplyMapFromRegistrations<REGISTRY>[ID]
-}
+    : never) &
+    SupplyMapFromRegistrations<REGISTRY>
 
 export type $<REGISTRY extends Registration<string, any, any>[]> =
     Supplies<REGISTRY>
 
-export type ToSupply<TEAM extends AgentRegistration<string, any, any>[]> =
+export type ToSupply<TEAM extends ServiceRegistration<string, any, any>[]> =
     Merge<
         {
-            [I in keyof TEAM]: TEAM[I] extends AgentRegistration<
+            [I in keyof TEAM]: TEAM[I] extends ServiceRegistration<
                 string,
                 infer TOSUPPLY,
                 any
@@ -131,10 +135,10 @@ export const register = <ID extends string>(id: ID) => {
             }
             return resource
         },
-        asAgent: <
+        asService: <
             SUPPLIES extends Record<never, never>,
             VALUE,
-            TEAM extends AgentRegistration<string, any, any>[] = []
+            TEAM extends ServiceRegistration<string, any, any>[] = []
         >({
             factory,
             team = [] as unknown as TEAM,
@@ -154,7 +158,7 @@ export const register = <ID extends string>(id: ID) => {
                     }
                 },
                 supply:
-                    <FINALTEAM extends AgentRegistration<string, any, any>[]>(
+                    <FINALTEAM extends ServiceRegistration<string, any, any>[]>(
                         team: FINALTEAM
                     ) =>
                     (
@@ -185,14 +189,14 @@ export const register = <ID extends string>(id: ID) => {
                     }
             }
 
-            const agent = {
+            const service = {
                 id,
-                isAgent: true as const,
+                isService: true as const,
                 preload,
                 put: actions.put,
                 supply: actions.supply(team),
                 hire: <
-                    const HIRED_TEAM extends readonly AgentRegistration<
+                    const HIRED_TEAM extends readonly ServiceRegistration<
                         string,
                         any,
                         any
@@ -207,12 +211,12 @@ export const register = <ID extends string>(id: ID) => {
                 }
             }
 
-            return agent
+            return service
         }
     }
 }
 
-function hire(agents: AgentRegistration<string, any, any>[]) {
+function hire(services: ServiceRegistration<string, any, any>[]) {
     return {
         supply: (supplied: Record<string, any>) => {
             const supplies: any = (id: string) => {
@@ -228,32 +232,34 @@ function hire(agents: AgentRegistration<string, any, any>[]) {
                 Object.getOwnPropertyDescriptors(supplied)
             )
 
-            for (const agent of agents) {
-                if (Object.prototype.hasOwnProperty.call(supplied, agent.id)) {
+            for (const service of services) {
+                if (
+                    Object.prototype.hasOwnProperty.call(supplied, service.id)
+                ) {
                     continue
                 }
 
-                Object.defineProperty(supplies, agent.id, {
-                    get: memo(() => agent.supply(supplies)),
+                Object.defineProperty(supplies, service.id, {
+                    get: memo(() => service.supply(supplies)),
                     enumerable: true,
                     configurable: true
                 })
             }
 
-            // Preload agents that have preload: true
-            const preloadPromises = agents
+            // Preload services that have preload: true
+            const preloadPromises = services
                 .filter(
-                    (agent) =>
-                        agent.preload &&
+                    (service) =>
+                        service.preload &&
                         !Object.prototype.hasOwnProperty.call(
                             supplied,
-                            agent.id
+                            service.id
                         )
                 )
-                .map((agent) => {
+                .map((service) => {
                     // Access the getter to trigger memoization
                     try {
-                        return Promise.resolve(supplies[agent.id])
+                        return Promise.resolve(supplies[service.id])
                     } catch (error) {
                         // If preloading fails, we don't want to break the entire supply chain
                         // The error will be thrown again when the dependency is actually needed

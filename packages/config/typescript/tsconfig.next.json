@@ -2,7 +2,13 @@
     "extends": "./tsconfig.json",
     "compilerOptions": {
         "target": "ES2017",
-        "lib": ["dom", "dom.iterable", "esnext"],
+        "lib": [
+            "dom",
+            "dom.iterable",
+            "esnext",
+            "es2015.collection",
+            "es2015.iterable"
+        ],
         "noEmit": true,
         "allowImportingTsExtensions": true
     },

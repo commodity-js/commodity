@@ -1,0 +1,83 @@
+name: Publish to NPM
+
+on:
+    push:
+        tags:
+            - "v*"
+        branches:
+            - main
+
+jobs:
+    publish:
+        runs-on: ubuntu-latest
+        environment:
+            name: npm-publish
+            url: https://www.npmjs.com/package/supplier
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "18"
+                  registry-url: "https://registry.npmjs.org"
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v2
+              with:
+                  version: latest
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Run tests
+              run: pnpm test
+
+            - name: Generate changelog
+              id: changelog
+              run: |
+                  CURRENT_TAG=$(git describe --tags --abbrev=0)
+                  PREVIOUS_TAG=$(git describe --tags --abbrev=0 $CURRENT_TAG^ 2>/dev/null || echo "")
+
+                  if [ -z "$PREVIOUS_TAG" ]; then
+                    CHANGELOG=$(git log --pretty=format:"- %s (%h)" --reverse)
+                  else
+                    CHANGELOG=$(git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..$CURRENT_TAG --reverse)
+                  fi
+
+                  echo "# Changelog" > CHANGELOG.md
+                  echo "" >> CHANGELOG.md
+                  echo "## $CURRENT_TAG" >> CHANGELOG.md
+                  echo "" >> CHANGELOG.md
+                  echo "$CHANGELOG" >> CHANGELOG.md
+
+                  echo "changelog=$(cat CHANGELOG.md)" >> $GITHUB_OUTPUT
+                  echo "version=${CURRENT_TAG#v}" >> $GITHUB_OUTPUT
+
+            - name: Build package
+              run: pnpm run build
+
+            - name: Publish to NPM
+              run: npm publish
+
+            - name: Create Release
+              uses: actions/create-release@v1
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              with:
+                  tag_name: ${{ github.ref }}
+                  release_name: Release ${{ github.ref }}
+                  body: |
+                      ${{ steps.changelog.outputs.changelog }}
+                  draft: false
+                  prerelease: false
+
+            - name: Upload changelog artifact
+              uses: actions/upload-artifact@v3
+              with:
+                  name: changelog
+                  path: CHANGELOG.md

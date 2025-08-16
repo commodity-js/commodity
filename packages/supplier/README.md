@@ -34,38 +34,38 @@ npm install supplier
 
 ## Quick Start
 
-### Creating Agents
+### Creating Services
 
-Agents are factory functions that can depend on other resources or agents. Factory functions can return values or functions (services).
+Services are factory functions that can depend on other resources or services. Factory functions can return values or functions (services).
 
 ```typescript
 import { register, type $ } from "supplier"
 
-// Simple agent with no dependencies
-const LoggerAgent = register("logger").asAgent({
+// Simple service with no dependencies
+const LoggerService = register("logger").asService({
     factory: () => (message: string) => console.log(`[LOG] ${message}`)
 })
 
-const ApiClient = register("api-client").asAgent({
+const ApiClient = register("api-client").asService({
     // Use $<> type utility to define the shape of the required dependencies
-    factory: ($: $<[typeof ConfigResource, typeof LoggerAgent]>) => {
+    factory: ($: $<[typeof ConfigResource, typeof LoggerService]>) => {
         return {
             async get(path: string) {
                 const config = $(ConfigResource.id)
-                const logger = $(LoggerAgent.id)
+                const logger = $(LoggerService.id)
                 logger.log(`GET ${config.apiUrl}${path}`)
                 // ... implementation
             }
             // ... other methods
         }
     },
-    team: [LoggerAgent] // Agent dependencies can be provided in place using the team array. Resource dependencies (like ConfigResource) will be passed at the entry point when calling supply().
+    team: [LoggerService] // Service dependencies can be provided in place using the team array. Resource dependencies (like ConfigResource) will be passed at the entry point when calling supply().
 })
 ```
 
 ### Creating Resources
 
-Resources are simple values that can be injected into agents:
+Resources are simple values that can be injected into services:
 
 ```typescript
 import { register } from "supplier"
@@ -89,7 +89,7 @@ console.log(config.id) // "config"
 ### Supplying at the entry point
 
 ```typescript
-// ApiClient needs LoggerAgent and ConfigResource, but LoggerAgent was already provided in-place using the team array.
+// ApiClient needs LoggerService and ConfigResource, but LoggerService was already provided in-place using the team array.
 const apiClient = ApiClient.supply(
     index(
         ConfigResource.put({
@@ -107,10 +107,10 @@ await apiClient.value.get("/users")
 
 ### Callable Object API
 
-The `$` callable object provides access to an agent's dependencies. Call `$(depId)` or access `$[depId].value` to get the dependency value. $[] syntax is needed to call resupply() (see below)
+The `$` callable object provides access to a service's dependencies. Call `$(depId)` or access `$[depId].value` to get the dependency value. $[] syntax is needed to call resupply() (see below)
 
 ```typescript
-const MyAgent = register("my-agent").asAgent({
+const MyService = register("my-service").asService({
     team: [SomeService],
     factory: ($: $<[typeof SomeService]>) => {
         // Both of these work:
@@ -123,11 +123,11 @@ const MyAgent = register("my-agent").asAgent({
 
 ### Context switching
 
-Use `$[agentId].resupply()` to load an agent in a different context. Example use cases: Impersonate another user, or run a query in a db transaction instead of the default db session.
+Use `$[serviceId].resupply()` to load a service in a different context. Example use cases: Impersonate another user, or run a query in a db transaction instead of the default db session.
 
 ```typescript
 // Wallet service that depends on user session
-const AcceptTransferAgent = register("transfer-agent").asAgent({
+const AcceptTransferService = register("transfer-service").asService({
     team: [Session],
     factory: ($: $<[typeof Session]>) => {
         const session = $(Session.id)
@@ -140,7 +140,7 @@ const AcceptTransferAgent = register("transfer-agent").asAgent({
 })
 
 // Money transfer service that switches contexts
-const TransferAgent = register("transfer").asAgent({
+const TransferService = register("transfer").asService({
     team: [WalletService, Session],
     factory: ($: $<[typeof WalletService, typeof Session]>) => {
         function deductFromSender(amount: number) {
@@ -177,7 +177,7 @@ const TransferAgent = register("transfer").asAgent({
 
 ### Type narrowing
 
-`Narrow<>` type utility enables compile-time guarantees about your dependencies. Instead of runtime checks, you can constrain resource types to specific shapes, ensuring that agents only receive dependencies that meet their exact requirements. This catches type mismatches at compile time and eliminates the need for defensive programming.
+`Narrow<>` type utility enables compile-time guarantees about your dependencies. Instead of runtime checks, you can constrain resource types to specific shapes, ensuring that services only receive dependencies that meet their exact requirements. This catches type mismatches at compile time and eliminates the need for defensive programming.
 
 ```typescript
 type Session = { user: User; now: Date }
@@ -186,9 +186,9 @@ type Session = { user: User; now: Date }
 const Session = register("session").asResource<Session>()
 
 // But admin dashboard requires admin session
-const AdminDashboard = register("admin-dashboard").asAgent({
+const AdminDashboard = register("admin-dashboard").asService({
     team: [Session],
-    // Only allow this agent to be instanciated if an admin session is in the supplied context
+    // Only allow this service to be instanciated if an admin session is in the supplied context
     factory: (
         $: $<
             [
@@ -230,13 +230,13 @@ const adminDashboard = AdminDashboard.supply(
 )
 ```
 
-### Hiring Agents (Composition Root)
+### Hiring Services (Composition Root)
 
-Dependencies can be supplied alongside the agent definition using the "team" array, or supplied at the entry point of the application using the hire() method. This aligns with traditional DI systems and the composition root pattern, and allows you to override dependencies easily for mocking and testing.
+Dependencies can be supplied alongside the service definition using the "team" array, or supplied at the entry point of the application using the hire() method. This aligns with traditional DI systems and the composition root pattern, and allows you to override dependencies easily for mocking and testing.
 
 ```typescript
 // Create a test logger that doesn't actually log
-const TestLogger = register("logger").asAgent({
+const TestLogger = register("logger").asService({
     factory: () => (message: string) => {
         /* silent */
     }
@@ -250,22 +250,22 @@ const testApiClient = ApiClient.hire(TestLogger).supply(
 
 ### Memoization and Performance
 
-Agent factories are automatically memoized within the same supply context, but get reinjected when resupply() is called.
+Service factories are automatically memoized within the same supply context, but get reinjected when resupply() is called.
 
 ```typescript
-const ExpensiveAgent = register("expensive").asAgent({
+const ExpensiveService = register("expensive").asService({
     factory: () => {
         console.log("This will only run once per supply context")
         return performExpensiveComputation()
     }
 })
 
-const ConsumerAgent = register("consumer").asAgent({
-    team: [ExpensiveAgent],
-    factory: ($: $<[typeof ExpensiveAgent]>) => {
-        const result1 = $(ExpensiveAgent.id) // Computed
-        const result2 = $(ExpensiveAgent.id) // Memoized
-        const result3 = $(ExpensiveAgent.id) // Memoized
+const ConsumerService = register("consumer").asService({
+    team: [ExpensiveService],
+    factory: ($: $<[typeof ExpensiveService]>) => {
+        const result1 = $(ExpensiveService.id) // Computed
+        const result2 = $(ExpensiveService.id) // Memoized
+        const result3 = $(ExpensiveService.id) // Memoized
 
         return { result1, result2, result3 } // All identical
     }
@@ -277,53 +277,53 @@ const ConsumerAgent = register("consumer").asAgent({
 For performance-critical scenarios, you can enable eager preloading:
 
 ```typescript
-// These agents will be initialized immediately when supply() is called
-const DatabaseAgent = register("database").asAgent({
+// These services will be initialized immediately when supply() is called
+const DatabaseService = register("database").asService({
     factory: () => createDatabaseConnection(),
     preload: true // Eager initialization
 })
 
-const CacheAgent = register("cache").asAgent({
+const CacheService = register("cache").asService({
     factory: () => createCacheConnection(),
     preload: true // Eager initialization
 })
 
-const ApiAgent = register("api").asAgent({
-    team: [DatabaseAgent, CacheAgent],
+const ApiService = register("api").asService({
+    team: [DatabaseService, CacheService],
     factory: ($) => {
-        // DatabaseAgent and CacheAgent are already initialized, so the $() call is instantaneous
-        return createApiService($(DatabaseAgent.id), $(CacheAgent.id))
+        // DatabaseService and CacheService are already initialized, so the $() call is instantaneous
+        return createApiService($(DatabaseService.id), $(CacheService.id))
     }
 })
 
-// Both DatabaseAgent and CacheAgent start initializing immediately
-const api = ApiAgent.supply()
+// Both DatabaseService and CacheService start initializing immediately
+const api = ApiService.supply()
 ```
 
 ## API Reference
 
 ### `register(id: string)`
 
-Creates a registration that can be turned into either a resource or agent.
+Creates a registration that can be turned into either a resource or service.
 
 ### `.asResource<T>()`
 
-Creates a resource registration that can supply values of type `T`.
+Creates a resource registration that can supply git tagvalues of type `T`.
 
-### `.asAgent({ factory, team? })`
+### `.asService({ factory, team? })`
 
-Creates an agent registration with:
+Creates a service registration with:
 
--   `factory`: Function that creates the agent's value
+-   `factory`: Function that creates the service's value
 -   `team`: Optional array of dependencies
 
 ### `.supply(supplies?)`
 
 Executes the supply chain and returns a resource with the computed value.
 
-### `.hire(...agents)`
+### `.hire(...services)`
 
-Creates a new agent with additional or overridden dependencies.
+Creates a new service with additional or overridden dependencies.
 
 ### `index(...resources)`
 

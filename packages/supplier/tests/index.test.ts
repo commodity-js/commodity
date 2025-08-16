@@ -38,29 +38,29 @@ describe("supplier", () => {
         })
     })
 
-    describe("Agent Registration", () => {
-        it("should register an agent with no team dependencies", () => {
-            const TestAgent = register("test-agent").asAgent({
-                factory: () => "agent-result"
+    describe("Service Registration", () => {
+        it("should register a service with no team dependencies", () => {
+            const TestService = register("test-service").asService({
+                factory: () => "service-result"
             })
 
-            const result = TestAgent.supply({})
+            const result = TestService.supply({})
 
-            expect(result.value).toBe("agent-result")
-            expect(TestAgent.id).toBe("test-agent")
-            expect(TestAgent.isAgent).toBe(true)
+            expect(result.value).toBe("service-result")
+            expect(TestService.id).toBe("test-service")
+            expect(TestService.isService).toBe(true)
         })
 
-        it("should register an agent with team dependencies", () => {
-            const Dependency1 = register("dep1").asAgent({
+        it("should register a service with team dependencies", () => {
+            const Dependency1 = register("dep1").asService({
                 factory: () => "dep1-result"
             })
 
-            const Dependency2 = register("dep2").asAgent({
+            const Dependency2 = register("dep2").asService({
                 factory: () => "dep2-result"
             })
 
-            const TestAgent = register("test-agent").asAgent({
+            const TestService = register("test-service").asService({
                 team: [Dependency1, Dependency2],
                 factory: ($: $<[typeof Dependency1, typeof Dependency2]>) => {
                     const dep1 = $(Dependency1.id)
@@ -73,7 +73,7 @@ describe("supplier", () => {
                 }
             })
 
-            const result = TestAgent.supply({})
+            const result = TestService.supply({})
 
             expect(result.value).toEqual({
                 dep1Value: "dep1-result",
@@ -83,27 +83,27 @@ describe("supplier", () => {
         })
 
         it("should allow supply() to be called without arguments if no supplies are needed", () => {
-            const NoSupplyAgent = register("no-supply").asAgent({
+            const NoSupplyService = register("no-supply").asService({
                 factory: () => "ok"
             })
-            const result = NoSupplyAgent.supply({})
+            const result = NoSupplyService.supply({})
             expect(result.value).toBe("ok")
         })
     })
 
     describe("Composition Root via .hire()", () => {
         it("should merge hired team with default team, giving precedence to the hired team", () => {
-            const DefaultDep = register("dep").asAgent({
+            const DefaultDep = register("dep").asService({
                 factory: () => "default-result"
             })
-            const HiredDep = register("dep").asAgent({
+            const HiredDep = register("dep").asService({
                 factory: () => "hired-result"
             })
-            const AnotherDep = register("another").asAgent({
+            const AnotherDep = register("another").asService({
                 factory: () => "another-result"
             })
 
-            const TestAgent = register("test-agent").asAgent({
+            const TestService = register("test-service").asService({
                 team: [DefaultDep, AnotherDep],
                 factory: ($: $<[typeof DefaultDep, typeof AnotherDep]>) => ({
                     dep: $(DefaultDep.id),
@@ -112,7 +112,7 @@ describe("supplier", () => {
             })
 
             // Hire HiredDep, which should override DefaultDep
-            const result = TestAgent.hire(HiredDep).supply({})
+            const result = TestService.hire(HiredDep).supply({})
 
             expect(result.value).toEqual({
                 dep: "hired-result", // The hired dependency should win
@@ -120,35 +120,37 @@ describe("supplier", () => {
             })
         })
 
-        it("should not modify the original agent when hire is called", () => {
-            const DefaultDep = register("dep").asAgent({
+        it("should not modify the original service when hire is called", () => {
+            const DefaultDep = register("dep").asService({
                 factory: () => "default"
             })
-            const HiredDep = register("dep").asAgent({ factory: () => "hired" })
-            const TestAgent = register("test-agent").asAgent({
+            const HiredDep = register("dep").asService({
+                factory: () => "hired"
+            })
+            const TestService = register("test-service").asService({
                 team: [DefaultDep],
                 factory: ($: $<[typeof DefaultDep]>) => $(DefaultDep.id)
             })
 
             // Calling hire should be non-mutating
-            TestAgent.hire(HiredDep).supply({})
+            TestService.hire(HiredDep).supply({})
 
-            const originalResult = TestAgent.supply({})
+            const originalResult = TestService.supply({})
             expect(originalResult.value).toBe("default")
         })
     })
 
     describe("Team Hiring and Supply Chain", () => {
-        it("should hire agents and provide their services", () => {
-            const Service1 = register("service1").asAgent({
+        it("should hire services and provide their services", () => {
+            const Service1 = register("service1").asService({
                 factory: () => "service1-result"
             })
 
-            const Service2 = register("service2").asAgent({
+            const Service2 = register("service2").asService({
                 factory: () => "service2-result"
             })
 
-            const MainAgent = register("main-agent").asAgent({
+            const MainService = register("main-service").asService({
                 team: [Service1, Service2],
                 factory: ($: $<[typeof Service1, typeof Service2]>) => {
                     const service1 = $(Service1.id)
@@ -161,7 +163,7 @@ describe("supplier", () => {
                 }
             })
 
-            const result = MainAgent.supply({})
+            const result = MainService.supply({})
 
             expect(result.value).toEqual({
                 service1: "service1-result",
@@ -171,32 +173,32 @@ describe("supplier", () => {
         })
 
         it("should respect initial supplies and not override them", () => {
-            const ServiceAgent = register("service").asAgent({
+            const Service = register("service").asService({
                 factory: () => "service-result"
             })
 
-            const MainAgent = register("main").asAgent({
-                team: [ServiceAgent],
-                factory: ($: $<[typeof ServiceAgent]>) => {
-                    // When the agent is not in supplies (due to hasOwnProperty check),
+            const MainService = register("main").asService({
+                team: [Service],
+                factory: ($: $<[typeof Service]>) => {
+                    // When the service is not in supplies (due to hasOwnProperty check),
                     // we should use the initial supply directly
-                    const serviceAgent = $(ServiceAgent.id)
+                    const service = $(Service.id)
                     return {
-                        service: serviceAgent || $("service") || "fallback"
+                        service: service || $("service") || "fallback"
                     }
                 }
             })
 
-            // Test that initial supplies with the same ID as an agent are not overridden
+            // Test that initial supplies with the same ID as an service are not overridden
             const ServiceResource = register("service").asResource<string>()
 
-            const result = MainAgent.supply(
+            const result = MainService.supply(
                 index(ServiceResource.put("initial-service-value"))
             )
 
-            // The initial supply should be respected and not overridden by the agent
+            // The initial supply should be respected and not overridden by the service
             // This tests the hasOwnProperty check in the hire function
-            // The service should come from the initial supplies, not from the agent
+            // The service should come from the initial supplies, not from the service
             expect(result.value.service).toBe("initial-service-value")
         })
     })
@@ -205,39 +207,39 @@ describe("supplier", () => {
         it("should create separate memoization contexts for different supply calls", () => {
             const factoryMock = vi.fn().mockReturnValue("result")
 
-            const TestAgent = register("agent").asAgent({
+            const TestService = register("service").asService({
                 factory: factoryMock
             })
 
-            const agent = TestAgent.supply({})
+            const service = TestService.supply({})
 
             // First access should call the factory
-            expect(agent.value).toBe("result")
+            expect(service.value).toBe("result")
             expect(factoryMock).toHaveBeenCalledTimes(1)
 
             // The memoization works within the same supply context
             // Each call to supply() creates a new context, so the factory is called again
-            const secondAccess = TestAgent.supply({})
+            const secondAccess = TestService.supply({})
             expect(secondAccess.value).toBe("result")
             // Factory is called again for the new supply context
             expect(factoryMock).toHaveBeenCalledTimes(2)
         })
 
-        it("should memoize agent calls when accessed multiple times within the same supply context", () => {
+        it("should memoize service calls when accessed multiple times within the same supply context", () => {
             const factoryMock = vi.fn().mockReturnValue("memoized-result")
 
-            const TestAgent = register("memoized-agent").asAgent({
+            const TestService = register("memoized-service").asService({
                 factory: factoryMock
             })
 
-            // Create a team that uses the TestAgent
-            const TeamAgent = register("team-agent").asAgent({
-                team: [TestAgent],
-                factory: ($: $<[typeof TestAgent]>) => {
-                    // Access the TestAgent multiple times within the same supply context
-                    const firstAccess = $(TestAgent.id)
-                    const secondAccess = $(TestAgent.id)
-                    const thirdAccess = $(TestAgent.id)
+            // Create a team that uses the TestService
+            const TeamService = register("team-service").asService({
+                team: [TestService],
+                factory: ($: $<[typeof TestService]>) => {
+                    // Access the TestService multiple times within the same supply context
+                    const firstAccess = $(TestService.id)
+                    const secondAccess = $(TestService.id)
+                    const thirdAccess = $(TestService.id)
 
                     return {
                         first: firstAccess,
@@ -250,7 +252,7 @@ describe("supplier", () => {
                 }
             })
 
-            const result = TeamAgent.supply({})
+            const result = TeamService.supply({})
 
             expect(result.value).toEqual({
                 first: "memoized-result",
@@ -263,26 +265,28 @@ describe("supplier", () => {
             expect(factoryMock).toHaveBeenCalledTimes(1)
         })
 
-        it("should handle complex nested agent dependencies with memoization", () => {
+        it("should handle complex nested service dependencies with memoization", () => {
             const factory1Mock = vi.fn().mockReturnValue("level1-result")
 
-            const Level1Agent = register("level1").asAgent({
+            const Level1Service = register("level1").asService({
                 factory: factory1Mock
             })
 
-            const Level2Agent = register("level2").asAgent({
-                team: [Level1Agent],
-                factory: ($: $<[typeof Level1Agent]>) => {
-                    const level1 = $(Level1Agent.id)
+            const Level2Service = register("level2").asService({
+                team: [Level1Service],
+                factory: ($: $<[typeof Level1Service]>) => {
+                    const level1 = $(Level1Service.id)
                     return level1 + "-processed"
                 }
             })
 
-            const Level3Agent = register("level3").asAgent({
-                team: [Level1Agent, Level2Agent],
-                factory: ($: $<[typeof Level1Agent, typeof Level2Agent]>) => {
-                    const level1 = $(Level1Agent.id)
-                    const level2 = $(Level2Agent.id)
+            const Level3Service = register("level3").asService({
+                team: [Level1Service, Level2Service],
+                factory: (
+                    $: $<[typeof Level1Service, typeof Level2Service]>
+                ) => {
+                    const level1 = $(Level1Service.id)
+                    const level2 = $(Level2Service.id)
                     return {
                         level1: level1,
                         level2: level2,
@@ -291,7 +295,7 @@ describe("supplier", () => {
                 }
             })
 
-            const result = Level3Agent.supply({})
+            const result = Level3Service.supply({})
 
             expect(result.value).toEqual({
                 level1: "level1-result",
@@ -303,29 +307,31 @@ describe("supplier", () => {
             expect(factory1Mock).toHaveBeenCalledTimes(1)
         })
 
-        it("should enable context switching by calling supply on agents in supplies", () => {
+        it("should enable context switching by calling supply on services in supplies", () => {
             const ConfigResource = register("config").asResource<string>()
-            // Create a configurable agent that uses supplies from its context
-            const ConfigurableAgent = register("configurable").asAgent({
+            // Create a configurable service that uses supplies from its context
+            const ConfigurableService = register("configurable").asService({
                 factory: ($: $<[typeof ConfigResource]>) => {
-                    // This agent uses the "config" value from its supplies
+                    // This service uses the "config" value from its supplies
                     return $(ConfigResource.id) || "default-result"
                 }
             })
 
-            // Create a context-switching agent that uses the configurable agent
-            const ContextSwitchingAgent = register("context-switcher").asAgent({
-                team: [ConfigurableAgent],
-                factory: ($: $<[typeof ConfigurableAgent]>) => {
-                    // Use the old context (from the parent agent's supplies)
-                    const configurableAgent = $[ConfigurableAgent.id]
+            // Create a context-switching service that uses the configurable service
+            const ContextSwitchingService = register(
+                "context-switcher"
+            ).asService({
+                team: [ConfigurableService],
+                factory: ($: $<[typeof ConfigurableService]>) => {
+                    // Use the old context (from the parent service's supplies)
+                    const configurableService = $[ConfigurableService.id]
 
-                    const oldContextResult = configurableAgent.resupply(
+                    const oldContextResult = configurableService.resupply(
                         index(ConfigResource.put("old-context-value"))
                     )
 
                     // Use a new context with different supplies
-                    const newContextResult = configurableAgent.resupply(
+                    const newContextResult = configurableService.resupply(
                         index(ConfigResource.put("new-context-value"))
                     )
 
@@ -338,7 +344,7 @@ describe("supplier", () => {
                 }
             })
 
-            const result = ContextSwitchingAgent.supply(
+            const result = ContextSwitchingService.supply(
                 index(ConfigResource.put("initial-context-value"))
             )
 
@@ -353,15 +359,15 @@ describe("supplier", () => {
 
     describe("Callable Object API", () => {
         it("should support both property access and function calls for dependencies", () => {
-            const Service1 = register("service1").asAgent({
+            const Service1 = register("service1").asService({
                 factory: () => "service1-result"
             })
 
-            const Service2 = register("service2").asAgent({
+            const Service2 = register("service2").asService({
                 factory: () => "service2-result"
             })
 
-            const TestAgent = register("test-agent").asAgent({
+            const TestService = register("test-service").asService({
                 team: [Service1, Service2],
                 factory: ($: $<[typeof Service1, typeof Service2]>) => {
                     const service1Prop = $[Service1.id]
@@ -386,7 +392,7 @@ describe("supplier", () => {
                 }
             })
 
-            const result = TestAgent.supply({})
+            const result = TestService.supply({})
 
             expect(result.value.propAccess).toEqual({
                 service1: "service1-result",
@@ -401,35 +407,35 @@ describe("supplier", () => {
     })
 
     describe("Preload Feature", () => {
-        it("should preload agents with preload: true", async () => {
+        it("should preload services with preload: true", async () => {
             const preloadFactoryMock = vi
                 .fn()
                 .mockReturnValue("preloaded-result")
             const normalFactoryMock = vi.fn().mockReturnValue("normal-result")
 
-            const PreloadAgent = register("preload-agent").asAgent({
+            const PreloadService = register("preload-service").asService({
                 factory: preloadFactoryMock,
                 preload: true
             })
 
-            const NormalAgent = register("normal-agent").asAgent({
+            const NormalService = register("normal-service").asService({
                 factory: normalFactoryMock,
                 preload: false // explicit false
             })
 
-            const NoPreloadAgent = register("no-preload-agent").asAgent({
+            const NoPreloadService = register("no-preload-service").asService({
                 factory: vi.fn().mockReturnValue("no-preload-result")
                 // preload defaults to false
             })
 
-            const MainAgent = register("main-agent").asAgent({
-                team: [PreloadAgent, NormalAgent, NoPreloadAgent],
+            const MainService = register("main-service").asService({
+                team: [PreloadService, NormalService, NoPreloadService],
                 factory: (
                     $: $<
                         [
-                            typeof PreloadAgent,
-                            typeof NormalAgent,
-                            typeof NoPreloadAgent
+                            typeof PreloadService,
+                            typeof NormalService,
+                            typeof NoPreloadService
                         ]
                     >
                 ) => {
@@ -438,50 +444,50 @@ describe("supplier", () => {
                 }
             })
 
-            const result = MainAgent.supply({})
+            const result = MainService.supply({})
 
             // Wait a bit for preloading to complete
             await new Promise((resolve) => setTimeout(resolve, 10))
 
-            // PreloadAgent should have been called due to preload: true
+            // PreloadService should have been called due to preload: true
             expect(preloadFactoryMock).toHaveBeenCalledTimes(1)
 
-            // NormalAgent and NoPreloadAgent should not have been called yet
+            // NormalService and NoPreloadService should not have been called yet
             expect(normalFactoryMock).toHaveBeenCalledTimes(0)
 
             expect(result.value).toBe("main-result")
         })
 
         //TODO: Weird case, maybe unnecessary - consider removing
-        it("should not preload agents that are already supplied", async () => {
+        it("should not preload services that are already supplied", async () => {
             const preloadFactoryMock = vi
                 .fn()
                 .mockReturnValue("preloaded-result")
 
-            const PreloadAgent = register("preload-agent").asAgent({
+            const PreloadService = register("preload-service").asService({
                 factory: preloadFactoryMock,
                 preload: true
             })
 
             const PreloadResource =
-                register("preload-agent").asResource<string>()
+                register("preload-service").asResource<string>()
 
-            const MainAgent = register("main-agent").asAgent({
-                team: [PreloadAgent],
-                factory: ($: $<[typeof PreloadAgent]>) => {
+            const MainService = register("main-service").asService({
+                team: [PreloadService],
+                factory: ($: $<[typeof PreloadService]>) => {
                     return "main-result"
                 }
             })
 
-            // Supply the same ID as a resource instead of using the agent
-            const result = MainAgent.supply(
+            // Supply the same ID as a resource instead of using the service
+            const result = MainService.supply(
                 index(PreloadResource.put("supplied-value"))
             )
 
             // Wait a bit for any potential preloading
             await new Promise((resolve) => setTimeout(resolve, 10))
 
-            // PreloadAgent factory should not have been called because it was supplied as a resource
+            // PreloadService factory should not have been called because it was supplied as a resource
             expect(preloadFactoryMock).toHaveBeenCalledTimes(0)
 
             expect(result.value).toBe("main-result")
@@ -492,54 +498,54 @@ describe("supplier", () => {
                 throw new Error("Preload error")
             })
 
-            const ErrorAgent = register("error-agent").asAgent({
+            const ErrorService = register("error-service").asService({
                 factory: errorFactoryMock,
                 preload: true
             })
 
-            const MainAgent = register("main-agent").asAgent({
-                team: [ErrorAgent],
-                factory: ($: $<[typeof ErrorAgent]>) => {
-                    // Don't access ErrorAgent yet
+            const MainService = register("main-service").asService({
+                team: [ErrorService],
+                factory: ($: $<[typeof ErrorService]>) => {
+                    // Don't access ErrorService yet
                     return "main-result"
                 }
             })
 
-            // This should not throw even though ErrorAgent will fail during preload
-            const result = MainAgent.supply({})
+            // This should not throw even though ErrorService will fail during preload
+            const result = MainService.supply({})
 
             // Wait a bit for preloading to complete
             await new Promise((resolve) => setTimeout(resolve, 10))
 
             expect(result.value).toBe("main-result")
 
-            // ErrorAgent factory should have been called during preload
+            // ErrorService factory should have been called during preload
             expect(errorFactoryMock).toHaveBeenCalledTimes(1)
         })
 
-        it("should still throw error when accessing a failed preloaded agent", async () => {
+        it("should still throw error when accessing a failed preloaded service", async () => {
             const errorFactoryMock = vi.fn().mockImplementation(() => {
-                throw new Error("Agent error")
+                throw new Error("Service error")
             })
 
-            const ErrorAgent = register("error-agent").asAgent({
+            const ErrorService = register("error-service").asService({
                 factory: errorFactoryMock,
                 preload: true
             })
 
-            const MainAgent = register("main-agent").asAgent({
-                team: [ErrorAgent],
-                factory: ($: $<[typeof ErrorAgent]>) => {
-                    // Try to access the failed agent
-                    return $(ErrorAgent.id)
+            const MainService = register("main-service").asService({
+                team: [ErrorService],
+                factory: ($: $<[typeof ErrorService]>) => {
+                    // Try to access the failed service
+                    return $(ErrorService.id)
                 }
             })
 
             // Wait a bit for preloading to complete
             await new Promise((resolve) => setTimeout(resolve, 10))
 
-            // Accessing the agent should still throw the error
-            expect(() => MainAgent.supply({})).toThrow("Agent error")
+            // Accessing the service should still throw the error
+            expect(() => MainService.supply({})).toThrow("Service error")
         })
 
         it("should work with complex dependency chains and selective preloading", async () => {
@@ -547,46 +553,48 @@ describe("supplier", () => {
             const level2Mock = vi.fn().mockReturnValue("level2-result")
             const level3Mock = vi.fn().mockReturnValue("level3-result")
 
-            const Level1Agent = register("level1").asAgent({
+            const Level1Service = register("level1").asService({
                 factory: level1Mock,
                 preload: true // This will be preloaded
             })
 
-            const Level2Agent = register("level2").asAgent({
-                team: [Level1Agent],
-                factory: ($: $<[typeof Level1Agent]>) => {
+            const Level2Service = register("level2").asService({
+                team: [Level1Service],
+                factory: ($: $<[typeof Level1Service]>) => {
                     level2Mock()
-                    return $(Level1Agent.id) + "-processed"
+                    return $(Level1Service.id) + "-processed"
                 },
                 preload: false // This will not be preloaded
             })
 
-            const Level3Agent = register("level3").asAgent({
-                team: [Level1Agent, Level2Agent],
-                factory: ($: $<[typeof Level1Agent, typeof Level2Agent]>) => {
+            const Level3Service = register("level3").asService({
+                team: [Level1Service, Level2Service],
+                factory: (
+                    $: $<[typeof Level1Service, typeof Level2Service]>
+                ) => {
                     level3Mock()
                     return {
-                        level1: $(Level1Agent.id),
-                        level2: $(Level2Agent.id)
+                        level1: $(Level1Service.id),
+                        level2: $(Level2Service.id)
                     }
                 }
                 // preload defaults to false
             })
 
-            const MainAgent = register("main").asAgent({
-                team: [Level1Agent, Level2Agent, Level3Agent],
+            const MainService = register("main").asService({
+                team: [Level1Service, Level2Service, Level3Service],
                 factory: () => {
                     // Don't access any dependencies yet
                     return "main-result"
                 }
             })
 
-            const result = MainAgent.supply({})
+            const result = MainService.supply({})
 
             // Wait a bit for preloading to complete
             await new Promise((resolve) => setTimeout(resolve, 10))
 
-            // Only Level1Agent should have been preloaded
+            // Only Level1Service should have been preloaded
             expect(level1Mock).toHaveBeenCalledTimes(1)
             expect(level2Mock).toHaveBeenCalledTimes(0)
             expect(level3Mock).toHaveBeenCalledTimes(0)
@@ -594,32 +602,32 @@ describe("supplier", () => {
             expect(result.value).toBe("main-result")
         })
 
-        it("should respect preload flag in hired agents", async () => {
+        it("should respect preload flag in hired services", async () => {
             const originalMock = vi.fn().mockReturnValue("original-result")
             const hiredMock = vi.fn().mockReturnValue("hired-result")
 
-            const OriginalAgent = register("agent").asAgent({
+            const OriginalService = register("service").asService({
                 factory: originalMock,
                 preload: false
             })
 
-            const HiredAgent = register("agent").asAgent({
+            const HiredService = register("service").asService({
                 factory: hiredMock,
-                preload: true // This hired agent should be preloaded
+                preload: true // This hired service should be preloaded
             })
 
-            const MainAgent = register("main").asAgent({
-                team: [OriginalAgent],
+            const MainService = register("main").asService({
+                team: [OriginalService],
                 factory: () => "main-result"
             })
 
-            // Hire the preloaded agent
-            const result = MainAgent.hire(HiredAgent).supply({})
+            // Hire the preloaded service
+            const result = MainService.hire(HiredService).supply({})
 
             // Wait a bit for preloading to complete
             await new Promise((resolve) => setTimeout(resolve, 10))
 
-            // HiredAgent should have been preloaded, OriginalAgent should not
+            // HiredService should have been preloaded, OriginalService should not
             expect(hiredMock).toHaveBeenCalledTimes(1)
             expect(originalMock).toHaveBeenCalledTimes(0)
 
@@ -629,20 +637,20 @@ describe("supplier", () => {
 
     describe("Type Safety and Edge Cases", () => {
         it("should handle empty teams correctly", () => {
-            const EmptyTeamAgent = register("empty-team").asAgent({
+            const EmptyTeamService = register("empty-team").asService({
                 factory: () => "empty-team-result"
             })
 
-            const result = EmptyTeamAgent.supply({})
+            const result = EmptyTeamService.supply({})
             expect(result.value).toBe("empty-team-result")
         })
 
-        it("should handle agents with no supplies parameter", () => {
-            const NoSuppliesAgent = register("no-supplies").asAgent({
+        it("should handle services with no supplies parameter", () => {
+            const NoSuppliesService = register("no-supplies").asService({
                 factory: () => "no-supplies-result"
             })
 
-            const result = NoSuppliesAgent.supply({})
+            const result = NoSuppliesService.supply({})
             expect(result.value).toBe("no-supplies-result")
         })
 

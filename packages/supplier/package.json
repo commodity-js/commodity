@@ -14,7 +14,6 @@
     },
     "imports": {
         "#*": {
-            "development": "./src/*.ts",
             "types": "./dist/*.d.ts",
             "import": "./dist/*.js",
             "require": "./dist/*.cjs"
@@ -22,7 +21,6 @@
     },
     "exports": {
         ".": {
-            "development": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "import": "./dist/index.js",
             "require": "./dist/index.cjs"
@@ -33,6 +31,7 @@
     ],
     "scripts": {
         "build": "tsup",
+        "dev": "tsup --watch",
         "prepublishOnly": "pnpm run build",
         "test": "vitest",
         "test:run": "vitest run"
