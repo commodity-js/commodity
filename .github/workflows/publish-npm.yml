@@ -75,9 +75,10 @@ jobs:
                   git commit -m "chore: bump version to $VERSION [skip ci]"
 
             - name: Build package
-              run: pnpm run build
+              run: pnpm run build --filter=supplier
 
             - name: Publish to NPM
+              working-directory: ./packages/supplier
               run: npm publish
 
             - name: Create Release
