@@ -39,6 +39,7 @@ jobs:
               id: changelog
               run: |
                   CURRENT_TAG=$(git describe --tags --abbrev=0)
+                  VERSION=${CURRENT_TAG#v}
                   PREVIOUS_TAG=$(git describe --tags --abbrev=0 $CURRENT_TAG^ 2>/dev/null || echo "")
 
                   if [ -z "$PREVIOUS_TAG" ]; then
@@ -53,8 +54,11 @@ jobs:
                   echo "" >> CHANGELOG.md
                   echo "$CHANGELOG" >> CHANGELOG.md
 
-                  echo "changelog=$(cat CHANGELOG.md)" >> $GITHUB_OUTPUT
-                  echo "version=${CURRENT_TAG#v}" >> $GITHUB_OUTPUT
+                  # Use GitHub Actions multiline output syntax
+                  echo "changelog<<EOF" >> $GITHUB_OUTPUT
+                  cat CHANGELOG.md >> $GITHUB_OUTPUT
+                  echo "EOF" >> $GITHUB_OUTPUT
+                  echo "version=$VERSION" >> $GITHUB_OUTPUT
 
             - name: Bump version
               run: |
