@@ -1,11 +1,11 @@
 import { register, type $ } from "supplier"
-import Level4Agent from "#components/level-4.tsx"
+import Level4Service from "#components/level-4.tsx"
 
 // Level 3 component - renders Level 4
-const Level3Agent = register("level-3").asAgent({
-    team: [Level4Agent],
-    factory: ($: $<[typeof Level4Agent]>) => {
-        const Level4Component = $(Level4Agent.id)
+const Level3Service = register("level-3").asService({
+    team: [Level4Service],
+    factory: ($: $<[typeof Level4Service]>) => {
+        const Level4Component = $(Level4Service.id)
 
         return (
             <div className="border-2 border-blue-500 p-4 rounded-lg bg-blue-50">
@@ -23,4 +23,4 @@ const Level3Agent = register("level-3").asAgent({
     }
 })
 
-export default Level3Agent
+export default Level3Service

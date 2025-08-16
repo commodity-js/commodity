@@ -4,8 +4,6 @@ on:
     push:
         tags:
             - "v*"
-        branches:
-            - main
 
 jobs:
     publish:
@@ -58,6 +56,20 @@ jobs:
                   echo "changelog=$(cat CHANGELOG.md)" >> $GITHUB_OUTPUT
                   echo "version=${CURRENT_TAG#v}" >> $GITHUB_OUTPUT
 
+            - name: Bump version
+              run: |
+                  CURRENT_TAG=$(git describe --tags --abbrev=0)
+                  VERSION=${CURRENT_TAG#v}
+
+                  # Update package.json version
+                  pnpm version $VERSION --no-git-tag-version
+
+                  # Commit the version bump
+                  git config --local user.email "action@github.com"
+                  git config --local user.name "GitHub Action"
+                  git add package.json
+                  git commit -m "chore: bump version to $VERSION [skip ci]"
+
             - name: Build package
               run: pnpm run build
 
@@ -77,7 +89,7 @@ jobs:
                   prerelease: false
 
             - name: Upload changelog artifact
-              uses: actions/upload-artifact@v3
+              uses: actions/upload-artifact@v4
               with:
                   name: changelog
                   path: CHANGELOG.md

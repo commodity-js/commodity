@@ -1,13 +1,13 @@
 import { register, type $ } from "supplier"
-import ConfigRendererAgent from "#components/config-renderer.tsx"
 import { ConfigResource } from "#lib/config.ts"
+import ConfigRendererService from "#components/config-renderer.tsx"
 
 // Level 4 component (deepest level) - displays config info using shared renderer
-const Level4Agent = register("level-4").asAgent({
-    team: [ConfigRendererAgent],
-    factory: ($: $<[typeof ConfigRendererAgent, typeof ConfigResource]>) => {
+const Level4Service = register("level-4").asService({
+    team: [ConfigRendererService],
+    factory: ($: $<[typeof ConfigRendererService, typeof ConfigResource]>) => {
         const config = $(ConfigResource.id)
-        const ConfigRenderer = $(ConfigRendererAgent.id)
+        const ConfigRenderer = $(ConfigRendererService.id)
 
         return (
             <div className="border-2 border-purple-500 p-4 rounded-lg bg-purple-50">
@@ -27,4 +27,4 @@ const Level4Agent = register("level-4").asAgent({
     }
 })
 
-export default Level4Agent
+export default Level4Service

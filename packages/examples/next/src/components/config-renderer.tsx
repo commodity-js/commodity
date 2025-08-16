@@ -10,7 +10,7 @@ interface ConfigRendererProps {
 }
 
 // Reusable config renderer agent
-const ConfigRendererAgent = register("config-renderer").asAgent({
+const ConfigRendererService = register("config-renderer").asService({
     factory: () => {
         return ({
             title,
@@ -121,4 +121,4 @@ const ConfigRendererAgent = register("config-renderer").asAgent({
     }
 })
 
-export default ConfigRendererAgent
+export default ConfigRendererService

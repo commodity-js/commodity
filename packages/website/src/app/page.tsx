@@ -150,8 +150,8 @@ export default function Home() {
 const ConfigResource = register("config")
   .asResource<{ apiUrl: string }>();
 
-// Create an agent
-const ApiAgent = register("api").asAgent({
+// Create a service
+const ApiService = register("api").asService({
   factory: ($) => {
     const config = $(ConfigResource.id);
     return { fetch: (path) => \`\${config.apiUrl}\${path}\` };
@@ -159,7 +159,7 @@ const ApiAgent = register("api").asAgent({
 });
 
 // Supply and use
-const api = ApiAgent.supply(
+const api = ApiService.supply(
   parcel(ConfigResource.supply({ apiUrl: "https://api.com" }))
 );
 
@@ -174,13 +174,13 @@ console.log(api.value.fetch("/users")); // "https://api.com/users"`}
                             </h3>
                             <CodeExample
                                 code={`// Resupply with different context
-const testApi = apiAgent.resupply(
+const testApi = apiService.resupply(
   parcel(ConfigResource.supply({ 
     apiUrl: "http://localhost:3000" 
   }))
 );
 
-// Same agent, different config!
+// Same service, different config!
 console.log(testApi.value.fetch("/users")); 
 // "http://localhost:3000/users"`}
                                 language="typescript"
@@ -197,7 +197,8 @@ console.log(testApi.value.fetch("/users"));
                                     </code>
                                     method enables powerful testing scenarios
                                     and runtime dependency overrides without
-                                    affecting the original agent configuration.
+                                    affecting the original service
+                                    configuration.
                                 </p>
                             </div>
                         </div>

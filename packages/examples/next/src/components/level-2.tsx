@@ -1,16 +1,16 @@
 import { register, type $, index } from "supplier"
-import Level3Agent from "#components/level-3.tsx"
-import ConfigRendererAgent from "#components/config-renderer.tsx"
+import Level3Service from "#components/level-3.tsx"
+import ConfigRendererService from "#components/config-renderer.tsx"
 import { ConfigResource } from "#lib/config.ts"
 
 // Level 2 component - displays config and resupplies different config to Level 3+4
-const Level2Agent = register("level-2").asAgent({
-    team: [Level3Agent, ConfigRendererAgent],
+const Level2Service = register("level-2").asService({
+    team: [Level3Service, ConfigRendererService],
     factory: (
         $: $<
             [
-                typeof Level3Agent,
-                typeof ConfigRendererAgent,
+                typeof Level3Service,
+                typeof ConfigRendererService,
                 typeof ConfigResource
             ]
         >
@@ -19,10 +19,10 @@ const Level2Agent = register("level-2").asAgent({
         const currentConfig = $(ConfigResource.id)
 
         // Get the config renderer
-        const ConfigRenderer = $(ConfigRendererAgent.id)
+        const ConfigRenderer = $(ConfigRendererService.id)
 
-        // Get Level3Agent to resupply with different config
-        const level3Agent = $[Level3Agent.id]
+        // Get Level3Service to resupply with different config
+        const level3Service = $[Level3Service.id]
 
         // Create a modified config for Level 3 and 4
         const modifiedConfig = {
@@ -41,7 +41,7 @@ const Level2Agent = register("level-2").asAgent({
         }
 
         // Resupply Level 3 with the modified config
-        const Level3Component = level3Agent.resupply(
+        const Level3Component = level3Service.resupply(
             index(ConfigResource.put(modifiedConfig))
         )
 
@@ -84,4 +84,4 @@ const Level2Agent = register("level-2").asAgent({
     }
 })
 
-export default Level2Agent
+export default Level2Service
