@@ -5,6 +5,10 @@ on:
         tags:
             - "v*"
 
+permissions:
+    id-token: write # Required for OIDC
+    contents: read
+
 jobs:
     publish:
         runs-on: ubuntu-latest
@@ -33,7 +37,7 @@ jobs:
               run: pnpm install --frozen-lockfile
 
             - name: Run tests
-              run: pnpm test
+              run: pnpm test --filter=supplier
 
             - name: Generate changelog
               id: changelog
