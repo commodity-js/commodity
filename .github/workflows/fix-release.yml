@@ -1,23 +1,21 @@
-name: Publish to NPM
+name: Fix Release State
 
 on:
-    push:
-        tags:
-            - "v*"
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: "Tag to fix (e.g., v0.0.6)"
+                required: true
+                default: "v0.0.6"
 
 permissions:
-    id-token: write # Required for OIDC
-    contents: write # Required for creating releases
-    issues: write # Required for creating releases
-    pull-requests: write # Required for creating releases
+    contents: write
+    issues: write
+    pull-requests: write
 
 jobs:
-    publish:
+    fix:
         runs-on: ubuntu-latest
-        environment:
-            name: npm-publish
-            url: https://www.npmjs.com/package/supplier
-
         steps:
             - name: Checkout code
               uses: actions/checkout@v4
@@ -28,10 +26,6 @@ jobs:
               uses: actions/setup-node@v4
               with:
                   node-version: "lts/*"
-                  registry-url: "https://registry.npmjs.org"
-
-            - name: Install latest npm
-              run: npm install -g npm@latest
 
             - name: Setup pnpm
               uses: pnpm/action-setup@v2
@@ -41,16 +35,10 @@ jobs:
             - name: Install dependencies
               run: pnpm install --frozen-lockfile
 
-            - name: Build package
-              run: pnpm run build --filter=supplier
-
-            - name: Run tests
-              run: pnpm test --filter=supplier
-
             - name: Generate changelog
               id: changelog
               run: |
-                  CURRENT_TAG=$(git describe --tags --abbrev=0)
+                  CURRENT_TAG=${{ github.event.inputs.tag }}
                   VERSION=${CURRENT_TAG#v}
                   PREVIOUS_TAG=$(git describe --tags --abbrev=0 $CURRENT_TAG^ 2>/dev/null || echo "")
 
@@ -66,52 +54,49 @@ jobs:
                   echo "" >> CHANGELOG.md
                   echo "$CHANGELOG" >> CHANGELOG.md
 
-                  # Use GitHub Actions multiline output syntax
                   echo "changelog<<EOF" >> $GITHUB_OUTPUT
                   cat CHANGELOG.md >> $GITHUB_OUTPUT
                   echo "EOF" >> $GITHUB_OUTPUT
                   echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-            - name: Bump version
+            - name: Bump version in package.json
               working-directory: ./packages/supplier
               run: |
-                  CURRENT_TAG=$(git describe --tags --abbrev=0)
+                  CURRENT_TAG=${{ github.event.inputs.tag }}
                   VERSION=${CURRENT_TAG#v}
 
-                  # Checkout main branch to avoid detached HEAD
+                  # Checkout main branch
                   git checkout main
 
                   # Update package.json version
                   pnpm version $VERSION --no-git-tag-version
 
-            - name: Publish to NPM
+            - name: Commit and push version bump
               working-directory: ./packages/supplier
-              run: npm publish
+              run: |
+                  CURRENT_TAG=${{ github.event.inputs.tag }}
+                  VERSION=${CURRENT_TAG#v}
+
+                  git config --local user.email "action@github.com"
+                  git config --local user.name "GitHub Action"
+                  git add package.json
+                  git commit -m "chore: bump version to $VERSION [skip ci]"
+                  git push origin main
 
             - name: Create Release
               uses: actions/create-release@v1
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               with:
-                  tag_name: ${{ github.ref }}
-                  release_name: Release ${{ github.ref }}
+                  tag_name: ${{ github.event.inputs.tag }}
+                  release_name: Release ${{ github.event.inputs.tag }}
                   body: |
                       ${{ steps.changelog.outputs.changelog }}
                   draft: false
                   prerelease: false
 
-            - name: Upload changelog artifact
-              uses: actions/upload-artifact@v4
-              with:
-                  name: changelog
-                  path: CHANGELOG.md
-
-            - name: Commit version bump
+            - name: Cleanup
               run: |
-                  CURRENT_TAG=$(git describe --tags --abbrev=0)
-                  VERSION=${CURRENT_TAG#v}
-                  git config --local user.email "action@github.com"
-                  git config --local user.name "GitHub Action"
-                  git add package.json
-                  git commit -m "chore: bump version to $VERSION [skip ci]"
-                  git push origin main
+                  echo "Release fixed for ${{ github.event.inputs.tag }}"
+                  echo "Version bumped in package.json"
+                  echo "GitHub release created"
