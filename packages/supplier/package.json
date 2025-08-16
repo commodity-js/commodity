@@ -32,7 +32,6 @@
     "scripts": {
         "build": "tsup",
         "dev": "tsup --watch",
-        "prepublishOnly": "pnpm run build",
         "test": "vitest",
         "test:run": "vitest run"
     },
