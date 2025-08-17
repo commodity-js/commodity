@@ -179,7 +179,7 @@ For easy testing and mocking, you can also easily overwrite a service without cr
 
 ```typescript
 // Override the logger for testing
-const testApiClient = ApiClient.hire(TestLogger).supply(
+const testApiClient = ApiClient.supply(
     index(
         // Create a test logger that doesn't actually log
         LoggerService.of((message: string) => {
