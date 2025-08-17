@@ -14,7 +14,7 @@ STILL IN VERY UNSTABLE, PRE-ALPHA, PLEASE DON'T INSTALL VERSIONS v0.0.x
 -   **Fully typesafe and type-inferred** - Full TypeScript support with compile-time circular dependency detection.
 -   **Stateless** - No stateful container, dependencies injected via closure.
 -   **Fluent and expressive API** - Learn in minutes, designed for both developers and AI usage.
--   **Runtime overrides** - Easily mock dependencies for testing using `.hire()`
+-   **Runtime overrides** - Easily mock dependencies for testing using `.of()`
 
 ### 📦 **Context Propagation**
 
