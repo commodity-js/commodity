@@ -1,6 +1,5 @@
 import memo from "memoize"
 
-// Core utility types
 type Merge<U> = (U extends any ? (k: U) => void : never) extends (
     k: infer I
 ) => void
@@ -13,13 +12,13 @@ type Resource<ID extends string, VALUE> = {
 }
 
 type ResourceActions<ID extends string, VALUE> = {
-    put: (value: VALUE) => Resource<ID, VALUE> & ResourceActions<ID, VALUE>
+    of: (value: VALUE) => Resource<ID, VALUE> & ResourceActions<ID, VALUE>
 }
 
 type ResourceRegistration<ID extends string, VALUE> = {
     id: ID
     isResource: true
-    put: (value: VALUE) => Resource<ID, VALUE> & ResourceActions<ID, VALUE>
+    of: (value: VALUE) => Resource<ID, VALUE> & ResourceActions<ID, VALUE>
 }
 
 type Service<
@@ -47,7 +46,7 @@ type ServiceActions<
     : {
           supply: SupplyAction<ID, VALUE, TOSUPPLY>
       }) & {
-    put: (
+    of: (
         value: VALUE
     ) => Resource<ID, VALUE> & ServiceActions<ID, TOSUPPLY, VALUE, true>
 }
@@ -89,7 +88,7 @@ type SupplyMapFromRegistrations<
     >
         ? ReturnType<REGISTRATION["supply"]>
         : REGISTRATION extends ResourceRegistration<string, any>
-        ? ReturnType<REGISTRATION["put"]>
+        ? ReturnType<REGISTRATION["of"]>
         : never
 }
 
@@ -102,21 +101,21 @@ type Supplies<REGISTRY extends Registration<string, any, any>[]> = (<
     : never) &
     SupplyMapFromRegistrations<REGISTRY>
 
+// Alias for Supplies
 export type $<REGISTRY extends Registration<string, any, any>[]> =
     Supplies<REGISTRY>
 
-export type ToSupply<TEAM extends ServiceRegistration<string, any, any>[]> =
-    Merge<
-        {
-            [I in keyof TEAM]: TEAM[I] extends ServiceRegistration<
-                string,
-                infer TOSUPPLY,
-                any
-            >
-                ? TOSUPPLY
-                : never
-        }[number]
-    >
+type ToSupply<TEAM extends ServiceRegistration<string, any, any>[]> = Merge<
+    {
+        [I in keyof TEAM]: TEAM[I] extends ServiceRegistration<
+            string,
+            infer TOSUPPLY,
+            any
+        >
+            ? TOSUPPLY
+            : never
+    }[number]
+>
 
 export const register = <ID extends string>(id: ID) => {
     return {
@@ -124,11 +123,11 @@ export const register = <ID extends string>(id: ID) => {
             const resource = {
                 id,
                 isResource: true as const,
-                put: <VALUE extends CONSTRAINT>(value: VALUE) => {
+                of: <VALUE extends CONSTRAINT>(value: VALUE) => {
                     return {
                         id,
                         value,
-                        put: resource.put
+                        of: resource.of
                     }
                 },
                 _constraint: null as unknown as CONSTRAINT
@@ -149,12 +148,12 @@ export const register = <ID extends string>(id: ID) => {
             preload?: boolean
         }) => {
             const actions = {
-                put: (value: VALUE) => {
+                of: (value: VALUE) => {
                     return {
                         id,
                         value,
                         resupply: actions.supply(team),
-                        put: actions.put
+                        of: actions.of
                     }
                 },
                 supply:
@@ -183,8 +182,13 @@ export const register = <ID extends string>(id: ID) => {
                         return {
                             id,
                             value,
-                            resupply: actions.supply(team),
-                            put: actions.put
+                            resupply: (overrides: Partial<typeof toSupply>) => {
+                                return actions.supply(team)({
+                                    ...toSupply,
+                                    ...overrides
+                                })
+                            },
+                            of: actions.of
                         }
                     }
             }
@@ -193,7 +197,7 @@ export const register = <ID extends string>(id: ID) => {
                 id,
                 isService: true as const,
                 preload,
-                put: actions.put,
+                of: actions.of,
                 supply: actions.supply(team),
                 hire: <
                     const HIRED_TEAM extends readonly ServiceRegistration<
@@ -206,7 +210,7 @@ export const register = <ID extends string>(id: ID) => {
                 ) => {
                     return {
                         supply: actions.supply([...team, ...hiredTeam]),
-                        put: actions.put
+                        of: actions.of
                     }
                 }
             }
@@ -293,5 +297,8 @@ export type Narrow<
         id: string
         _constraint: any
     },
-    VALUE extends RESOURCEREGISTRATION["_constraint"]
-> = ResourceRegistration<RESOURCEREGISTRATION["id"], VALUE>
+    VALUE
+> = ResourceRegistration<
+    RESOURCEREGISTRATION["id"],
+    RESOURCEREGISTRATION["_constraint"] & VALUE
+>

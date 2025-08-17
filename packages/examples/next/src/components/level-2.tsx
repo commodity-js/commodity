@@ -42,7 +42,7 @@ const Level2Service = register("level-2").asService({
 
         // Resupply Level 3 with the modified config
         const Level3Component = level3Service.resupply(
-            index(ConfigResource.put(modifiedConfig))
+            index(ConfigResource.of(modifiedConfig))
         )
 
         return (

@@ -4,9 +4,7 @@ import { index } from "supplier"
 
 export default function Home() {
     // Supply the config at the entrypoint and render the nested components
-    const result = Level1Service.supply(
-        index(ConfigResource.put(defaultConfig))
-    )
+    const result = Level1Service.supply(index(ConfigResource.of(defaultConfig)))
 
     return (
         <div className="min-h-screen bg-gray-100 p-8">

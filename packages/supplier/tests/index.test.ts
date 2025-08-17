@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { register, type $, index } from "#index"
+import { register, type $, index, type Narrow } from "#index"
 
 describe("supplier", () => {
     beforeEach(() => {
@@ -11,7 +11,7 @@ describe("supplier", () => {
             const TestResource = register("test-resource").asResource<string>()
 
             const testValue = "test-value"
-            const result = TestResource.put(testValue)
+            const result = TestResource.of(testValue)
 
             expect(result.value).toBe(testValue)
             expect(result.id).toBe("test-resource")
@@ -28,9 +28,9 @@ describe("supplier", () => {
                 name: string
             }>()
 
-            const stringResult = StringResource.put("hello")
-            const numberResult = NumberResource.put(42)
-            const objectResult = ObjectResource.put({ name: "test" })
+            const stringResult = StringResource.of("hello")
+            const numberResult = NumberResource.of(42)
+            const objectResult = ObjectResource.of({ name: "test" })
 
             expect(stringResult.value).toBe("hello")
             expect(numberResult.value).toBe(42)
@@ -193,7 +193,7 @@ describe("supplier", () => {
             const ServiceResource = register("service").asResource<string>()
 
             const result = MainService.supply(
-                index(ServiceResource.put("initial-service-value"))
+                index(ServiceResource.of("initial-service-value"))
             )
 
             // The initial supply should be respected and not overridden by the service
@@ -309,11 +309,26 @@ describe("supplier", () => {
 
         it("should enable context switching by calling supply on services in supplies", () => {
             const ConfigResource = register("config").asResource<string>()
-            // Create a configurable service that uses supplies from its context
+            const NameResource = register("name").asResource<string>()
+            const CountResource = register("count").asResource<number>()
+
+            // Create a configurable service that uses multiple supplies from its context
             const ConfigurableService = register("configurable").asService({
-                factory: ($: $<[typeof ConfigResource]>) => {
-                    // This service uses the "config" value from its supplies
-                    return $(ConfigResource.id) || "default-result"
+                factory: (
+                    $: $<
+                        [
+                            typeof ConfigResource,
+                            typeof NameResource,
+                            typeof CountResource
+                        ]
+                    >
+                ) => {
+                    // This service uses multiple values from its supplies
+                    return {
+                        config: $(ConfigResource.id) || "default-config",
+                        name: $(NameResource.id) || "default-name",
+                        count: $(CountResource.id) || 0
+                    }
                 }
             })
 
@@ -323,36 +338,92 @@ describe("supplier", () => {
             ).asService({
                 team: [ConfigurableService],
                 factory: ($: $<[typeof ConfigurableService]>) => {
-                    // Use the old context (from the parent service's supplies)
                     const configurableService = $[ConfigurableService.id]
 
-                    const oldContextResult = configurableService.resupply(
-                        index(ConfigResource.put("old-context-value"))
+                    // Initial context with all supplies
+                    const initialResult = configurableService.resupply(
+                        index(
+                            ConfigResource.of("initial-config"),
+                            NameResource.of("initial-name"),
+                            CountResource.of(42)
+                        )
                     )
 
-                    // Use a new context with different supplies
-                    const newContextResult = configurableService.resupply(
-                        index(ConfigResource.put("new-context-value"))
+                    // Partial resupply - only override config
+                    const partialConfigResult = configurableService.resupply(
+                        index(ConfigResource.of("partial-config-override"))
+                    )
+
+                    // Partial resupply - only override name
+                    const partialNameResult = configurableService.resupply(
+                        index(NameResource.of("partial-name-override"))
+                    )
+
+                    // Partial resupply - override multiple values
+                    const partialMultipleResult = configurableService.resupply(
+                        index(
+                            ConfigResource.of("multiple-config-override"),
+                            CountResource.of(100)
+                        )
+                    )
+
+                    // Full resupply with all new values
+                    const fullResupplyResult = configurableService.resupply(
+                        index(
+                            ConfigResource.of("new-config"),
+                            NameResource.of("new-name"),
+                            CountResource.of(999)
+                        )
                     )
 
                     return {
-                        oldContext: oldContextResult.value,
-                        newContext: newContextResult.value,
-                        contextsAreDifferent:
-                            oldContextResult.value !== newContextResult.value
+                        initial: initialResult.value,
+                        partialConfig: partialConfigResult.value,
+                        partialName: partialNameResult.value,
+                        partialMultiple: partialMultipleResult.value,
+                        fullResupply: fullResupplyResult.value
                     }
                 }
             })
 
             const result = ContextSwitchingService.supply(
-                index(ConfigResource.put("initial-context-value"))
+                index(
+                    ConfigResource.of("base-config"),
+                    NameResource.of("base-name"),
+                    CountResource.of(1)
+                )
             )
 
-            // The contexts should be different because they use different supplies
-            expect(result.value).toEqual({
-                oldContext: "old-context-value",
-                newContext: "new-context-value",
-                contextsAreDifferent: true
+            // Test that partial resupply works correctly
+            expect(result.value.initial).toEqual({
+                config: "initial-config",
+                name: "initial-name",
+                count: 42
+            })
+
+            // Each resupply starts from the base supplies and applies overrides
+            expect(result.value.partialConfig).toEqual({
+                config: "partial-config-override",
+                name: "base-name", // From base supplies
+                count: 1 // From base supplies
+            })
+
+            expect(result.value.partialName).toEqual({
+                config: "base-config", // From base supplies
+                name: "partial-name-override",
+                count: 1 // From base supplies
+            })
+
+            expect(result.value.partialMultiple).toEqual({
+                config: "multiple-config-override",
+                name: "base-name", // From base supplies
+                count: 100
+            })
+
+            expect(result.value.fullResupply).toEqual({
+                config: "new-config",
+                name: "new-name",
+                count: 999
             })
         })
     })
@@ -481,7 +552,7 @@ describe("supplier", () => {
 
             // Supply the same ID as a resource instead of using the service
             const result = MainService.supply(
-                index(PreloadResource.put("supplied-value"))
+                index(PreloadResource.of("supplied-value"))
             )
 
             // Wait a bit for any potential preloading
@@ -678,9 +749,176 @@ describe("supplier", () => {
                 }
             }
 
-            const result = ComplexResource.put(complexValue)
+            const result = ComplexResource.of(complexValue)
 
             expect(result.value).toEqual(complexValue)
+        })
+
+        it("should handle services added to team at wrong level in dependency chain", () => {
+            // This test explores what happens when a service is added to a team
+            // at one level but not at the level where it's actually needed
+
+            const ConfigResource = register("config").asResource<string>()
+            const LoggerResource = register("logger").asResource<string>()
+
+            // ServiceA needs ConfigResource
+            const ServiceA = register("service-a").asService({
+                factory: ($: $<[typeof ConfigResource]>) => {
+                    const config = $(ConfigResource.id)
+                    return `service-a-${config}`
+                }
+            })
+
+            // ServiceB needs LoggerResource (but ServiceA is NOT in its team)
+            const ServiceB = register("service-b").asService({
+                factory: ($: $<[typeof LoggerResource]>) => {
+                    const logger = $(LoggerResource.id)
+                    return `service-b-${logger}`
+                }
+            })
+
+            // ServiceC provides ServiceA in its team (but ServiceA needs ConfigResource)
+            // ServiceC itself doesn't need ServiceA directly
+            const ServiceC = register("service-c").asService({
+                team: [ServiceA], // ServiceA is here but ServiceC doesn't use it
+                factory: () => {
+                    return "service-c-result"
+                }
+            })
+
+            // ServiceD provides ServiceB in its team (ServiceB needs LoggerResource)
+            // ServiceD also provides ServiceC in its team
+            const ServiceD = register("service-d").asService({
+                team: [ServiceB, ServiceC], // ServiceB needs LoggerResource, ServiceC provides ServiceA
+                factory: ($: $<[typeof ServiceB, typeof ServiceC]>) => {
+                    const serviceB = $(ServiceB.id)
+                    const serviceC = $(ServiceC.id)
+                    return `service-d-${serviceB}-${serviceC}`
+                }
+            })
+
+            // MainService provides ServiceD in its team
+            const MainService = register("main").asService({
+                team: [ServiceD],
+                factory: ($: $<[typeof ServiceD]>) => {
+                    const serviceD = $(ServiceD.id)
+                    return `main-${serviceD}`
+                }
+            })
+
+            // This should fail on LoggerResource first, not ConfigResource, because:
+            // 1. ServiceA is in ServiceC's team but ServiceC doesn't use it (so ConfigResource is never checked)
+            // 2. ServiceB is used by ServiceD and needs LoggerResource (so this fails first)
+            expect(() => {
+                // @ts-expect-error - Expected: missing logger dependency
+                MainService.supply({})
+            }).toThrow("Unsatisfied dependency: logger")
+
+            // If we provide only ConfigResource, it should still fail on LoggerResource
+            expect(() => {
+                // @ts-expect-error - Expected: missing logger dependency
+                MainService.supply(index(ConfigResource.of("test-config")))
+            }).toThrow("Unsatisfied dependency: logger")
+
+            // If we provide both resources, it should work
+            const result = MainService.supply(
+                index(
+                    ConfigResource.of("test-config"),
+                    LoggerResource.of("test-logger")
+                )
+            )
+            expect(result.value).toBe(
+                "main-service-d-service-b-test-logger-service-c-result"
+            )
+        })
+
+        it("should demonstrate that preload: true silently ignores errors until service access", () => {
+            // This test shows that preload: true doesn't change the fundamental behavior
+            // - it just tries to warm up services in the background
+            // - errors are still deferred until the service is actually accessed
+
+            const ConfigResource = register("config").asResource<string>()
+
+            // ServiceA needs ConfigResource
+            const ServiceA = register("service-a").asService({
+                factory: ($: $<[typeof ConfigResource]>) => {
+                    const config = $(ConfigResource.id)
+                    return `service-a-${config}`
+                }
+            })
+
+            // ServiceB provides ServiceA in its team with preload: true
+            // Even though ServiceA needs ConfigResource, the preloading won't fail immediately
+            const ServiceB = register("service-b").asService({
+                team: [ServiceA],
+                factory: () => {
+                    return "service-b-result"
+                },
+                preload: true // This should try to preload ServiceA but silently ignore failures
+            })
+
+            // MainService provides ServiceB in its team
+            const MainService = register("main").asService({
+                team: [ServiceB],
+                factory: ($: $<[typeof ServiceB]>) => {
+                    const serviceB = $(ServiceB.id)
+                    return `main-${serviceB}`
+                }
+            })
+
+            // This should NOT fail immediately due to preloading
+            // The preloading happens in the background and silently ignores errors
+            // @ts-expect-error - Expected: missing config dependency (but preloading silences it)
+            const result = MainService.supply({})
+            expect(result.value).toBe("main-service-b-result")
+
+            // The key insight: preload: true doesn't change the fundamental behavior
+            // It just tries to warm up services in the background, but errors are still
+            // deferred until the service is actually accessed
+        })
+
+        it("should demonstrate the Narrow API behavior", () => {
+            type User = { id: string; name: string; role: "user" | "admin" }
+            type Session = { user: User; now: Date }
+
+            // Session resource can hold any object of type Session
+            const Session = register("session").asResource<Session>()
+
+            // Admin dashboard requires admin session using the Narrow API
+            const AdminDashboard = register("admin-dashboard").asService({
+                factory: (
+                    $: $<[Narrow<typeof Session, { user: { role: "admin" } }>]>
+                ) => {
+                    const session = $(Session.id)
+                    // No runtime check needed - TypeScript ensures session.user.role === "admin"
+                    return {
+                        adminId: session.user.id,
+                        adminName: session.user.name,
+                        // This should work without type errors
+                        isAdmin: session.user.role === "admin"
+                    }
+                }
+            })
+
+            // This should create a type error because role is "user" (not admin)
+            const userSession = Session.of({
+                user: { id: "user123", name: "Regular User", role: "user" },
+                now: new Date()
+            })
+
+            // This should succeed because role is "admin"
+            const adminSession = Session.of({
+                user: { id: "admin456", name: "Admin User", role: "admin" },
+                now: new Date()
+            })
+
+            // @ts-expect-error - Expected: missing logger dependency
+            const fail = AdminDashboard.supply(index(userSession))
+            const result = AdminDashboard.supply(index(adminSession))
+
+            expect(result.value.adminId).toBe("admin456")
+            expect(result.value.adminName).toBe("Admin User")
+            expect(result.value.isAdmin).toBe(true)
         })
     })
 })

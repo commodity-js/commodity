@@ -18,7 +18,7 @@ A powerful, type-inferred, and hyper-minimalistic library for dependency injecti
 
 -   **Global resources** - Supply once at entry point, access everywhere without prop-drilling
 -   **Smart memoization** - Dependencies injected once per supplied context for optimal performance
--   **Context switching** - Add, override, or resupply context anywhere in the call stack
+-   **Context switching** - Add or resupply context anywhere in the call stack
 
 ### ⚡ **Waterfall Management**
 
@@ -36,18 +36,19 @@ npm install supplier
 
 ### Creating Services
 
-Services are factory functions that can depend on other resources or services. Factory functions can return values or functions (services).
+Services are factory functions that can depend on other resources or services. Factory functions can return anything (values, functions, etc.).
 
 ```typescript
 import { register, type $ } from "supplier"
 
-// Simple service with no dependencies
+// Simple service with no dependencies.
 const LoggerService = register("logger").asService({
     factory: () => (message: string) => console.log(`[LOG] ${message}`)
 })
 
 const ApiClient = register("api-client").asService({
-    // Use $<> type utility to define the shape of the required dependencies
+    // You can view $ as a shorthand for supplies.
+    // Use $<> type utility to define the shape of the required supplies.
     factory: ($: $<[typeof ConfigResource, typeof LoggerService]>) => {
         return {
             async get(path: string) {
@@ -65,7 +66,7 @@ const ApiClient = register("api-client").asService({
 
 ### Creating Resources
 
-Resources are simple values that can be injected into services:
+Resources are simple values that can be injected into services in a type-safe way:
 
 ```typescript
 import { register } from "supplier"
@@ -76,38 +77,106 @@ const ConfigResource = register("config").asResource<{
     timeout: number
 }>()
 
-// Put a value in the resource
-const config = ConfigResource.put({
+// Instanciate a resource with a value
+const config = ConfigResource.of({
     apiUrl: "https://api.example.com",
     timeout: 5000
 })
 
-console.log(config.value.apiUrl) // "https://api.example.com"
 console.log(config.id) // "config"
+console.log(config.value.apiUrl) // "https://api.example.com"
 ```
 
 ### Supplying at the entry point
 
+The supply method of a service (e.g. `ApiClient.supply(supplies)`) typechecks supplies to be an object with entries determined by the following formula:
+
+```
+(Recursive aggregate of all dependencies specified in $<> and all transitive dependencies
+($<> dependencies of dependencies))
+-
+(Recursive aggregate of all services provided in team[] and all transitive team[] services
+(team[] of dependencies))
+-
+services hired with hire() method (see below) and all their transitive team[] services
+```
+
 ```typescript
-// ApiClient needs LoggerService and ConfigResource, but LoggerService was already provided in-place using the team array.
+//ApiClient.supply() needs LoggerService and ConfigResource, but LoggerService was already provided in-place using the team array.
+const apiClient = ApiCLient.supply({
+    [ConfigResource.id]: ConfigResource.of({
+        apiUrl: "https://api.example.com",
+        timeout: 5000
+    })
+})
+
+// Use the result
+await apiClient.value.get("/users")
+```
+
+You can use index() utility as a shorthand to easily transform a ...list of resources of type {id, value} to an object supply() can easily typecheck (of type `Record<id, {id,value}>`)
+
+```typescript
 const apiClient = ApiClient.supply(
     index(
-        ConfigResource.put({
+        ConfigResource.of({
             apiUrl: "https://api.example.com",
             timeout: 5000
         })
     )
 )
+```
 
-// Use the result
-await apiClient.value.get("/users")
+#### Type narrowing
+
+`Narrow<>` type utility allows you to extend the type constraint on a depended-upon resource of a service. This is very powerful, as it allows you to remove almost all runtime type guards. No more if (!user && !user.role==="...") throw ... at the top of all your functions!
+
+```typescript
+type Session = { user: User; now: Date }
+
+// Session resource can hold any object of type Session
+const Session = register("session").asResource<Session>()
+
+// But admin dashboard requires admin session
+const AdminDashboard = register("admin-dashboard").asService({
+    // Only allow this service to be instantiated if an admin session is in the supplied context. Narrow is just a helper that basically intersects the constraint stored in the Session resource(here, type Session) with any provided 2nd generic parameter. So here, the value of the Session resource is narrowed to be Session & {user:{role:"admin"}}
+    factory: ($: $<[Narrow<typeof Session, { user: { role: "admin" } }>]>) => {
+        const session = $(Session.id)
+        // No runtime check needed - TypeScript ensures session.user.role === "admin"
+        return {
+            // Some admin only methods
+        }
+    }
+})
+
+// This will create a type error
+const adminDashboard = AdminDashboard.supply(
+    index(
+        Session.of({
+            userId: "user123",
+            token: "user-token",
+            role: "user" // TypeScript error: role "user" not assignable to role "admin"
+        })
+    )
+)
+
+//This will succeed
+const adminDashboard = AdminDashboard.supply(
+    index(
+        Session.of({
+            userId: "admin456",
+            token: "admin-token",
+            role: "admin" // ✅ Compiles successfully
+        })
+    )
+)
 ```
 
 ## Advanced Usage
 
 ### Callable Object API
 
-The `$` callable object provides access to a service's dependencies. Call `$(depId)` or access `$[depId].value` to get the dependency value. $[] syntax is needed to call resupply() (see below)
+The `$` callable object provides access to a service's dependencies. `$[depId]` accesses the resource or service, and `$(depId)` is a shorthand to access the value stored in the resource, or built by the service. To remember, I view `$[]` as accessing the "box" that contains the value ([] looks like a box). The resource `$[resourceId]` is of type {id, value, of} and the service `$[serviceId]` is of type {id, value, of, resupply} (see the use of resupply below). `$[depId].of(value)` simply creates a new resource or service with same depId, and with its value directly set to the value param, bypassing the factory in the case of services.
 
 ```typescript
 const MyService = register("my-service").asService({
@@ -124,6 +193,7 @@ const MyService = register("my-service").asService({
 ### Context switching
 
 Use `$[serviceId].resupply()` to load a service in a different context. Example use cases: Impersonate another user, or run a query in a db transaction instead of the default db session.
+The parent supplies in $ are preserved, you just need to overwrite what you want to change or add.
 
 ```typescript
 // Wallet service that depends on user session
@@ -156,77 +226,20 @@ const TransferService = register("transfer").asService({
                 deductFromSender(amount)
 
                 // Then, switch to recipient's context to accept the transfer
-                const recipientWallet = $[WalletService.id].resupply(
+                $[WalletService.id].resupply(
                     index(
-                        Session.put({
+                        Session.of({
                             user: { id: toUserId, role: "user" },
                             now: new Date()
                         })
                     )
-                ).value
-
                 // Accept the transfer in recipient's wallet
-                recipientWallet.acceptTransfer(amount)
+                ).value.acceptTransfer(amount)
 
                 return { success: true, amount, fromUserId, toUserId }
             }
     }
 }
-)
-```
-
-### Type narrowing
-
-`Narrow<>` type utility enables compile-time guarantees about your dependencies. Instead of runtime checks, you can constrain resource types to specific shapes, ensuring that services only receive dependencies that meet their exact requirements. This catches type mismatches at compile time and eliminates the need for defensive programming.
-
-```typescript
-type Session = { user: User; now: Date }
-
-// Session resource can hold any object of type Session
-const Session = register("session").asResource<Session>()
-
-// But admin dashboard requires admin session
-const AdminDashboard = register("admin-dashboard").asService({
-    team: [Session],
-    // Only allow this service to be instanciated if an admin session is in the supplied context
-    factory: (
-        $: $<
-            [
-                Narrow<
-                    typeof Session,
-                    Session & { user: User & { role: "admin" } }
-                >
-            ]
-        >
-    ) => {
-        const session = $(Session.id)
-        // No runtime check needed - TypeScript ensures session.role === "admin"
-        return {
-            // Some admin only methods
-        }
-    }
-})
-
-// This will create a type error
-const adminDashboard = AdminDashboard.supply(
-    index(
-        Session.put({
-            userId: "user123",
-            token: "user-token",
-            role: "user" // TypeScript error: role "user" not assignable to role "admin"
-        })
-    )
-)
-
-//This will succeed
-const adminDashboard = AdminDashboard.supply(
-    index(
-        Session.put({
-            userId: "admin456",
-            token: "admin-token",
-            role: "admin" // ✅ Compiles successfully
-        })
-    )
 )
 ```
 
@@ -244,7 +257,7 @@ const TestLogger = register("logger").asService({
 
 // Override the logger for testing
 const testApiClient = ApiClient.hire(TestLogger).supply(
-    index(ConfigResource.put({ apiUrl: "http://localhost", timeout: 1000 }))
+    index(ConfigResource.of({ apiUrl: "http://localhost", timeout: 1000 }))
 )
 ```
 
@@ -277,7 +290,7 @@ const ConsumerService = register("consumer").asService({
 For performance-critical scenarios, you can enable eager preloading:
 
 ```typescript
-// These services will be initialized immediately when supply() is called
+// These 2 services will be initialized immediately when supply() is called
 const DatabaseService = register("database").asService({
     factory: () => createDatabaseConnection(),
     preload: true // Eager initialization
@@ -288,16 +301,16 @@ const CacheService = register("cache").asService({
     preload: true // Eager initialization
 })
 
-const ApiService = register("api").asService({
+const SomeService = register("service").asService({
     team: [DatabaseService, CacheService],
     factory: ($) => {
         // DatabaseService and CacheService are already initialized, so the $() call is instantaneous
-        return createApiService($(DatabaseService.id), $(CacheService.id))
+        return someFn($(DatabaseService.id), $(CacheService.id))
     }
 })
 
 // Both DatabaseService and CacheService start initializing immediately
-const api = ApiService.supply()
+const service = SomeService.supply()
 ```
 
 ## API Reference
