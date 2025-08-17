@@ -63,7 +63,8 @@ const ApiClient = register("api-client").asService({
         }
     },
     // Service dependencies can be provided in place using the team array.
-    // Resource dependencies (like ConfigResource) will be passed at the entry point when calling supply().
+    // Resource dependencies (like ConfigResource) will be passed at the
+    // entry point when calling supply().
     team: [LoggerService]
 })
 ```
