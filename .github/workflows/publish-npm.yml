@@ -94,7 +94,7 @@ jobs:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               with:
                   tag_name: ${{ github.ref }}
-                  release_name: Release ${{ github.ref }}
+                  release_name: ${{ github.ref }}
                   body: |
                       ${{ steps.changelog.outputs.changelog }}
                   draft: false
@@ -107,6 +107,7 @@ jobs:
                   path: CHANGELOG.md
 
             - name: Commit version bump
+              working-directory: ./packages/supplier
               run: |
                   CURRENT_TAG=$(git describe --tags --abbrev=0)
                   VERSION=${CURRENT_TAG#v}
