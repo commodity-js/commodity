@@ -4,6 +4,8 @@ Let the supply chain deliver the resources and services you need, where you need
 
 A powerful, type-inferred, and hyper-minimalistic library for dependency injection (DI), context propagation, and waterfall management.
 
+STILL IN VERY UNSTABLE, PRE-ALPHA, PLEASE DON'T INSTALL VERSIONS v0.0.x
+
 ## Features
 
 ### 🔧 **Dependency Injection**

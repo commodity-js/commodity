@@ -167,26 +167,35 @@ export const register = <ID extends string>(id: ID) => {
                         > &
                             ToSupply<FINALTEAM>
                     ) => {
+                        /**
+                         * A type assertion that tells TypeScript to trust us that the resulting
+                         * supplies is compatible with the generic type `SUPPLIES`. This is a necessary
+                         * type hole because TypeScript's static analysis can't remember that when you Omit properties
+                         * and put them back, you end up with the original type. Here toSupply is type guarded to be SUPPLIES - Services<team>,
+                         * and hire merges toSupply and team services together, so the result must extend SUPPLIES. But TS cannot guarantee it.
+                         */
                         const value = factory(
-                            /**
-                             * A type assertion that tells TypeScript to trust us that the resulting
-                             * supplies is compatible with the generic type `SUPPLIES`. This is a necessary
-                             * type hole because TypeScript's static analysis can't remember that when you Omit properties
-                             * and put them back, you end up with the original type. Here toSupply is type guarded to be SUPPLIES - Services<team>,
-                             * and hire merges toSupply and team services together, so the result must extend SUPPLIES. But TS cannot guarantee it.
-                             */
-                            hire(team).supply(
-                                toSupply ?? {}
-                            ) as unknown as SUPPLIES
+                            hire(team).supply(toSupply) as unknown as SUPPLIES
                         )
+
                         return {
                             id,
                             value,
                             resupply: (overrides: Partial<typeof toSupply>) => {
-                                return actions.supply(team)({
-                                    ...toSupply,
-                                    ...overrides
+                                //Needed as an alternative to spread merge, because spreading directly
+                                // would trigger the getters in toSupply and lead to infinite recursion
+                                const newSupplies = {}
+                                Object.defineProperties(newSupplies, {
+                                    ...Object.getOwnPropertyDescriptors(
+                                        toSupply
+                                    ),
+                                    ...Object.getOwnPropertyDescriptors(
+                                        overrides
+                                    )
                                 })
+                                return actions.supply(team)(
+                                    newSupplies as typeof toSupply
+                                )
                             },
                             of: actions.of
                         }
