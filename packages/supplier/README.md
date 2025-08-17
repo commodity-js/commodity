@@ -62,7 +62,9 @@ const ApiClient = register("api-client").asService({
             // ... other methods
         }
     },
-    team: [LoggerService] // Service dependencies can be provided in place using the team array. Resource dependencies (like ConfigResource) will be passed at the entry point when calling supply().
+    // Service dependencies can be provided in place using the team array.
+    // Resource dependencies (like ConfigResource) will be passed at the entry point when calling supply().
+    team: [LoggerService]
 })
 ```
 
@@ -93,18 +95,15 @@ console.log(config.value.apiUrl) // "https://api.example.com"
 
 The supply method of a service (e.g. `ApiClient.supply(supplies)`) typechecks supplies to be an object with entries determined by the following formula:
 
-```
-(Recursive aggregate of all dependencies specified in $<> and all transitive dependencies
-($<> dependencies of dependencies))
--
-(Recursive aggregate of all services provided in team[] and all transitive team[] services
-(team[] of dependencies))
--
-services hired with hire() method (see below) and all their transitive team[] services
-```
+-   All dependencies specified in `$<>` (including transitive dependencies (dependencies of dependencies))
+-   Plus dependencies required by services in `team[]` (including transitive team dependencies)
+-   Plus dependencies required by services hired via `hire()` method (see below) (including transitive hired dependencies)
+-   Minus services already provided in `team[]` (including transitive team services)
+-   Minus services already provided via `hire()` method (including transitive team services of hired services)
 
 ```typescript
-//ApiClient.supply() needs LoggerService and ConfigResource, but LoggerService was already provided in-place using the team array.
+//ApiClient.supply() needs LoggerService and ConfigResource, but
+// LoggerService was already provided in-place using the team array.
 const apiClient = ApiCLient.supply({
     [ConfigResource.id]: ConfigResource.of({
         apiUrl: "https://api.example.com",
@@ -129,6 +128,84 @@ const apiClient = ApiClient.supply(
 )
 ```
 
+#### Eager Preloading
+
+For performance-critical scenarios and waterfall loading management, you can enable eager preloading:
+
+```typescript
+// These 2 services will be initialized immediately when supply() is called
+const DatabaseService = register("database").asService({
+    factory: () => createDatabaseConnection(),
+    preload: true // Eager initialization
+})
+
+const CacheService = register("cache").asService({
+    factory: () => createCacheConnection(),
+    preload: true // Eager initialization
+})
+
+const SomeService = register("service").asService({
+    team: [DatabaseService, CacheService],
+    factory: ($) => {
+        // DatabaseService and CacheService are already initialized,
+        // so the $() call is instantaneous
+        return someFn($(DatabaseService.id), $(CacheService.id))
+    }
+})
+
+// Both DatabaseService and CacheService start initializing immediately
+const service = SomeService.supply()
+```
+
+#### Hiring services (Composition Root)
+
+Dependencies can be supplied alongside the service definition using the "team" array, or supplied at the entry point of the application using the hire() method. This aligns with traditional DI systems and the composition root pattern.
+
+```typescript
+// Alternative to team[] - hire services at composition root
+const apiClient = ApiClient.hire(LoggerService, MetricsService).supply(
+    index(
+        ConfigResource.of({
+            apiUrl: "https://api.production.com",
+            timeout: 5000
+        })
+    )
+)
+```
+
+#### Testing and mocking
+
+For easy testing and mocking, you can also easily overwrite a service without creating a new registration by using Service.of(value). The service's factory will not be called, the value will be used as-is, much like Resource.of().
+
+```typescript
+// Override the logger for testing
+const testApiClient = ApiClient.hire(TestLogger).supply(
+    index(
+        // Create a test logger that doesn't actually log
+        LoggerService.of((message: string) => {
+            /* silent */
+        }),
+        ConfigResource.of({ apiUrl: "http://localhost", timeout: 1000 })
+    )
+)
+```
+
+### $ Object API
+
+The `$` callable object provides access to a service's dependencies. `$[depId]` accesses the resource or service, and `$(depId)` is a shorthand to access the value stored in the resource, or built by the service. To remember, I view `$[]` as accessing the "box" that contains the value ([] looks like a box). The resource `$[resourceId]` is of type {id, value, of} and the service `$[serviceId]` is of type {id, value, of, resupply} (see the use of resupply below).
+
+```typescript
+const MyService = register("my-service").asService({
+    team: [SomeService],
+    factory: ($: $<[typeof SomeService]>) => {
+        // Both of these work:
+        const service = $(SomeService.id) // Function call
+        const sameService = $[SomeService.id].value // Property access
+        //...
+    }
+})
+```
+
 #### Type narrowing
 
 `Narrow<>` type utility allows you to extend the type constraint on a depended-upon resource of a service. This is very powerful, as it allows you to remove almost all runtime type guards. No more if (!user && !user.role==="...") throw ... at the top of all your functions!
@@ -141,7 +218,10 @@ const Session = register("session").asResource<Session>()
 
 // But admin dashboard requires admin session
 const AdminDashboard = register("admin-dashboard").asService({
-    // Only allow this service to be instantiated if an admin session is in the supplied context. Narrow is just a helper that basically intersects the constraint stored in the Session resource(here, type Session) with any provided 2nd generic parameter. So here, the value of the Session resource is narrowed to be Session & {user:{role:"admin"}}
+    // Only allow this service to be instantiated if an admin session is in the supplied context.
+    // Narrow is just a helper that basically intersects the constraint stored in the
+    // Session resource(here, type Session) with any provided 2nd generic parameter.
+    // So here, the value of the Session resource is narrowed to be Session & {user:{role:"admin"}}
     factory: ($: $<[Narrow<typeof Session, { user: { role: "admin" } }>]>) => {
         const session = $(Session.id)
         // No runtime check needed - TypeScript ensures session.user.role === "admin"
@@ -174,25 +254,7 @@ const adminDashboard = AdminDashboard.supply(
 )
 ```
 
-## Advanced Usage
-
-### Callable Object API
-
-The `$` callable object provides access to a service's dependencies. `$[depId]` accesses the resource or service, and `$(depId)` is a shorthand to access the value stored in the resource, or built by the service. To remember, I view `$[]` as accessing the "box" that contains the value ([] looks like a box). The resource `$[resourceId]` is of type {id, value, of} and the service `$[serviceId]` is of type {id, value, of, resupply} (see the use of resupply below). `$[depId].of(value)` simply creates a new resource or service with same depId, and with its value directly set to the value param, bypassing the factory in the case of services.
-
-```typescript
-const MyService = register("my-service").asService({
-    team: [SomeService],
-    factory: ($: $<[typeof SomeService]>) => {
-        // Both of these work:
-        const service = $(SomeService.id) // Function call
-        const sameService = $[SomeService.id].value // Property access
-        //...
-    }
-})
-```
-
-### Context switching
+#### Context switching
 
 Use `$[serviceId].resupply()` to load a service in a different context. Example use cases: Impersonate another user, or run a query in a db transaction instead of the default db session.
 The parent supplies in $ are preserved, you just need to overwrite what you want to change or add.
@@ -245,25 +307,7 @@ const TransferService = register("transfer").asService({
 )
 ```
 
-### Hiring Services (Composition Root)
-
-Dependencies can be supplied alongside the service definition using the "team" array, or supplied at the entry point of the application using the hire() method. This aligns with traditional DI systems and the composition root pattern, and allows you to override dependencies easily for mocking and testing.
-
-```typescript
-// Create a test logger that doesn't actually log
-const TestLogger = register("logger").asService({
-    factory: () => (message: string) => {
-        /* silent */
-    }
-})
-
-// Override the logger for testing
-const testApiClient = ApiClient.hire(TestLogger).supply(
-    index(ConfigResource.of({ apiUrl: "http://localhost", timeout: 1000 }))
-)
-```
-
-### Memoization and Performance
+#### Memoization and Performance
 
 Service factories are automatically memoized within the same supply context, but get reinjected when resupply() is called.
 
@@ -285,78 +329,6 @@ const ConsumerService = register("consumer").asService({
         return { result1, result2, result3 } // All identical
     }
 })
-```
-
-### Eager Preloading
-
-For performance-critical scenarios, you can enable eager preloading:
-
-```typescript
-// These 2 services will be initialized immediately when supply() is called
-const DatabaseService = register("database").asService({
-    factory: () => createDatabaseConnection(),
-    preload: true // Eager initialization
-})
-
-const CacheService = register("cache").asService({
-    factory: () => createCacheConnection(),
-    preload: true // Eager initialization
-})
-
-const SomeService = register("service").asService({
-    team: [DatabaseService, CacheService],
-    factory: ($) => {
-        // DatabaseService and CacheService are already initialized, so the $() call is instantaneous
-        return someFn($(DatabaseService.id), $(CacheService.id))
-    }
-})
-
-// Both DatabaseService and CacheService start initializing immediately
-const service = SomeService.supply()
-```
-
-## API Reference
-
-### `register(id: string)`
-
-Creates a registration that can be turned into either a resource or service.
-
-### `.asResource<T>()`
-
-Creates a resource registration that can supply git tagvalues of type `T`.
-
-### `.asService({ factory, team? })`
-
-Creates a service registration with:
-
--   `factory`: Function that creates the service's value
--   `team`: Optional array of dependencies
-
-### `.supply(supplies?)`
-
-Executes the supply chain and returns a resource with the computed value.
-
-### `.hire(...services)`
-
-Creates a new service with additional or overridden dependencies.
-
-### `index(...resources)`
-
-Helper function to bundle multiple resources for supply, index by their id.
-
-## TypeScript Support
-
-Supplier is built with TypeScript-first design:
-
--   Full type inference for dependencies
--   Compile-time dependency validation and circular dependency detection
--   Zero runtime type checking overhead
--   IntelliSense support for all APIs
-
-## Testing
-
-```bash
-npm test
 ```
 
 ## 🌐 Website & Examples
