@@ -174,16 +174,15 @@ export const register = <ID extends string>(id: ID) => {
                          * and put them back, you end up with the original type. Here toSupply is type guarded to be SUPPLIES - Services<team>,
                          * and hire merges toSupply and team services together, so the result must extend SUPPLIES. But TS cannot guarantee it.
                          */
-                        const value = factory(
-                            hire(team).supply(toSupply) as unknown as SUPPLIES
-                        )
+                        const fullSupplies = hire(team).supply(
+                            toSupply
+                        ) as unknown as SUPPLIES
 
-                        return {
+                        const service = {
                             id,
-                            value,
                             resupply: (overrides: Partial<typeof toSupply>) => {
                                 //Needed as an alternative to spread merge, because spreading directly
-                                // would trigger the getters in toSupply and lead to infinite recursion
+                                // would trigger the getters in toSupply
                                 const newSupplies = {}
                                 Object.defineProperties(newSupplies, {
                                     ...Object.getOwnPropertyDescriptors(
@@ -198,6 +197,14 @@ export const register = <ID extends string>(id: ID) => {
                                 )
                             },
                             of: actions.of
+                        }
+
+                        Object.defineProperty(service, "value", {
+                            get: memo(() => factory(fullSupplies))
+                        })
+
+                        return service as typeof service & {
+                            value: ReturnType<typeof factory>
                         }
                     }
             }
@@ -272,7 +279,7 @@ function hire(services: ServiceRegistration<string, any, any>[]) {
                 .map((service) => {
                     // Access the getter to trigger memoization
                     try {
-                        return Promise.resolve(supplies[service.id])
+                        return Promise.resolve(supplies[service.id].value)
                     } catch (error) {
                         // If preloading fails, we don't want to break the entire supply chain
                         // The error will be thrown again when the dependency is actually needed

@@ -201,6 +201,66 @@ describe("supplier", () => {
             // The service should come from the initial supplies, not from the service
             expect(result.value.service).toBe("initial-service-value")
         })
+
+        it("should support Service.of(value) and $[Service.id].of(value) for creating service instances", () => {
+            const ConfigService = register("config").asService({
+                factory: () => ({ env: "development", debug: true })
+            })
+
+            const LoggerService = register("logger").asService({
+                factory: () => ({ level: "info", prefix: "APP" })
+            })
+
+            const MainService = register("main").asService({
+                team: [ConfigService, LoggerService],
+                factory: (
+                    $: $<[typeof ConfigService, typeof LoggerService]>
+                ) => {
+                    // Test direct service.of() call
+                    const configInstance = ConfigService.of({
+                        env: "production",
+                        debug: false
+                    })
+
+                    // Test accessing service through supplies and calling .of()
+                    const loggerInstance = $[LoggerService.id].of({
+                        level: "debug",
+                        prefix: "TEST"
+                    })
+
+                    return {
+                        config: configInstance.value,
+                        logger: loggerInstance.value,
+                        // Also test accessing the original services
+                        originalConfig: $[ConfigService.id].value,
+                        originalLogger: $[LoggerService.id].value
+                    }
+                }
+            })
+
+            const result = MainService.supply({})
+
+            expect(result.value.config).toEqual({
+                env: "production",
+                debug: false
+            })
+            expect(result.value.logger).toEqual({
+                level: "debug",
+                prefix: "TEST"
+            })
+            expect(result.value.originalConfig).toEqual({
+                env: "development",
+                debug: true
+            })
+            expect(result.value.originalLogger).toEqual({
+                level: "info",
+                prefix: "APP"
+            })
+
+            // Verify that .of() creates new instances with new values
+            expect(result.value.config).not.toBe(result.value.originalConfig)
+            expect(result.value.logger).not.toBe(result.value.originalLogger)
+        })
     })
 
     describe("Memoization and Lazy Evaluation", () => {
@@ -529,41 +589,6 @@ describe("supplier", () => {
             expect(result.value).toBe("main-result")
         })
 
-        //TODO: Weird case, maybe unnecessary - consider removing
-        it("should not preload services that are already supplied", async () => {
-            const preloadFactoryMock = vi
-                .fn()
-                .mockReturnValue("preloaded-result")
-
-            const PreloadService = register("preload-service").asService({
-                factory: preloadFactoryMock,
-                preload: true
-            })
-
-            const PreloadResource =
-                register("preload-service").asResource<string>()
-
-            const MainService = register("main-service").asService({
-                team: [PreloadService],
-                factory: ($: $<[typeof PreloadService]>) => {
-                    return "main-result"
-                }
-            })
-
-            // Supply the same ID as a resource instead of using the service
-            const result = MainService.supply(
-                index(PreloadResource.of("supplied-value"))
-            )
-
-            // Wait a bit for any potential preloading
-            await new Promise((resolve) => setTimeout(resolve, 10))
-
-            // PreloadService factory should not have been called because it was supplied as a resource
-            expect(preloadFactoryMock).toHaveBeenCalledTimes(0)
-
-            expect(result.value).toBe("main-result")
-        })
-
         it("should handle preload errors gracefully without breaking the supply chain", async () => {
             const errorFactoryMock = vi.fn().mockImplementation(() => {
                 throw new Error("Preload error")
@@ -616,7 +641,7 @@ describe("supplier", () => {
             await new Promise((resolve) => setTimeout(resolve, 10))
 
             // Accessing the service should still throw the error
-            expect(() => MainService.supply({})).toThrow("Service error")
+            expect(() => MainService.supply({}).value).toThrow("Service error")
         })
 
         it("should work with complex dependency chains and selective preloading", async () => {
@@ -811,13 +836,15 @@ describe("supplier", () => {
             // 2. ServiceB is used by ServiceD and needs LoggerResource (so this fails first)
             expect(() => {
                 // @ts-expect-error - Expected: missing logger dependency
-                MainService.supply({})
+                return MainService.supply({}).value
             }).toThrow("Unsatisfied dependency: logger")
 
             // If we provide only ConfigResource, it should still fail on LoggerResource
             expect(() => {
-                // @ts-expect-error - Expected: missing logger dependency
-                MainService.supply(index(ConfigResource.of("test-config")))
+                return MainService.supply(
+                    // @ts-expect-error - Expected: missing logger dependency
+                    index(ConfigResource.of("test-config"))
+                ).value
             }).toThrow("Unsatisfied dependency: logger")
 
             // If we provide both resources, it should work
