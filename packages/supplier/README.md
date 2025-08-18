@@ -49,9 +49,14 @@ const LoggerService = register("logger").asService({
 })
 
 const ApiClient = register("api-client").asService({
+    // Simply inject dependencies in-place! Simple, but this pattern unlocks a lot of unforeseen power!
+    //
+    // All service dependencies get automatically injected, but Resource dependencies
+    //  will need to be supplied using supply() at the entrypoint of your app
+    deps: [LoggerService, ConfigResource]
     // You can view $ as a shorthand for supplies.
     // Use $<> type utility to define the shape of the required supplies.
-    factory: ($: $<[typeof ConfigResource, typeof LoggerService]>) => {
+    factory: ($) => {
         return {
             async get(path: string) {
                 const config = $(ConfigResource.id)
@@ -61,11 +66,7 @@ const ApiClient = register("api-client").asService({
             }
             // ... other methods
         }
-    },
-    // Service dependencies can be provided in place using the team array.
-    // Resource dependencies (like ConfigResource) will be passed at the
-    // entry point when calling supply().
-    team: [LoggerService]
+    }
 })
 ```
 
@@ -94,18 +95,11 @@ console.log(config.value.apiUrl) // "https://api.example.com"
 
 ### Supplying at the entry point
 
-The supply method of a service (e.g. `ApiClient.supply(supplies)`) typechecks supplies to be an object with entries determined by the following formula:
-
--   All dependencies specified in `$<>` (including transitive dependencies (dependencies of dependencies))
--   Plus dependencies required by services in `team[]` (including transitive team dependencies)
--   Plus dependencies required by services hired via `hire()` method (see below) (including transitive hired dependencies)
--   Minus services already provided in `team[]` (including transitive team services)
--   Minus services already provided via `hire()` method (including transitive team services of hired services)
+You pass to the supply method of a service (e.g. `ApiClient.supply(supplies)`) all resources it and its dependencies need (recursively). Typescript helps you if you miss any.
 
 ```typescript
-//ApiClient.supply() needs LoggerService and ConfigResource, but
-// LoggerService was already provided in-place using the team array.
-const apiClient = ApiCLient.supply({
+//LoggerService is injected automatically, but ConfigResource needs to be supplied
+const apiClient = ApiClient.supply({
     [ConfigResource.id]: ConfigResource.of({
         apiUrl: "https://api.example.com",
         timeout: 5000
@@ -146,7 +140,7 @@ const CacheService = register("cache").asService({
 })
 
 const SomeService = register("service").asService({
-    team: [DatabaseService, CacheService],
+    deps: [DatabaseService, CacheService],
     factory: ($) => {
         // DatabaseService and CacheService are already initialized,
         // so the $() call is instantaneous
@@ -158,25 +152,9 @@ const SomeService = register("service").asService({
 const service = SomeService.supply()
 ```
 
-#### Hiring services (Composition Root)
-
-Dependencies can be supplied alongside the service definition using the "team" array, or supplied at the entry point of the application using the hire() method. This aligns with traditional DI systems and the composition root pattern.
-
-```typescript
-// Alternative to team[] - hire services at composition root
-const apiClient = ApiClient.hire(LoggerService, MetricsService).supply(
-    index(
-        ConfigResource.of({
-            apiUrl: "https://api.production.com",
-            timeout: 5000
-        })
-    )
-)
-```
-
 #### Testing and mocking
 
-For easy testing and mocking, you can also easily overwrite a service without creating a new registration by using Service.of(value). The service's factory will not be called, the value will be used as-is, much like Resource.of().
+For easy testing and mocking, you can also easily overwrite a service by using Service.of(value). The service's factory will not be called, the value will be used as-is, much like Resource.of().
 
 ```typescript
 // Override the logger for testing
@@ -197,7 +175,7 @@ The `$` callable object provides access to a service's dependencies. `$[depId]` 
 
 ```typescript
 const MyService = register("my-service").asService({
-    team: [SomeService],
+    deps: [SomeService],
     factory: ($: $<[typeof SomeService]>) => {
         // Both of these work:
         const service = $(SomeService.id) // Function call
@@ -209,7 +187,13 @@ const MyService = register("my-service").asService({
 
 #### Type narrowing
 
-`Narrow<>` type utility allows you to extend the type constraint on a depended-upon resource of a service. This is very powerful, as it allows you to remove almost all runtime type guards. No more if (!user && !user.role==="...") throw ... at the top of all your functions!
+The `narrow()` function allows you to specify additional type constraints on resources at runtime. This is very powerful, as it allows you to remove almost all runtime type guards. No more if (!user && !user.role==="...") throw ... at the top of all your functions!
+
+The `narrow()` function:
+
+-   **Does nothing at runtime** - It's just a pass-through function
+-   **Applies type constraints** - When used in `deps`, it narrows the resource type
+-   **Enables compile-time safety** - TypeScript ensures the resource satisfies the constraint
 
 ```typescript
 type Session = { user: User; now: Date }
@@ -219,11 +203,10 @@ const Session = register("session").asResource<Session>()
 
 // But admin dashboard requires admin session
 const AdminDashboard = register("admin-dashboard").asService({
-    // Only allow this service to be instantiated if an admin session is in the supplied context.
-    // Narrow is just a helper that basically intersects the constraint stored in the
-    // Session resource(here, type Session) with any provided 2nd generic parameter.
-    // So here, the value of the Session resource is narrowed to be Session & {user:{role:"admin"}}
-    factory: ($: $<[Narrow<typeof Session, { user: { role: "admin" } }>]>) => {
+    // Use the narrow() function to specify that this service requires an admin session
+    deps: [narrow(Session)<{ user: { role: "admin" } }>()],
+    // The factory automatically gets the narrowed type
+    factory: ($: $<[typeof narrow<{ user: { role: "admin" } }>(Session)]>) => {
         const session = $(Session.id)
         // No runtime check needed - TypeScript ensures session.user.role === "admin"
         return {
@@ -263,7 +246,7 @@ The parent supplies in $ are preserved, you just need to overwrite what you want
 ```typescript
 // Wallet service that depends on user session
 const AcceptTransferService = register("transfer-service").asService({
-    team: [Session],
+    deps: [Session],
     factory: ($: $<[typeof Session]>) => {
         const session = $(Session.id)
 
@@ -276,7 +259,7 @@ const AcceptTransferService = register("transfer-service").asService({
 
 // Money transfer service that switches contexts
 const TransferService = register("transfer").asService({
-    team: [WalletService, Session],
+    deps: [WalletService, Session],
     factory: ($: $<[typeof WalletService, typeof Session]>) => {
         function deductFromSender(amount: number) {
             const session = $(Session.id)
@@ -321,7 +304,7 @@ const ExpensiveService = register("expensive").asService({
 })
 
 const ConsumerService = register("consumer").asService({
-    team: [ExpensiveService],
+    deps: [ExpensiveService],
     factory: ($: $<[typeof ExpensiveService]>) => {
         const result1 = $(ExpensiveService.id) // Computed
         const result2 = $(ExpensiveService.id) // Memoized

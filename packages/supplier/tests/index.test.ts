@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { register, type $, index, type Narrow } from "#index"
+import { index, narrow, register } from "#index"
 
 describe("supplier", () => {
     beforeEach(() => {
@@ -61,8 +61,8 @@ describe("supplier", () => {
             })
 
             const TestService = register("test-service").asService({
-                team: [Dependency1, Dependency2],
-                factory: ($: $<[typeof Dependency1, typeof Dependency2]>) => {
+                deps: [Dependency1, Dependency2],
+                factory: ($) => {
                     const dep1 = $(Dependency1.id)
                     const dep2 = $(Dependency2.id)
                     return {
@@ -81,63 +81,6 @@ describe("supplier", () => {
                 computed: "dep1-result + dep2-result"
             })
         })
-
-        it("should allow supply() to be called without arguments if no supplies are needed", () => {
-            const NoSupplyService = register("no-supply").asService({
-                factory: () => "ok"
-            })
-            const result = NoSupplyService.supply({})
-            expect(result.value).toBe("ok")
-        })
-    })
-
-    describe("Composition Root via .hire()", () => {
-        it("should merge hired team with default team, giving precedence to the hired team", () => {
-            const DefaultDep = register("dep").asService({
-                factory: () => "default-result"
-            })
-            const HiredDep = register("dep").asService({
-                factory: () => "hired-result"
-            })
-            const AnotherDep = register("another").asService({
-                factory: () => "another-result"
-            })
-
-            const TestService = register("test-service").asService({
-                team: [DefaultDep, AnotherDep],
-                factory: ($: $<[typeof DefaultDep, typeof AnotherDep]>) => ({
-                    dep: $(DefaultDep.id),
-                    another: $(AnotherDep.id)
-                })
-            })
-
-            // Hire HiredDep, which should override DefaultDep
-            const result = TestService.hire(HiredDep).supply({})
-
-            expect(result.value).toEqual({
-                dep: "hired-result", // The hired dependency should win
-                another: "another-result" // The default dependency should be preserved
-            })
-        })
-
-        it("should not modify the original service when hire is called", () => {
-            const DefaultDep = register("dep").asService({
-                factory: () => "default"
-            })
-            const HiredDep = register("dep").asService({
-                factory: () => "hired"
-            })
-            const TestService = register("test-service").asService({
-                team: [DefaultDep],
-                factory: ($: $<[typeof DefaultDep]>) => $(DefaultDep.id)
-            })
-
-            // Calling hire should be non-mutating
-            TestService.hire(HiredDep).supply({})
-
-            const originalResult = TestService.supply({})
-            expect(originalResult.value).toBe("default")
-        })
     })
 
     describe("Team Hiring and Supply Chain", () => {
@@ -151,8 +94,8 @@ describe("supplier", () => {
             })
 
             const MainService = register("main-service").asService({
-                team: [Service1, Service2],
-                factory: ($: $<[typeof Service1, typeof Service2]>) => {
+                deps: [Service1, Service2],
+                factory: ($) => {
                     const service1 = $(Service1.id)
                     const service2 = $(Service2.id)
                     return {
@@ -178,8 +121,8 @@ describe("supplier", () => {
             })
 
             const MainService = register("main").asService({
-                team: [Service],
-                factory: ($: $<[typeof Service]>) => {
+                deps: [Service],
+                factory: ($) => {
                     // When the service is not in supplies (due to hasOwnProperty check),
                     // we should use the initial supply directly
                     const service = $(Service.id)
@@ -212,10 +155,8 @@ describe("supplier", () => {
             })
 
             const MainService = register("main").asService({
-                team: [ConfigService, LoggerService],
-                factory: (
-                    $: $<[typeof ConfigService, typeof LoggerService]>
-                ) => {
+                deps: [ConfigService, LoggerService],
+                factory: ($) => {
                     // Test direct service.of() call
                     const configInstance = ConfigService.of({
                         env: "production",
@@ -294,8 +235,8 @@ describe("supplier", () => {
 
             // Create a team that uses the TestService
             const TeamService = register("team-service").asService({
-                team: [TestService],
-                factory: ($: $<[typeof TestService]>) => {
+                deps: [TestService],
+                factory: ($) => {
                     // Access the TestService multiple times within the same supply context
                     const firstAccess = $(TestService.id)
                     const secondAccess = $(TestService.id)
@@ -333,18 +274,16 @@ describe("supplier", () => {
             })
 
             const Level2Service = register("level2").asService({
-                team: [Level1Service],
-                factory: ($: $<[typeof Level1Service]>) => {
+                deps: [Level1Service],
+                factory: ($) => {
                     const level1 = $(Level1Service.id)
                     return level1 + "-processed"
                 }
             })
 
             const Level3Service = register("level3").asService({
-                team: [Level1Service, Level2Service],
-                factory: (
-                    $: $<[typeof Level1Service, typeof Level2Service]>
-                ) => {
+                deps: [Level1Service, Level2Service],
+                factory: ($) => {
                     const level1 = $(Level1Service.id)
                     const level2 = $(Level2Service.id)
                     return {
@@ -374,15 +313,8 @@ describe("supplier", () => {
 
             // Create a configurable service that uses multiple supplies from its context
             const ConfigurableService = register("configurable").asService({
-                factory: (
-                    $: $<
-                        [
-                            typeof ConfigResource,
-                            typeof NameResource,
-                            typeof CountResource
-                        ]
-                    >
-                ) => {
+                deps: [ConfigResource, NameResource, CountResource],
+                factory: ($) => {
                     // This service uses multiple values from its supplies
                     return {
                         config: $(ConfigResource.id) || "default-config",
@@ -396,8 +328,8 @@ describe("supplier", () => {
             const ContextSwitchingService = register(
                 "context-switcher"
             ).asService({
-                team: [ConfigurableService],
-                factory: ($: $<[typeof ConfigurableService]>) => {
+                deps: [ConfigurableService],
+                factory: ($) => {
                     const configurableService = $[ConfigurableService.id]
 
                     // Initial context with all supplies
@@ -499,8 +431,8 @@ describe("supplier", () => {
             })
 
             const TestService = register("test-service").asService({
-                team: [Service1, Service2],
-                factory: ($: $<[typeof Service1, typeof Service2]>) => {
+                deps: [Service1, Service2],
+                factory: ($) => {
                     const service1Prop = $[Service1.id]
                     const service2Prop = $[Service2.id]
 
@@ -560,16 +492,8 @@ describe("supplier", () => {
             })
 
             const MainService = register("main-service").asService({
-                team: [PreloadService, NormalService, NoPreloadService],
-                factory: (
-                    $: $<
-                        [
-                            typeof PreloadService,
-                            typeof NormalService,
-                            typeof NoPreloadService
-                        ]
-                    >
-                ) => {
+                deps: [PreloadService, NormalService, NoPreloadService],
+                factory: ($) => {
                     // Don't access any dependencies yet
                     return "main-result"
                 }
@@ -600,8 +524,8 @@ describe("supplier", () => {
             })
 
             const MainService = register("main-service").asService({
-                team: [ErrorService],
-                factory: ($: $<[typeof ErrorService]>) => {
+                deps: [ErrorService],
+                factory: ($) => {
                     // Don't access ErrorService yet
                     return "main-result"
                 }
@@ -630,8 +554,8 @@ describe("supplier", () => {
             })
 
             const MainService = register("main-service").asService({
-                team: [ErrorService],
-                factory: ($: $<[typeof ErrorService]>) => {
+                deps: [ErrorService],
+                factory: ($) => {
                     // Try to access the failed service
                     return $(ErrorService.id)
                 }
@@ -655,8 +579,8 @@ describe("supplier", () => {
             })
 
             const Level2Service = register("level2").asService({
-                team: [Level1Service],
-                factory: ($: $<[typeof Level1Service]>) => {
+                deps: [Level1Service],
+                factory: ($) => {
                     level2Mock()
                     return $(Level1Service.id) + "-processed"
                 },
@@ -664,10 +588,8 @@ describe("supplier", () => {
             })
 
             const Level3Service = register("level3").asService({
-                team: [Level1Service, Level2Service],
-                factory: (
-                    $: $<[typeof Level1Service, typeof Level2Service]>
-                ) => {
+                deps: [Level1Service, Level2Service],
+                factory: ($) => {
                     level3Mock()
                     return {
                         level1: $(Level1Service.id),
@@ -678,7 +600,7 @@ describe("supplier", () => {
             })
 
             const MainService = register("main").asService({
-                team: [Level1Service, Level2Service, Level3Service],
+                deps: [Level1Service, Level2Service, Level3Service],
                 factory: () => {
                     // Don't access any dependencies yet
                     return "main-result"
@@ -694,38 +616,6 @@ describe("supplier", () => {
             expect(level1Mock).toHaveBeenCalledTimes(1)
             expect(level2Mock).toHaveBeenCalledTimes(0)
             expect(level3Mock).toHaveBeenCalledTimes(0)
-
-            expect(result.value).toBe("main-result")
-        })
-
-        it("should respect preload flag in hired services", async () => {
-            const originalMock = vi.fn().mockReturnValue("original-result")
-            const hiredMock = vi.fn().mockReturnValue("hired-result")
-
-            const OriginalService = register("service").asService({
-                factory: originalMock,
-                preload: false
-            })
-
-            const HiredService = register("service").asService({
-                factory: hiredMock,
-                preload: true // This hired service should be preloaded
-            })
-
-            const MainService = register("main").asService({
-                team: [OriginalService],
-                factory: () => "main-result"
-            })
-
-            // Hire the preloaded service
-            const result = MainService.hire(HiredService).supply({})
-
-            // Wait a bit for preloading to complete
-            await new Promise((resolve) => setTimeout(resolve, 10))
-
-            // HiredService should have been preloaded, OriginalService should not
-            expect(hiredMock).toHaveBeenCalledTimes(1)
-            expect(originalMock).toHaveBeenCalledTimes(0)
 
             expect(result.value).toBe("main-result")
         })
@@ -779,86 +669,6 @@ describe("supplier", () => {
             expect(result.value).toEqual(complexValue)
         })
 
-        it("should handle services added to team at wrong level in dependency chain", () => {
-            // This test explores what happens when a service is added to a team
-            // at one level but not at the level where it's actually needed
-
-            const ConfigResource = register("config").asResource<string>()
-            const LoggerResource = register("logger").asResource<string>()
-
-            // ServiceA needs ConfigResource
-            const ServiceA = register("service-a").asService({
-                factory: ($: $<[typeof ConfigResource]>) => {
-                    const config = $(ConfigResource.id)
-                    return `service-a-${config}`
-                }
-            })
-
-            // ServiceB needs LoggerResource (but ServiceA is NOT in its team)
-            const ServiceB = register("service-b").asService({
-                factory: ($: $<[typeof LoggerResource]>) => {
-                    const logger = $(LoggerResource.id)
-                    return `service-b-${logger}`
-                }
-            })
-
-            // ServiceC provides ServiceA in its team (but ServiceA needs ConfigResource)
-            // ServiceC itself doesn't need ServiceA directly
-            const ServiceC = register("service-c").asService({
-                team: [ServiceA], // ServiceA is here but ServiceC doesn't use it
-                factory: () => {
-                    return "service-c-result"
-                }
-            })
-
-            // ServiceD provides ServiceB in its team (ServiceB needs LoggerResource)
-            // ServiceD also provides ServiceC in its team
-            const ServiceD = register("service-d").asService({
-                team: [ServiceB, ServiceC], // ServiceB needs LoggerResource, ServiceC provides ServiceA
-                factory: ($: $<[typeof ServiceB, typeof ServiceC]>) => {
-                    const serviceB = $(ServiceB.id)
-                    const serviceC = $(ServiceC.id)
-                    return `service-d-${serviceB}-${serviceC}`
-                }
-            })
-
-            // MainService provides ServiceD in its team
-            const MainService = register("main").asService({
-                team: [ServiceD],
-                factory: ($: $<[typeof ServiceD]>) => {
-                    const serviceD = $(ServiceD.id)
-                    return `main-${serviceD}`
-                }
-            })
-
-            // This should fail on LoggerResource first, not ConfigResource, because:
-            // 1. ServiceA is in ServiceC's team but ServiceC doesn't use it (so ConfigResource is never checked)
-            // 2. ServiceB is used by ServiceD and needs LoggerResource (so this fails first)
-            expect(() => {
-                // @ts-expect-error - Expected: missing logger dependency
-                return MainService.supply({}).value
-            }).toThrow("Unsatisfied dependency: logger")
-
-            // If we provide only ConfigResource, it should still fail on LoggerResource
-            expect(() => {
-                return MainService.supply(
-                    // @ts-expect-error - Expected: missing logger dependency
-                    index(ConfigResource.of("test-config"))
-                ).value
-            }).toThrow("Unsatisfied dependency: logger")
-
-            // If we provide both resources, it should work
-            const result = MainService.supply(
-                index(
-                    ConfigResource.of("test-config"),
-                    LoggerResource.of("test-logger")
-                )
-            )
-            expect(result.value).toBe(
-                "main-service-d-service-b-test-logger-service-c-result"
-            )
-        })
-
         it("should demonstrate that preload: true silently ignores errors until service access", () => {
             // This test shows that preload: true doesn't change the fundamental behavior
             // - it just tries to warm up services in the background
@@ -868,7 +678,8 @@ describe("supplier", () => {
 
             // ServiceA needs ConfigResource
             const ServiceA = register("service-a").asService({
-                factory: ($: $<[typeof ConfigResource]>) => {
+                deps: [ConfigResource],
+                factory: ($) => {
                     const config = $(ConfigResource.id)
                     return `service-a-${config}`
                 }
@@ -877,7 +688,7 @@ describe("supplier", () => {
             // ServiceB provides ServiceA in its team with preload: true
             // Even though ServiceA needs ConfigResource, the preloading won't fail immediately
             const ServiceB = register("service-b").asService({
-                team: [ServiceA],
+                deps: [ServiceA],
                 factory: () => {
                     return "service-b-result"
                 },
@@ -886,8 +697,8 @@ describe("supplier", () => {
 
             // MainService provides ServiceB in its team
             const MainService = register("main").asService({
-                team: [ServiceB],
-                factory: ($: $<[typeof ServiceB]>) => {
+                deps: [ServiceB],
+                factory: ($) => {
                     const serviceB = $(ServiceB.id)
                     return `main-${serviceB}`
                 }
@@ -913,9 +724,8 @@ describe("supplier", () => {
 
             // Admin dashboard requires admin session using the Narrow API
             const AdminDashboard = register("admin-dashboard").asService({
-                factory: (
-                    $: $<[Narrow<typeof Session, { user: { role: "admin" } }>]>
-                ) => {
+                deps: [narrow(Session)<{ user: { role: "admin" } }>()],
+                factory: ($) => {
                     const session = $(Session.id)
                     // No runtime check needed - TypeScript ensures session.user.role === "admin"
                     return {

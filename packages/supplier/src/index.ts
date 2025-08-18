@@ -58,7 +58,7 @@ type ServiceRegistration<
     id: ID
     isService: true
     preload: boolean
-    hire: (...team: any[]) => ServiceActions<ID, any, VALUE>
+    deps?: Registration<string, any, any>[]
 } & ServiceActions<ID, TOSUPPLY, VALUE>
 
 type Registration<
@@ -92,7 +92,7 @@ type SupplyMapFromRegistrations<
         : never
 }
 
-type Supplies<REGISTRY extends Registration<string, any, any>[]> = (<
+type $<REGISTRY extends Registration<string, any, any>[]> = (<
     ID extends keyof SupplyMapFromRegistrations<REGISTRY>
 >(
     id: ID
@@ -100,10 +100,6 @@ type Supplies<REGISTRY extends Registration<string, any, any>[]> = (<
     ? VALUE
     : never) &
     SupplyMapFromRegistrations<REGISTRY>
-
-// Alias for Supplies
-export type $<REGISTRY extends Registration<string, any, any>[]> =
-    Supplies<REGISTRY>
 
 type ToSupply<TEAM extends ServiceRegistration<string, any, any>[]> = Merge<
     {
@@ -135,100 +131,83 @@ export const register = <ID extends string>(id: ID) => {
             return resource
         },
         asService: <
-            SUPPLIES extends Record<never, never>,
             VALUE,
-            TEAM extends ServiceRegistration<string, any, any>[] = []
+            DEPS extends Registration<string, any, any>[] = [],
+            SUPPLIES extends $<DEPS> = $<DEPS>
         >({
             factory,
-            team = [] as unknown as TEAM,
+            deps = [] as unknown as DEPS,
             preload = false
         }: {
             factory: (supplies: SUPPLIES) => VALUE
-            team?: TEAM
+            deps?: DEPS
             preload?: boolean
         }) => {
+            const team = deps.filter(
+                (dep) => "isService" in dep && dep.isService
+            ) as Extract<DEPS[number], ServiceRegistration<string, any, any>>[]
+
             const actions = {
                 of: (value: VALUE) => {
                     return {
                         id,
                         value,
-                        resupply: actions.supply(team),
+                        resupply: actions.supply,
                         of: actions.of
                     }
                 },
-                supply:
-                    <FINALTEAM extends ServiceRegistration<string, any, any>[]>(
-                        team: FINALTEAM
-                    ) =>
-                    (
-                        toSupply: Omit<
-                            SUPPLIES,
-                            keyof SupplyMapFromRegistrations<FINALTEAM>
-                        > &
-                            ToSupply<FINALTEAM>
-                    ) => {
-                        /**
-                         * A type assertion that tells TypeScript to trust us that the resulting
-                         * supplies is compatible with the generic type `SUPPLIES`. This is a necessary
-                         * type hole because TypeScript's static analysis can't remember that when you Omit properties
-                         * and put them back, you end up with the original type. Here toSupply is type guarded to be SUPPLIES - Services<team>,
-                         * and hire merges toSupply and team services together, so the result must extend SUPPLIES. But TS cannot guarantee it.
-                         */
-                        const fullSupplies = hire(team).supply(
-                            toSupply
-                        ) as unknown as SUPPLIES
+                supply: (
+                    toSupply: Omit<
+                        SUPPLIES,
+                        keyof SupplyMapFromRegistrations<typeof team>
+                    > &
+                        ToSupply<typeof team>
+                ) => {
+                    /**
+                     * A type assertion that tells TypeScript to trust us that the resulting
+                     * supplies is compatible with the generic type `$<DEPS>`. This is a necessary
+                     * type hole because TypeScript's static analysis can't remember that when you Omit properties
+                     * and put them back, you end up with the original type. Here toSupply is type guarded to be $<DEPS> - Services<team>,
+                     * and hire merges toSupply and team services together, so the result must extend $<DEPS>. But TS cannot guarantee it.
+                     */
+                    const fullSupplies = hire(team).supply(
+                        toSupply
+                    ) as unknown as SUPPLIES
 
-                        const service = {
-                            id,
-                            resupply: (overrides: Partial<typeof toSupply>) => {
-                                //Needed as an alternative to spread merge, because spreading directly
-                                // would trigger the getters in toSupply
-                                const newSupplies = {}
-                                Object.defineProperties(newSupplies, {
-                                    ...Object.getOwnPropertyDescriptors(
-                                        toSupply
-                                    ),
-                                    ...Object.getOwnPropertyDescriptors(
-                                        overrides
-                                    )
-                                })
-                                return actions.supply(team)(
-                                    newSupplies as typeof toSupply
-                                )
-                            },
-                            of: actions.of
-                        }
-
-                        Object.defineProperty(service, "value", {
-                            get: memo(() => factory(fullSupplies))
-                        })
-
-                        return service as typeof service & {
-                            value: ReturnType<typeof factory>
-                        }
+                    const service = {
+                        id,
+                        resupply: (overrides: Partial<typeof toSupply>) => {
+                            //Needed as an alternative to spread merge, because spreading directly
+                            // would trigger the getters in toSupply
+                            const newSupplies = {}
+                            Object.defineProperties(newSupplies, {
+                                ...Object.getOwnPropertyDescriptors(toSupply),
+                                ...Object.getOwnPropertyDescriptors(overrides)
+                            })
+                            return actions.supply(
+                                newSupplies as typeof toSupply
+                            )
+                        },
+                        of: actions.of
                     }
+
+                    Object.defineProperty(service, "value", {
+                        get: memo(() => factory(fullSupplies))
+                    })
+
+                    return service as typeof service & {
+                        value: ReturnType<typeof factory>
+                    }
+                }
             }
 
             const service = {
                 id,
                 isService: true as const,
                 preload,
+                deps,
                 of: actions.of,
-                supply: actions.supply(team),
-                hire: <
-                    const HIRED_TEAM extends readonly ServiceRegistration<
-                        string,
-                        any,
-                        any
-                    >[]
-                >(
-                    ...hiredTeam: HIRED_TEAM
-                ) => {
-                    return {
-                        supply: actions.supply([...team, ...hiredTeam]),
-                        of: actions.of
-                    }
-                }
+                supply: actions.supply
             }
 
             return service
@@ -308,13 +287,15 @@ export function index<RESOURCES extends Resource<any, any>[]>(
     ) as SupplyMapFromResources<RESOURCES>
 }
 
-export type Narrow<
+export function narrow<
     RESOURCEREGISTRATION extends {
         id: string
         _constraint: any
-    },
-    VALUE
-> = ResourceRegistration<
-    RESOURCEREGISTRATION["id"],
-    RESOURCEREGISTRATION["_constraint"] & VALUE
->
+    }
+>(registration: RESOURCEREGISTRATION) {
+    return <VALUE>() =>
+        registration as unknown as ResourceRegistration<
+            RESOURCEREGISTRATION["id"],
+            RESOURCEREGISTRATION["_constraint"] & VALUE
+        >
+}
