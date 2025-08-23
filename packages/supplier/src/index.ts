@@ -1,4 +1,4 @@
-import memo from "memoize"
+import { nanoid } from "nanoid"
 
 type Merge<U> = (U extends any ? (k: U) => void : never) extends (
     k: infer I
@@ -6,104 +6,94 @@ type Merge<U> = (U extends any ? (k: U) => void : never) extends (
     ? I
     : never
 
-type Resource<ID extends string, VALUE> = {
-    id: ID
-    value: VALUE
+type Resource<NAME extends string, VALUE> = {
+    id: string
+    name: NAME
+    unpack(): VALUE
 }
 
-type ResourceActions<ID extends string, VALUE> = {
-    of: (value: VALUE) => Resource<ID, VALUE> & ResourceActions<ID, VALUE>
+type ResourceActions<NAME extends string, VALUE> = {
+    pack: (value: VALUE) => Resource<NAME, VALUE> & ResourceActions<NAME, VALUE>
 }
 
-type ResourceRegistration<ID extends string, VALUE> = {
-    id: ID
-    isResource: true
-    of: (value: VALUE) => Resource<ID, VALUE> & ResourceActions<ID, VALUE>
+type ResourceSupplier<NAME extends string, CONSTRAINT> = {
+    name: NAME
+    packs: true
+    _constraint: CONSTRAINT
+} & ResourceActions<NAME, CONSTRAINT>
+
+type Product<NAME extends string, VALUE> = Resource<NAME, VALUE> &
+    ProductActions<NAME, VALUE>
+
+type ProductActions<NAME extends string, VALUE> = {
+    pack: (value: VALUE) => Resource<NAME, VALUE> & ProductActions<NAME, VALUE>
+    dependsOnOneOf: (overrides: SupplyMap) => boolean
+    reassemble: ReassembleAction<NAME, VALUE>
+    setOptimistic: (value: Awaited<VALUE>) => void
+    recall: () => void
 }
 
-type Service<
-    ID extends string,
-    VALUE,
-    TOSUPPLY extends Record<never, never>,
-    RESUPPLY extends boolean = false
-> = Resource<ID, VALUE> & ServiceActions<ID, TOSUPPLY, VALUE, RESUPPLY>
+type AssembleAction<NAME extends string, VALUE, TOSUPPLY extends SupplyMap> = (
+    toSupply: TOSUPPLY
+) => Product<NAME, VALUE>
 
-type SupplyAction<
-    ID extends string,
-    VALUE,
-    TOSUPPLY extends Record<never, never>
-> = (toSupply: TOSUPPLY) => Service<ID, VALUE, TOSUPPLY, true>
+type ReassembleAction<NAME extends string, VALUE> = (
+    overrides: SupplyMap
+) => Product<NAME, VALUE>
 
-type ServiceActions<
-    ID extends string,
-    TOSUPPLY extends Record<never, never>,
-    VALUE,
-    RESUPPLY extends boolean = false
-> = (RESUPPLY extends true
-    ? {
-          resupply: SupplyAction<ID, VALUE, TOSUPPLY>
-      }
-    : {
-          supply: SupplyAction<ID, VALUE, TOSUPPLY>
-      }) & {
-    of: (
-        value: VALUE
-    ) => Resource<ID, VALUE> & ServiceActions<ID, TOSUPPLY, VALUE, true>
-}
-type ServiceRegistration<
-    ID extends string,
-    TOSUPPLY extends Record<never, never>,
-    VALUE
-> = {
-    id: ID
-    isService: true
+type ProductSupplier<NAME extends string, TOSUPPLY extends SupplyMap, VALUE> = {
+    name: NAME
+    suppliers?: Supplier<string, any, any>[]
+    assembles: true
+    assemble: AssembleAction<NAME, VALUE, TOSUPPLY>
     preload: boolean
-    deps?: Registration<string, any, any>[]
-} & ServiceActions<ID, TOSUPPLY, VALUE>
+    memo: boolean
+    recallable: boolean
+} & Pick<ProductActions<NAME, VALUE>, "pack" | "dependsOnOneOf">
 
-type Registration<
-    ID extends string,
-    TOSUPPLY extends Record<never, never>,
-    VALUE
-> = ServiceRegistration<ID, TOSUPPLY, VALUE> | ResourceRegistration<ID, VALUE>
+type Supplier<NAME extends string, TOSUPPLY extends SupplyMap, VALUE> =
+    | ProductSupplier<NAME, TOSUPPLY, VALUE>
+    | ResourceSupplier<NAME, VALUE>
 
-type SupplyMapFromResources<RESOURCES extends Resource<any, any>[]> =
-    RESOURCES extends []
+type SupplyMapFromList<SUPPLIESLIST extends Resource<any, any>[]> =
+    SUPPLIESLIST extends []
         ? Record<never, never>
         : Merge<
               {
-                  [K in keyof RESOURCES]: {
-                      [ID in RESOURCES[K]["id"]]: RESOURCES[K]
+                  [K in keyof SUPPLIESLIST]: {
+                      [NAME in SUPPLIESLIST[K]["name"]]: SUPPLIESLIST[K]
                   }
               }[number]
           >
 
-type SupplyMapFromRegistrations<
-    REGISTRY extends Registration<string, any, any>[]
-> = {
-    [REGISTRATION in REGISTRY[number] as REGISTRATION["id"]]: REGISTRATION extends ServiceRegistration<
+type SupplyMap = Record<string, Product<string, any> | Resource<string, any>>
+
+type SupplyMapFromSuppliers<SUPPLIERS extends Supplier<string, any, any>[]> = {
+    [SUPPLIER in SUPPLIERS[number] as SUPPLIER["name"]]: SUPPLIER extends ProductSupplier<
         string,
         any,
         any
     >
-        ? ReturnType<REGISTRATION["supply"]>
-        : REGISTRATION extends ResourceRegistration<string, any>
-        ? ReturnType<REGISTRATION["of"]>
+        ? ReturnType<SUPPLIER["assemble"]>
+        : SUPPLIER extends ResourceSupplier<string, any>
+        ? ReturnType<SUPPLIER["pack"]>
         : never
 }
 
-type $<REGISTRY extends Registration<string, any, any>[]> = (<
-    ID extends keyof SupplyMapFromRegistrations<REGISTRY>
+export type $<SUPPLIERS extends Supplier<string, any, any>[]> = (<
+    TYPE extends keyof SupplyMapFromSuppliers<SUPPLIERS>
 >(
-    id: ID
-) => SupplyMapFromRegistrations<REGISTRY>[ID] extends { value: infer VALUE }
+    type: TYPE
+) => SupplyMapFromSuppliers<SUPPLIERS>[TYPE] extends {
+    unpack(): infer VALUE
+}
     ? VALUE
     : never) &
-    SupplyMapFromRegistrations<REGISTRY>
+    SupplyMapFromSuppliers<SUPPLIERS>
 
-type ToSupply<TEAM extends ServiceRegistration<string, any, any>[]> = Merge<
+type ToSupply<TEAM extends ProductSupplier<string, any, any>[]> = Merge<
     {
-        [I in keyof TEAM]: TEAM[I] extends ServiceRegistration<
+        [I in keyof TEAM]: TEAM[I] extends ProductSupplier<
             string,
             infer TOSUPPLY,
             any
@@ -113,117 +103,305 @@ type ToSupply<TEAM extends ServiceRegistration<string, any, any>[]> = Merge<
     }[number]
 >
 
-export const register = <ID extends string>(id: ID) => {
+export const createMarket = <
+    MEMO_FN extends <T>({
+        id,
+        unpack
+    }: {
+        id: string
+        unpack: () => T
+    }) => () => T,
+    RECALL_FN extends (product: Product<string, any>) => void
+>(cache?: {
+    memoFn: MEMO_FN
+    recallFn?: RECALL_FN
+}) => {
+    type MEMO_CONSTRAINT = MEMO_FN extends undefined ? false : boolean
+    type RECALL_CONSTRAINT = RECALL_FN extends undefined ? false : boolean
+    const { recallFn, memoFn } = cache || {}
+    // Statefulness only used for cache invalidation. Injections do not happen from instances container.
+    // Each injection is scoped in its own supply (or resupply) context.
+    const dependents = new Map<string, Set<string>>()
+    const instances = new Map<string, Product<string, any>[]>()
+    const names = new Set<string>()
     return {
-        asResource: <CONSTRAINT>() => {
-            const resource = {
-                id,
-                isResource: true as const,
-                of: <VALUE extends CONSTRAINT>(value: VALUE) => {
-                    return {
-                        id,
-                        value,
-                        of: resource.of
-                    }
-                },
-                _constraint: null as unknown as CONSTRAINT
+        offer: <NAME extends string>(name: NAME) => {
+            if (names.has(name)) {
+                throw new Error(`Name ${name} already exists`)
             }
-            return resource
-        },
-        asService: <
-            VALUE,
-            DEPS extends Registration<string, any, any>[] = [],
-            SUPPLIES extends $<DEPS> = $<DEPS>
-        >({
-            factory,
-            deps = [] as unknown as DEPS,
-            preload = false
-        }: {
-            factory: (supplies: SUPPLIES) => VALUE
-            deps?: DEPS
-            preload?: boolean
-        }) => {
-            const team = deps.filter(
-                (dep) => "isService" in dep && dep.isService
-            ) as Extract<DEPS[number], ServiceRegistration<string, any, any>>[]
-
-            const actions = {
-                of: (value: VALUE) => {
-                    return {
+            names.add(name)
+            const id = `${name}-${nanoid()}`
+            return {
+                asResource: <CONSTRAINT>() => {
+                    const resourceSupplier = {
                         id,
-                        value,
-                        resupply: actions.supply,
-                        of: actions.of
-                    }
-                },
-                supply: (
-                    toSupply: Omit<
-                        SUPPLIES,
-                        keyof SupplyMapFromRegistrations<typeof team>
-                    > &
-                        ToSupply<typeof team>
-                ) => {
-                    /**
-                     * A type assertion that tells TypeScript to trust us that the resulting
-                     * supplies is compatible with the generic type `$<DEPS>`. This is a necessary
-                     * type hole because TypeScript's static analysis can't remember that when you Omit properties
-                     * and put them back, you end up with the original type. Here toSupply is type guarded to be $<DEPS> - Services<team>,
-                     * and hire merges toSupply and team services together, so the result must extend $<DEPS>. But TS cannot guarantee it.
-                     */
-                    const fullSupplies = hire(team).supply(
-                        toSupply
-                    ) as unknown as SUPPLIES
-
-                    const service = {
-                        id,
-                        resupply: (overrides: Partial<typeof toSupply>) => {
-                            //Needed as an alternative to spread merge, because spreading directly
-                            // would trigger the getters in toSupply
-                            const newSupplies = {}
-                            Object.defineProperties(newSupplies, {
-                                ...Object.getOwnPropertyDescriptors(toSupply),
-                                ...Object.getOwnPropertyDescriptors(overrides)
-                            })
-                            return actions.supply(
-                                newSupplies as typeof toSupply
-                            )
+                        name,
+                        packs: true as const,
+                        pack: <VALUE extends CONSTRAINT>(value: VALUE) => {
+                            return {
+                                id,
+                                name,
+                                unpack: () => value,
+                                pack: <VALUE extends CONSTRAINT>(
+                                    value: VALUE
+                                ) => {
+                                    return resourceSupplier.pack(value)
+                                }
+                            }
                         },
-                        of: actions.of
+                        _constraint: null as unknown as CONSTRAINT
+                    }
+                    return resourceSupplier
+                },
+                asProduct: <
+                    VALUE,
+                    MEMO extends MEMO_CONSTRAINT = MEMO_CONSTRAINT extends false
+                        ? MEMO_CONSTRAINT
+                        : Extract<MEMO_CONSTRAINT, true>,
+                    RECALLABLE extends RECALL_CONSTRAINT = RECALL_CONSTRAINT extends false
+                        ? RECALL_CONSTRAINT
+                        : Extract<RECALL_CONSTRAINT, true>,
+                    SUPPLIERS extends Supplier<string, any, any>[] = [],
+                    SUPPLIES extends $<SUPPLIERS> = $<SUPPLIERS>
+                >({
+                    factory,
+                    suppliers = [] as unknown as SUPPLIERS,
+                    preload = false,
+                    memo = !!memoFn as MEMO,
+                    recallable = !!recallFn as RECALLABLE
+                }: {
+                    factory: (supplies: SUPPLIES) => VALUE
+                    suppliers?: SUPPLIERS
+                    preload?: boolean
+                    memo?: MEMO
+                    recallable?: RECALLABLE
+                }) => {
+                    // No memoization at factory level - will be done at unpack level
+                    //Set this supplier as a dependent of all its dependencies
+                    for (const supplier of suppliers) {
+                        dependents.set(
+                            supplier.name,
+                            (dependents.get(supplier.name) || new Set()).add(
+                                name
+                            )
+                        )
+                    }
+                    const team = suppliers.filter(
+                        (supplier) =>
+                            "assembles" in supplier && supplier.assembles
+                    ) as Extract<
+                        SUPPLIERS[number],
+                        ProductSupplier<string, any, any>
+                    >[]
+
+                    const actions = {
+                        assemble: (
+                            toSupply: Omit<
+                                SUPPLIES,
+                                keyof SupplyMapFromSuppliers<typeof team>
+                            > &
+                                ToSupply<typeof team> &
+                                SupplyMap
+                        ) => {
+                            /**
+                             * A type assertion that tells TypeScript to trust us that the resulting
+                             * supplies is compatible with the generic type `$<DEPS>`. This is a necessary
+                             * type hole because TypeScript's static analysis can't remember that when you Omit properties
+                             * and put them back, you end up with the original type. Here toSupply is type guarded to be $<DEPS> - Services<team>,
+                             * and hire merges toSupply and team products together, so the result must extend $<DEPS>. But TS cannot guarantee it.
+                             */
+                            const fullSupplies = hire(team).assemble(
+                                toSupply
+                            ) as unknown as SUPPLIES
+
+                            let optimistic: Awaited<VALUE> | undefined =
+                                undefined
+
+                            const unpack = () => {
+                                // If we have an optimistic value, return it and update in background
+                                if (optimistic !== undefined) {
+                                    return optimistic
+                                }
+
+                                // No optimistic value, call factory directly
+                                return factory(fullSupplies)
+                            }
+
+                            const product = {
+                                id,
+                                name,
+                                unpack:
+                                    memo && memoFn
+                                        ? memoFn({ id, unpack })
+                                        : unpack,
+                                reassemble: (overrides: SupplyMap) => {
+                                    // Create a mutable copy of overrides with flexible typing
+                                    const newSupplies: SupplyMap = {}
+
+                                    // Loop over all supplies and check if they need resupplying
+                                    for (const [name, supply] of Object.entries(
+                                        fullSupplies
+                                    )) {
+                                        if (
+                                            !supply ||
+                                            typeof supply !== "object"
+                                        ) {
+                                            continue
+                                        }
+
+                                        if (
+                                            name in overrides &&
+                                            overrides[name]
+                                        ) {
+                                            newSupplies[name] = overrides[name]
+                                            continue
+                                        }
+
+                                        // If the supply is a resource, add it to newSupplies
+                                        if (
+                                            !("dependsOnOneOf" in supply) ||
+                                            typeof supply.dependsOnOneOf !==
+                                                "function" ||
+                                            // If the supply doesn't need resupplying, keep it cached in newSupplies
+                                            !supply.dependsOnOneOf(overrides)
+                                        ) {
+                                            newSupplies[name] =
+                                                supply as SupplyMap[typeof name]
+                                            continue
+                                        }
+                                    }
+
+                                    return actions.assemble(
+                                        newSupplies as typeof toSupply
+                                    ) as unknown as Product<NAME, VALUE>
+                                },
+                                dependsOnOneOf: actions.dependsOnOneOf,
+                                pack: actions.pack,
+                                setOptimistic(value: Awaited<VALUE>) {
+                                    if (optimistic !== undefined) {
+                                        throw new Error(
+                                            `Cannot set optimistic value when one is already set: ${optimistic}`
+                                        )
+                                    }
+
+                                    if (recallFn) {
+                                        product.recall()
+                                    }
+
+                                    optimistic = value
+                                    // Update optimistic value in background
+                                    Promise.resolve()
+                                        .then(() => {
+                                            factory(fullSupplies)
+                                        })
+                                        .catch()
+                                        .finally(() => {
+                                            optimistic = undefined
+                                        })
+                                },
+                                recall() {
+                                    if (!recallFn) return
+
+                                    if (recallable) {
+                                        recallFn(product)
+                                    }
+
+                                    // Propagate to all dependents recursively
+                                    const visit = (name: string) => {
+                                        const products = instances.get(name)
+                                        if (!products) return
+
+                                        products.forEach((product) => {
+                                            product.recall()
+                                        })
+
+                                        // Recursively visit dependents
+                                        const next = dependents.get(name)
+                                        if (next) {
+                                            next.forEach(visit)
+                                        }
+                                    }
+
+                                    const directDependents =
+                                        dependents.get(name) ?? []
+                                    directDependents.forEach(visit)
+                                }
+                            }
+
+                            // Track instances of this product for recall
+                            instances.set(name, [
+                                ...(instances.get(name) || []),
+                                product
+                            ])
+
+                            return product
+                        },
+                        pack: (value: VALUE) => {
+                            const product = {
+                                id,
+                                name,
+                                unpack: () => value,
+                                reassemble: () => product,
+                                pack: actions.pack,
+                                dependsOnOneOf: actions.dependsOnOneOf,
+                                setOptimistic: () => {
+                                    return
+                                },
+                                recall() {
+                                    // Value is set and cannot change. Do Nothing
+                                    return
+                                }
+                            }
+
+                            return product
+                        },
+                        dependsOnOneOf: (overrides: SupplyMap) => {
+                            // Check if any dependencies need resupplying
+                            for (const supplier of suppliers) {
+                                // Check if this dependency is directly overridden
+                                if (supplier.name in overrides) {
+                                    return true
+                                }
+                                // Recursively check if this dependency needs resupplying
+                                if (
+                                    "dependsOnOneOf" in supplier &&
+                                    supplier.dependsOnOneOf(overrides)
+                                ) {
+                                    return true
+                                }
+                            }
+                            return false
+                        }
                     }
 
-                    Object.defineProperty(service, "value", {
-                        get: memo(() => factory(fullSupplies))
-                    })
-
-                    return service as typeof service & {
-                        value: ReturnType<typeof factory>
+                    const productSupplier = {
+                        name,
+                        assembles: true as const,
+                        preload,
+                        memo,
+                        recallable,
+                        suppliers,
+                        pack: actions.pack,
+                        assemble: actions.assemble,
+                        dependsOnOneOf: actions.dependsOnOneOf
                     }
+
+                    return productSupplier
                 }
             }
-
-            const service = {
-                id,
-                isService: true as const,
-                preload,
-                deps,
-                of: actions.of,
-                supply: actions.supply
-            }
-
-            return service
         }
     }
 }
 
-function hire(services: ServiceRegistration<string, any, any>[]) {
+function hire(suppliers: ProductSupplier<string, any, any>[]) {
     return {
-        supply: (supplied: Record<string, any>) => {
+        assemble: (supplied: Record<string, any>) => {
             const supplies: any = (id: string) => {
-                const resource = supplies[id]
-                if (!resource?.value) {
+                const supply = supplies[id]
+                if (!supply?.unpack) {
                     throw new Error(`Unsatisfied dependency: ${id}`)
                 }
-                return resource.value
+                return supply.unpack()
             }
 
             Object.defineProperties(
@@ -231,34 +409,37 @@ function hire(services: ServiceRegistration<string, any, any>[]) {
                 Object.getOwnPropertyDescriptors(supplied)
             )
 
-            for (const service of services) {
+            for (const supplier of suppliers) {
                 if (
-                    Object.prototype.hasOwnProperty.call(supplied, service.id)
+                    Object.prototype.hasOwnProperty.call(
+                        supplied,
+                        supplier.name
+                    )
                 ) {
                     continue
                 }
 
-                Object.defineProperty(supplies, service.id, {
-                    get: memo(() => service.supply(supplies)),
+                Object.defineProperty(supplies, supplier.name, {
+                    get: once(() => supplier.assemble(supplies)),
                     enumerable: true,
                     configurable: true
                 })
             }
 
-            // Preload services that have preload: true
-            const preloadPromises = services
+            // Preload products that have preload: true
+            const preloadPromises = suppliers
                 .filter(
-                    (service) =>
-                        service.preload &&
+                    (supplier) =>
+                        supplier.preload &&
                         !Object.prototype.hasOwnProperty.call(
                             supplied,
-                            service.id
+                            supplier.name
                         )
                 )
-                .map((service) => {
+                .map((supplier) => {
                     // Access the getter to trigger memoization
                     try {
-                        return Promise.resolve(supplies[service.id].value)
+                        return Promise.resolve(supplies(supplier.name))
                     } catch (error) {
                         // If preloading fails, we don't want to break the entire supply chain
                         // The error will be thrown again when the dependency is actually needed
@@ -278,24 +459,38 @@ function hire(services: ServiceRegistration<string, any, any>[]) {
     }
 }
 
-export function index<RESOURCES extends Resource<any, any>[]>(
-    ...resources: RESOURCES
+// Utilities
+function once<T extends () => any>(func: T) {
+    let called = false
+    let result: ReturnType<T>
+
+    return function () {
+        if (!called) {
+            called = true
+            result = func()
+        }
+        return result
+    }
+}
+
+export function index<SUPPLIESLIST extends Resource<any, any>[]>(
+    ...suppliesList: SUPPLIESLIST
 ) {
-    return resources.reduce(
-        (acc, r) => ({ ...acc, [r.id]: r }),
+    return suppliesList.reduce(
+        (acc, r) => ({ ...acc, [r.name]: r }),
         {}
-    ) as SupplyMapFromResources<RESOURCES>
+    ) as SupplyMapFromList<SUPPLIESLIST>
 }
 
 export function narrow<
-    RESOURCEREGISTRATION extends {
-        id: string
+    RESOURCESUPPLIER extends {
+        name: string
         _constraint: any
     }
->(registration: RESOURCEREGISTRATION) {
+>(supplier: RESOURCESUPPLIER) {
     return <VALUE>() =>
-        registration as unknown as ResourceRegistration<
-            RESOURCEREGISTRATION["id"],
-            RESOURCEREGISTRATION["_constraint"] & VALUE
+        supplier as unknown as ResourceSupplier<
+            RESOURCESUPPLIER["name"],
+            RESOURCESUPPLIER["_constraint"] & VALUE
         >
 }

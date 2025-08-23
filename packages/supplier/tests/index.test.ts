@@ -1,508 +1,461 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { index, narrow, register } from "#index"
+import { index, narrow, createMarket } from "#index"
+import memo from "memoize"
+import { sleep } from "./lib"
 
 describe("supplier", () => {
     beforeEach(() => {
         vi.clearAllMocks()
     })
 
-    describe("Resource Registration", () => {
-        it("should register a resource and return it when supplied", () => {
-            const TestResource = register("test-resource").asResource<string>()
+    describe("Resource Offer", () => {
+        it("should offer a resource and return it packed", () => {
+            const market = createMarket()
+            const resourceSupplier = market
+                .offer("resource")
+                .asResource<string>()
 
-            const testValue = "test-value"
-            const result = TestResource.of(testValue)
+            const resource = resourceSupplier.pack("test-value")
 
-            expect(result.value).toBe(testValue)
-            expect(result.id).toBe("test-resource")
-            expect(TestResource.id).toBe("test-resource")
-            expect(TestResource.isResource).toBe(true)
+            expect(resource.unpack()).toBe("test-value")
+            expect(resource.name).toBe("resource")
+            expect(resourceSupplier.name).toBe("resource")
+            expect(resourceSupplier.packs).toBe(true)
         })
 
         it("should handle different resource types correctly", () => {
-            const StringResource =
-                register("string-resource").asResource<string>()
-            const NumberResource =
-                register("number-resource").asResource<number>()
-            const ObjectResource = register("object-resource").asResource<{
+            const market = createMarket()
+            const StringSupplier = market.offer("string").asResource<string>()
+            const NumberSupplier = market.offer("number").asResource<number>()
+            const ObjectSupplier = market.offer("object").asResource<{
                 name: string
             }>()
 
-            const stringResult = StringResource.of("hello")
-            const numberResult = NumberResource.of(42)
-            const objectResult = ObjectResource.of({ name: "test" })
+            const stringResource = StringSupplier.pack("hello")
+            const numberResource = NumberSupplier.pack(42)
+            const objectResource = ObjectSupplier.pack({ name: "test" })
 
-            expect(stringResult.value).toBe("hello")
-            expect(numberResult.value).toBe(42)
-            expect(objectResult.value).toEqual({ name: "test" })
+            expect(stringResource.unpack()).toBe("hello")
+            expect(numberResource.unpack()).toBe(42)
+            expect(objectResource.unpack()).toEqual({ name: "test" })
         })
     })
 
-    describe("Service Registration", () => {
-        it("should register a service with no team dependencies", () => {
-            const TestService = register("test-service").asService({
-                factory: () => "service-result"
+    describe("Product Offer", () => {
+        it("should offer a product with no suppliers", () => {
+            const market = createMarket()
+            const ProductSupplier = market.offer("product").asProduct({
+                factory: () => "product"
             })
 
-            const result = TestService.supply({})
+            const product = ProductSupplier.assemble({})
 
-            expect(result.value).toBe("service-result")
-            expect(TestService.id).toBe("test-service")
-            expect(TestService.isService).toBe(true)
+            expect(product.unpack()).toBe("product")
+            expect(ProductSupplier.name).toBe("product")
+            expect(ProductSupplier.assembles).toBe(true)
         })
 
-        it("should register a service with team dependencies", () => {
-            const Dependency1 = register("dep1").asService({
-                factory: () => "dep1-result"
+        it("should offer a product with suppliers", () => {
+            const market = createMarket()
+            const product1Supplier = market.offer("product1").asProduct({
+                factory: () => "product1"
             })
 
-            const Dependency2 = register("dep2").asService({
-                factory: () => "dep2-result"
+            const product2Supplier = market.offer("product2").asProduct({
+                factory: () => "product2"
             })
 
-            const TestService = register("test-service").asService({
-                deps: [Dependency1, Dependency2],
+            const TestSupplier = market.offer("test").asProduct({
+                suppliers: [product1Supplier, product2Supplier],
                 factory: ($) => {
-                    const dep1 = $(Dependency1.id)
-                    const dep2 = $(Dependency2.id)
                     return {
-                        dep1Value: dep1,
-                        dep2Value: dep2,
-                        computed: dep1 + " + " + dep2
+                        product1: $(product1Supplier.name),
+                        product2: $(product2Supplier.name)
                     }
                 }
             })
 
-            const result = TestService.supply({})
+            const testProduct = TestSupplier.assemble({})
 
-            expect(result.value).toEqual({
-                dep1Value: "dep1-result",
-                dep2Value: "dep2-result",
-                computed: "dep1-result + dep2-result"
+            expect(testProduct.unpack()).toEqual({
+                product1: "product1",
+                product2: "product2"
             })
         })
     })
 
-    describe("Team Hiring and Supply Chain", () => {
-        it("should hire services and provide their services", () => {
-            const Service1 = register("service1").asService({
-                factory: () => "service1-result"
+    describe("Supply Chain", () => {
+        it("should assemble products from suppliers", () => {
+            const market = createMarket()
+            const product1Supplier = market.offer("product1").asProduct({
+                factory: () => "product1"
             })
 
-            const Service2 = register("service2").asService({
-                factory: () => "service2-result"
+            const product2Supplier = market.offer("product2").asProduct({
+                factory: () => "product2"
             })
 
-            const MainService = register("main-service").asService({
-                deps: [Service1, Service2],
+            const MainSupplier = market.offer("main").asProduct({
+                suppliers: [product1Supplier, product2Supplier],
                 factory: ($) => {
-                    const service1 = $(Service1.id)
-                    const service2 = $(Service2.id)
                     return {
-                        service1: service1,
-                        service2: service2,
-                        combined: service1 + " + " + service2
+                        product1: $(product1Supplier.name),
+                        product2: $(product2Supplier.name)
                     }
                 }
             })
 
-            const result = MainService.supply({})
+            const mainProduct = MainSupplier.assemble({})
 
-            expect(result.value).toEqual({
-                service1: "service1-result",
-                service2: "service2-result",
-                combined: "service1-result + service2-result"
+            expect(mainProduct.unpack()).toEqual({
+                product1: "product1",
+                product2: "product2"
             })
         })
 
-        it("should respect initial supplies and not override them", () => {
-            const Service = register("service").asService({
-                factory: () => "service-result"
+        it("should respect initial supplies and not override them during assembly", () => {
+            const market = createMarket()
+            const productSupplier = market.offer("product").asProduct({
+                factory: () => "product"
             })
 
-            const MainService = register("main").asService({
-                deps: [Service],
+            const MainSupplier = market.offer("main").asProduct({
+                suppliers: [productSupplier],
                 factory: ($) => {
-                    // When the service is not in supplies (due to hasOwnProperty check),
-                    // we should use the initial supply directly
-                    const service = $(Service.id)
+                    const product = $(productSupplier.name)
                     return {
-                        service: service || $("service") || "fallback"
+                        product
                     }
                 }
             })
 
-            // Test that initial supplies with the same ID as an service are not overridden
-            const ServiceResource = register("service").asResource<string>()
-
-            const result = MainService.supply(
-                index(ServiceResource.of("initial-service-value"))
+            const mainProduct = MainSupplier.assemble(
+                index(productSupplier.pack("initial-product"))
             )
 
-            // The initial supply should be respected and not overridden by the service
-            // This tests the hasOwnProperty check in the hire function
-            // The service should come from the initial supplies, not from the service
-            expect(result.value.service).toBe("initial-service-value")
+            // The initial supply should be respected and not overridden during assembly
+            expect(mainProduct.unpack()).toEqual({
+                product: "initial-product"
+            })
         })
 
-        it("should support Service.of(value) and $[Service.id].of(value) for creating service instances", () => {
-            const ConfigService = register("config").asService({
+        it("should support Product.pack(value) and $[Product.id].pack(value) for creating product instances", () => {
+            const market = createMarket()
+            const ConfigSupplier = market.offer("config").asProduct({
                 factory: () => ({ env: "development", debug: true })
             })
 
-            const LoggerService = register("logger").asService({
+            const LoggerSupplier = market.offer("logger").asProduct({
                 factory: () => ({ level: "info", prefix: "APP" })
             })
 
-            const MainService = register("main").asService({
-                deps: [ConfigService, LoggerService],
+            const MainSupplier = market.offer("main").asProduct({
+                suppliers: [ConfigSupplier, LoggerSupplier],
                 factory: ($) => {
                     // Test direct service.of() call
-                    const configInstance = ConfigService.of({
+                    const configProduct = ConfigSupplier.pack({
                         env: "production",
                         debug: false
                     })
 
-                    // Test accessing service through supplies and calling .of()
-                    const loggerInstance = $[LoggerService.id].of({
+                    // Test accessing service through supplies and calling .pack()
+                    const loggerProduct = $[LoggerSupplier.name].pack({
                         level: "debug",
                         prefix: "TEST"
                     })
 
                     return {
-                        config: configInstance.value,
-                        logger: loggerInstance.value,
-                        // Also test accessing the original services
-                        originalConfig: $[ConfigService.id].value,
-                        originalLogger: $[LoggerService.id].value
+                        config: configProduct.unpack(),
+                        logger: loggerProduct.unpack(),
+                        // Also test accessing the supplied products
+                        suppliedConfig: $[ConfigSupplier.name].unpack(),
+                        suppliedLogger: $[LoggerSupplier.name].unpack()
                     }
                 }
             })
 
-            const result = MainService.supply({})
+            const mainProduct = MainSupplier.assemble({})
 
-            expect(result.value.config).toEqual({
+            expect(mainProduct.unpack().config).toEqual({
                 env: "production",
                 debug: false
             })
-            expect(result.value.logger).toEqual({
+            expect(mainProduct.unpack().logger).toEqual({
                 level: "debug",
                 prefix: "TEST"
             })
-            expect(result.value.originalConfig).toEqual({
+            expect(mainProduct.unpack().suppliedConfig).toEqual({
                 env: "development",
                 debug: true
             })
-            expect(result.value.originalLogger).toEqual({
+            expect(mainProduct.unpack().suppliedLogger).toEqual({
                 level: "info",
                 prefix: "APP"
             })
+        })
+        it("should enable context switching by calling reassemble on products", () => {
+            const market = createMarket({
+                memoFn: ({ unpack }) => {
+                    return memo(unpack)
+                }
+            })
+            const ConfigSupplier = market.offer("config").asResource<string>()
+            const NameSupplier = market.offer("name").asResource<string>()
+            const CountSupplier = market.offer("count").asResource<number>()
 
-            // Verify that .of() creates new instances with new values
-            expect(result.value.config).not.toBe(result.value.originalConfig)
-            expect(result.value.logger).not.toBe(result.value.originalLogger)
+            // Create a configurable service that uses multiple supplies from its context
+            const TestSupplier = market.offer("test").asProduct({
+                suppliers: [ConfigSupplier, NameSupplier, CountSupplier],
+                factory: ($) => {
+                    // This service uses multiple values from its supplies
+                    return {
+                        config: $(ConfigSupplier.name),
+                        name: $(NameSupplier.name),
+                        count: $(CountSupplier.name)
+                    }
+                }
+            })
+
+            const initialSupplies = index(
+                ConfigSupplier.pack("initial-config"),
+                NameSupplier.pack("initial-name"),
+                CountSupplier.pack(1)
+            )
+
+            // Create the initial service instance with base supplies
+            const testProduct = TestSupplier.assemble(initialSupplies)
+
+            // Test that reassemble creates new product instance with updated supplies
+            const newTestProduct1 = testProduct.reassemble(
+                index(
+                    ConfigSupplier.pack("new-config"),
+                    NameSupplier.pack("new-name"),
+                    CountSupplier.pack(42)
+                )
+            )
+
+            // Partial reassemble - only override config (other values come from cached supplies)
+            const newTestProduct2 = testProduct.reassemble(
+                index(ConfigSupplier.pack("new-config"))
+            )
+
+            const newTestProduct3 = testProduct.reassemble(
+                index(NameSupplier.pack("new-name"))
+            )
+
+            // Partial reassemble - override multiple values
+            const newTestProduct4 = testProduct.reassemble(
+                index(ConfigSupplier.pack("new-config"), CountSupplier.pack(42))
+            )
+
+            expect(testProduct.unpack()).toEqual({
+                config: "initial-config",
+                name: "initial-name",
+                count: 1
+            })
+
+            expect(newTestProduct1.unpack()).toEqual({
+                config: "new-config",
+                name: "new-name",
+                count: 42
+            })
+
+            // For partial resupplies, non-overridden values should come from cached supplies
+            expect(newTestProduct2.unpack()).toEqual({
+                config: "new-config",
+                name: "initial-name",
+                count: 1
+            })
+
+            expect(newTestProduct3.unpack()).toEqual({
+                config: "initial-config",
+                name: "new-name",
+                count: 1
+            })
+
+            expect(newTestProduct4.unpack()).toEqual({
+                config: "new-config",
+                name: "initial-name",
+                count: 42
+            })
         })
     })
 
     describe("Memoization and Lazy Evaluation", () => {
-        it("should create separate memoization contexts for different supply calls", () => {
-            const factoryMock = vi.fn().mockReturnValue("result")
+        it("should create separate memoization contexts for different assembly calls", () => {
+            const factoryMock = vi.fn().mockReturnValue("product")
 
-            const TestService = register("service").asService({
+            const market = createMarket()
+            const productSupplier = market.offer("product").asProduct({
                 factory: factoryMock
             })
 
-            const service = TestService.supply({})
+            const product = productSupplier.assemble({})
 
             // First access should call the factory
-            expect(service.value).toBe("result")
+            expect(product.unpack()).toBe("product")
             expect(factoryMock).toHaveBeenCalledTimes(1)
 
-            // The memoization works within the same supply context
-            // Each call to supply() creates a new context, so the factory is called again
-            const secondAccess = TestService.supply({})
-            expect(secondAccess.value).toBe("result")
-            // Factory is called again for the new supply context
+            // The memoization works within the same assembly context
+            // Each call to assemble() creates a new context, so the factory is called again
+            const secondAccess = productSupplier.assemble({})
+            expect(secondAccess.unpack()).toBe("product")
+            // Factory is called again for the new assembly context
             expect(factoryMock).toHaveBeenCalledTimes(2)
         })
 
-        it("should memoize service calls when accessed multiple times within the same supply context", () => {
-            const factoryMock = vi.fn().mockReturnValue("memoized-result")
+        it("should memoize unpack calls when accessed multiple times within the same assembly context", () => {
+            const factoryMock = vi.fn().mockReturnValue("memoized")
 
-            const TestService = register("memoized-service").asService({
+            const market = createMarket({
+                memoFn: ({ unpack }) => {
+                    return memo(unpack)
+                }
+            })
+            const memoizedSupplier = market.offer("memoized").asProduct({
                 factory: factoryMock
             })
 
-            // Create a team that uses the TestService
-            const TeamService = register("team-service").asService({
-                deps: [TestService],
+            const TestSupplier = market.offer("test").asProduct({
+                suppliers: [memoizedSupplier],
                 factory: ($) => {
-                    // Access the TestService multiple times within the same supply context
-                    const firstAccess = $(TestService.id)
-                    const secondAccess = $(TestService.id)
-                    const thirdAccess = $(TestService.id)
+                    // Access the TestService multiple times within the same assembly context
+                    $(memoizedSupplier.name)
+                    $(memoizedSupplier.name)
+                    $(memoizedSupplier.name)
 
-                    return {
-                        first: firstAccess,
-                        second: secondAccess,
-                        third: thirdAccess,
-                        allSame:
-                            firstAccess === secondAccess &&
-                            secondAccess === thirdAccess
-                    }
+                    return "test"
                 }
             })
 
-            const result = TeamService.supply({})
-
-            expect(result.value).toEqual({
-                first: "memoized-result",
-                second: "memoized-result",
-                third: "memoized-result",
-                allSame: true
-            })
-
-            // Factory should only be called once due to memoization within the same supply context
+            TestSupplier.assemble({}).unpack()
+            // Factory should only be called once due to memoization within the same assembly context
             expect(factoryMock).toHaveBeenCalledTimes(1)
         })
 
-        it("should handle complex nested service dependencies with memoization", () => {
-            const factory1Mock = vi.fn().mockReturnValue("level1-result")
+        it("should handle complex nested supplier dependencies with memoization", () => {
+            const factory1Mock = vi.fn().mockReturnValue("product1")
 
-            const Level1Service = register("level1").asService({
+            const market = createMarket({
+                memoFn: ({ unpack }) => {
+                    return memo(unpack)
+                }
+            })
+            const product1Supplier = market.offer("product1").asProduct({
                 factory: factory1Mock
             })
 
-            const Level2Service = register("level2").asService({
-                deps: [Level1Service],
-                factory: ($) => {
-                    const level1 = $(Level1Service.id)
-                    return level1 + "-processed"
+            const product2Supplier = market.offer("product2").asProduct({
+                suppliers: [product1Supplier],
+                factory: () => {
+                    return "product2"
                 }
             })
 
-            const Level3Service = register("level3").asService({
-                deps: [Level1Service, Level2Service],
+            const TestSupplier = market.offer("test").asProduct({
+                suppliers: [product1Supplier, product2Supplier],
                 factory: ($) => {
-                    const level1 = $(Level1Service.id)
-                    const level2 = $(Level2Service.id)
                     return {
-                        level1: level1,
-                        level2: level2,
-                        combined: level1 + " + " + level2
+                        product1: $(product1Supplier.name),
+                        product2: $(product2Supplier.name)
                     }
                 }
             })
 
-            const result = Level3Service.supply({})
+            const testProduct = TestSupplier.assemble({})
 
-            expect(result.value).toEqual({
-                level1: "level1-result",
-                level2: "level1-result-processed",
-                combined: "level1-result + level1-result-processed"
+            expect(testProduct.unpack()).toEqual({
+                product1: "product1",
+                product2: "product2"
             })
 
             // Each factory should only be called once due to memoization within the same context
             expect(factory1Mock).toHaveBeenCalledTimes(1)
         })
-
-        it("should enable context switching by calling supply on services in supplies", () => {
-            const ConfigResource = register("config").asResource<string>()
-            const NameResource = register("name").asResource<string>()
-            const CountResource = register("count").asResource<number>()
-
-            // Create a configurable service that uses multiple supplies from its context
-            const ConfigurableService = register("configurable").asService({
-                deps: [ConfigResource, NameResource, CountResource],
-                factory: ($) => {
-                    // This service uses multiple values from its supplies
-                    return {
-                        config: $(ConfigResource.id) || "default-config",
-                        name: $(NameResource.id) || "default-name",
-                        count: $(CountResource.id) || 0
-                    }
-                }
-            })
-
-            // Create a context-switching service that uses the configurable service
-            const ContextSwitchingService = register(
-                "context-switcher"
-            ).asService({
-                deps: [ConfigurableService],
-                factory: ($) => {
-                    const configurableService = $[ConfigurableService.id]
-
-                    // Initial context with all supplies
-                    const initialResult = configurableService.resupply(
-                        index(
-                            ConfigResource.of("initial-config"),
-                            NameResource.of("initial-name"),
-                            CountResource.of(42)
-                        )
-                    )
-
-                    // Partial resupply - only override config
-                    const partialConfigResult = configurableService.resupply(
-                        index(ConfigResource.of("partial-config-override"))
-                    )
-
-                    // Partial resupply - only override name
-                    const partialNameResult = configurableService.resupply(
-                        index(NameResource.of("partial-name-override"))
-                    )
-
-                    // Partial resupply - override multiple values
-                    const partialMultipleResult = configurableService.resupply(
-                        index(
-                            ConfigResource.of("multiple-config-override"),
-                            CountResource.of(100)
-                        )
-                    )
-
-                    // Full resupply with all new values
-                    const fullResupplyResult = configurableService.resupply(
-                        index(
-                            ConfigResource.of("new-config"),
-                            NameResource.of("new-name"),
-                            CountResource.of(999)
-                        )
-                    )
-
-                    return {
-                        initial: initialResult.value,
-                        partialConfig: partialConfigResult.value,
-                        partialName: partialNameResult.value,
-                        partialMultiple: partialMultipleResult.value,
-                        fullResupply: fullResupplyResult.value
-                    }
-                }
-            })
-
-            const result = ContextSwitchingService.supply(
-                index(
-                    ConfigResource.of("base-config"),
-                    NameResource.of("base-name"),
-                    CountResource.of(1)
-                )
-            )
-
-            // Test that partial resupply works correctly
-            expect(result.value.initial).toEqual({
-                config: "initial-config",
-                name: "initial-name",
-                count: 42
-            })
-
-            // Each resupply starts from the base supplies and applies overrides
-            expect(result.value.partialConfig).toEqual({
-                config: "partial-config-override",
-                name: "base-name", // From base supplies
-                count: 1 // From base supplies
-            })
-
-            expect(result.value.partialName).toEqual({
-                config: "base-config", // From base supplies
-                name: "partial-name-override",
-                count: 1 // From base supplies
-            })
-
-            expect(result.value.partialMultiple).toEqual({
-                config: "multiple-config-override",
-                name: "base-name", // From base supplies
-                count: 100
-            })
-
-            expect(result.value.fullResupply).toEqual({
-                config: "new-config",
-                name: "new-name",
-                count: 999
-            })
-        })
     })
 
     describe("Callable Object API", () => {
         it("should support both property access and function calls for dependencies", () => {
-            const Service1 = register("service1").asService({
-                factory: () => "service1-result"
+            const market = createMarket()
+            const resourceSupplier = market
+                .offer("resource")
+                .asResource<string>()
+            const productSupplier = market.offer("product").asProduct({
+                factory: () => "product"
             })
 
-            const Service2 = register("service2").asService({
-                factory: () => "service2-result"
-            })
-
-            const TestService = register("test-service").asService({
-                deps: [Service1, Service2],
+            const TestProduct = market.offer("test-product").asProduct({
+                suppliers: [resourceSupplier, productSupplier],
                 factory: ($) => {
-                    const service1Prop = $[Service1.id]
-                    const service2Prop = $[Service2.id]
-
-                    const service1Func = $(Service1.id)
-                    const service2Func = $(Service2.id)
-
                     return {
                         propAccess: {
-                            service1: service1Prop.value,
-                            service2: service2Prop.value
+                            resource: $[resourceSupplier.name].unpack(),
+                            product: $[productSupplier.name].unpack()
                         },
                         funcAccess: {
-                            service1: service1Func,
-                            service2: service2Func
-                        },
-                        bothEqual:
-                            service1Prop.value === service1Func &&
-                            service2Prop.value === service2Func
+                            resource: $(resourceSupplier.name),
+                            product: $(productSupplier.name)
+                        }
                     }
                 }
             })
 
-            const result = TestService.supply({})
+            const result = TestProduct.assemble(
+                index(resourceSupplier.pack("resource"))
+            )
 
-            expect(result.value.propAccess).toEqual({
-                service1: "service1-result",
-                service2: "service2-result"
+            expect(result.unpack().propAccess).toEqual({
+                resource: "resource",
+                product: "product"
             })
-            expect(result.value.funcAccess).toEqual({
-                service1: "service1-result",
-                service2: "service2-result"
+            expect(result.unpack().funcAccess).toEqual({
+                resource: "resource",
+                product: "product"
             })
-            expect(result.value.bothEqual).toBe(true)
         })
     })
 
     describe("Preload Feature", () => {
         it("should preload services with preload: true", async () => {
-            const preloadFactoryMock = vi
-                .fn()
-                .mockReturnValue("preloaded-result")
-            const normalFactoryMock = vi.fn().mockReturnValue("normal-result")
+            const market = createMarket({
+                memoFn: ({ unpack }) => {
+                    return memo(unpack)
+                }
+            })
+            const preloadFactoryMock = vi.fn().mockReturnValue("preloaded")
+            const normalFactoryMock = vi.fn().mockReturnValue("normal")
 
-            const PreloadService = register("preload-service").asService({
+            const PreloadedSupplier = market.offer("preloaded").asProduct({
                 factory: preloadFactoryMock,
                 preload: true
             })
 
-            const NormalService = register("normal-service").asService({
+            const NormalSupplier = market.offer("normal").asProduct({
                 factory: normalFactoryMock,
                 preload: false // explicit false
             })
 
-            const NoPreloadService = register("no-preload-service").asService({
-                factory: vi.fn().mockReturnValue("no-preload-result")
+            const NoPreloadSupplier = market.offer("no-preload").asProduct({
+                factory: vi.fn().mockReturnValue("no-preload")
                 // preload defaults to false
             })
 
-            const MainService = register("main-service").asService({
-                deps: [PreloadService, NormalService, NoPreloadService],
+            const MainSupplier = market.offer("main").asProduct({
+                suppliers: [
+                    PreloadedSupplier,
+                    NormalSupplier,
+                    NoPreloadSupplier
+                ],
                 factory: ($) => {
                     // Don't access any dependencies yet
-                    return "main-result"
+                    return "main"
                 }
             })
 
-            const result = MainService.supply({})
+            const mainProduct = MainSupplier.assemble({})
 
             // Wait a bit for preloading to complete
-            await new Promise((resolve) => setTimeout(resolve, 10))
+            await sleep(10)
 
             // PreloadService should have been called due to preload: true
             expect(preloadFactoryMock).toHaveBeenCalledTimes(1)
@@ -510,209 +463,120 @@ describe("supplier", () => {
             // NormalService and NoPreloadService should not have been called yet
             expect(normalFactoryMock).toHaveBeenCalledTimes(0)
 
-            expect(result.value).toBe("main-result")
+            expect(mainProduct.unpack()).toBe("main")
         })
 
         it("should handle preload errors gracefully without breaking the supply chain", async () => {
+            const market = createMarket()
             const errorFactoryMock = vi.fn().mockImplementation(() => {
-                throw new Error("Preload error")
+                throw new Error()
             })
 
-            const ErrorService = register("error-service").asService({
+            const ErrorSupplier = market.offer("error").asProduct({
                 factory: errorFactoryMock,
                 preload: true
             })
 
-            const MainService = register("main-service").asService({
-                deps: [ErrorService],
+            const MainSupplier = market.offer("main").asProduct({
+                suppliers: [ErrorSupplier],
                 factory: ($) => {
                     // Don't access ErrorService yet
-                    return "main-result"
+                    return "main"
                 }
             })
 
             // This should not throw even though ErrorService will fail during preload
-            const result = MainService.supply({})
+            const mainProduct = MainSupplier.assemble({})
 
             // Wait a bit for preloading to complete
-            await new Promise((resolve) => setTimeout(resolve, 10))
+            await sleep(10)
 
-            expect(result.value).toBe("main-result")
+            expect(mainProduct.unpack()).toBe("main")
 
             // ErrorService factory should have been called during preload
             expect(errorFactoryMock).toHaveBeenCalledTimes(1)
         })
 
         it("should still throw error when accessing a failed preloaded service", async () => {
+            const market = createMarket()
             const errorFactoryMock = vi.fn().mockImplementation(() => {
-                throw new Error("Service error")
+                throw new Error()
             })
 
-            const ErrorService = register("error-service").asService({
+            const ErrorSupplier = market.offer("error").asProduct({
                 factory: errorFactoryMock,
                 preload: true
             })
 
-            const MainService = register("main-service").asService({
-                deps: [ErrorService],
+            const MainSupplier = market.offer("main").asProduct({
+                suppliers: [ErrorSupplier],
                 factory: ($) => {
                     // Try to access the failed service
-                    return $(ErrorService.id)
+                    return $(ErrorSupplier.name)
                 }
             })
 
             // Wait a bit for preloading to complete
-            await new Promise((resolve) => setTimeout(resolve, 10))
+            await sleep(10)
 
             // Accessing the service should still throw the error
-            expect(() => MainService.supply({}).value).toThrow("Service error")
+            expect(() => MainSupplier.assemble({}).unpack()).toThrow()
         })
 
         it("should work with complex dependency chains and selective preloading", async () => {
-            const level1Mock = vi.fn().mockReturnValue("level1-result")
-            const level2Mock = vi.fn().mockReturnValue("level2-result")
-            const level3Mock = vi.fn().mockReturnValue("level3-result")
+            const market = createMarket()
+            const product1Mock = vi.fn().mockReturnValue("product1")
+            const product2Mock = vi.fn().mockReturnValue("product2")
+            const product3Mock = vi.fn().mockReturnValue("product3")
 
-            const Level1Service = register("level1").asService({
-                factory: level1Mock,
+            const product1Supplier = market.offer("product1").asProduct({
+                factory: product1Mock,
                 preload: true // This will be preloaded
             })
 
-            const Level2Service = register("level2").asService({
-                deps: [Level1Service],
-                factory: ($) => {
-                    level2Mock()
-                    return $(Level1Service.id) + "-processed"
-                },
+            const product2Supplier = market.offer("product2").asProduct({
+                factory: product2Mock,
                 preload: false // This will not be preloaded
             })
 
-            const Level3Service = register("level3").asService({
-                deps: [Level1Service, Level2Service],
-                factory: ($) => {
-                    level3Mock()
-                    return {
-                        level1: $(Level1Service.id),
-                        level2: $(Level2Service.id)
-                    }
-                }
-                // preload defaults to false
+            const product3Supplier = market.offer("product3").asProduct({
+                factory: product3Mock
             })
 
-            const MainService = register("main").asService({
-                deps: [Level1Service, Level2Service, Level3Service],
+            const MainSupplier = market.offer("main").asProduct({
+                suppliers: [
+                    product1Supplier,
+                    product2Supplier,
+                    product3Supplier
+                ],
                 factory: () => {
-                    // Don't access any dependencies yet
-                    return "main-result"
+                    return "main"
                 }
             })
 
-            const result = MainService.supply({})
+            const mainProduct = MainSupplier.assemble({})
 
             // Wait a bit for preloading to complete
-            await new Promise((resolve) => setTimeout(resolve, 10))
+            await sleep(10)
 
-            // Only Level1Service should have been preloaded
-            expect(level1Mock).toHaveBeenCalledTimes(1)
-            expect(level2Mock).toHaveBeenCalledTimes(0)
-            expect(level3Mock).toHaveBeenCalledTimes(0)
+            // Only product1Supplier should have been preloaded
+            expect(product1Mock).toHaveBeenCalledTimes(1)
+            expect(product2Mock).toHaveBeenCalledTimes(0)
+            expect(product3Mock).toHaveBeenCalledTimes(0)
 
-            expect(result.value).toBe("main-result")
+            expect(mainProduct.unpack()).toBe("main")
         })
     })
 
     describe("Type Safety and Edge Cases", () => {
-        it("should handle empty teams correctly", () => {
-            const EmptyTeamService = register("empty-team").asService({
-                factory: () => "empty-team-result"
+        it("should handle empty suppliers correctly", () => {
+            const market = createMarket()
+            const EmptySupplier = market.offer("empty").asProduct({
+                factory: () => "empty"
             })
 
-            const result = EmptyTeamService.supply({})
-            expect(result.value).toBe("empty-team-result")
-        })
-
-        it("should handle services with no supplies parameter", () => {
-            const NoSuppliesService = register("no-supplies").asService({
-                factory: () => "no-supplies-result"
-            })
-
-            const result = NoSuppliesService.supply({})
-            expect(result.value).toBe("no-supplies-result")
-        })
-
-        it("should handle values with complex object types", () => {
-            interface ComplexType {
-                id: string
-                data: {
-                    value: number
-                    items: string[]
-                }
-                metadata?: Record<string, unknown>
-            }
-
-            const ComplexResource =
-                register("complex-resource").asResource<ComplexType>()
-
-            const complexValue: ComplexType = {
-                id: "test-id",
-                data: {
-                    value: 42,
-                    items: ["item1", "item2"]
-                },
-                metadata: {
-                    created: "2024-01-01"
-                }
-            }
-
-            const result = ComplexResource.of(complexValue)
-
-            expect(result.value).toEqual(complexValue)
-        })
-
-        it("should demonstrate that preload: true silently ignores errors until service access", () => {
-            // This test shows that preload: true doesn't change the fundamental behavior
-            // - it just tries to warm up services in the background
-            // - errors are still deferred until the service is actually accessed
-
-            const ConfigResource = register("config").asResource<string>()
-
-            // ServiceA needs ConfigResource
-            const ServiceA = register("service-a").asService({
-                deps: [ConfigResource],
-                factory: ($) => {
-                    const config = $(ConfigResource.id)
-                    return `service-a-${config}`
-                }
-            })
-
-            // ServiceB provides ServiceA in its team with preload: true
-            // Even though ServiceA needs ConfigResource, the preloading won't fail immediately
-            const ServiceB = register("service-b").asService({
-                deps: [ServiceA],
-                factory: () => {
-                    return "service-b-result"
-                },
-                preload: true // This should try to preload ServiceA but silently ignore failures
-            })
-
-            // MainService provides ServiceB in its team
-            const MainService = register("main").asService({
-                deps: [ServiceB],
-                factory: ($) => {
-                    const serviceB = $(ServiceB.id)
-                    return `main-${serviceB}`
-                }
-            })
-
-            // This should NOT fail immediately due to preloading
-            // The preloading happens in the background and silently ignores errors
-            // @ts-expect-error - Expected: missing config dependency (but preloading silences it)
-            const result = MainService.supply({})
-            expect(result.value).toBe("main-service-b-result")
-
-            // The key insight: preload: true doesn't change the fundamental behavior
-            // It just tries to warm up services in the background, but errors are still
-            // deferred until the service is actually accessed
+            const emptyProduct = EmptySupplier.assemble({})
+            expect(emptyProduct.unpack()).toBe("empty")
         })
 
         it("should demonstrate the Narrow API behavior", () => {
@@ -720,13 +584,14 @@ describe("supplier", () => {
             type Session = { user: User; now: Date }
 
             // Session resource can hold any object of type Session
-            const Session = register("session").asResource<Session>()
+            const market = createMarket()
+            const Session = market.offer("session").asResource<Session>()
 
             // Admin dashboard requires admin session using the Narrow API
-            const AdminDashboard = register("admin-dashboard").asService({
-                deps: [narrow(Session)<{ user: { role: "admin" } }>()],
+            const AdminDashboard = market.offer("admin-dashboard").asProduct({
+                suppliers: [narrow(Session)<{ user: { role: "admin" } }>()],
                 factory: ($) => {
-                    const session = $(Session.id)
+                    const session = $(Session.name)
                     // No runtime check needed - TypeScript ensures session.user.role === "admin"
                     return {
                         adminId: session.user.id,
@@ -738,24 +603,24 @@ describe("supplier", () => {
             })
 
             // This should create a type error because role is "user" (not admin)
-            const userSession = Session.of({
+            const userSession = Session.pack({
                 user: { id: "user123", name: "Regular User", role: "user" },
                 now: new Date()
             })
 
             // This should succeed because role is "admin"
-            const adminSession = Session.of({
+            const adminSession = Session.pack({
                 user: { id: "admin456", name: "Admin User", role: "admin" },
                 now: new Date()
             })
 
             // @ts-expect-error - Expected: missing logger dependency
-            const fail = AdminDashboard.supply(index(userSession))
-            const result = AdminDashboard.supply(index(adminSession))
+            const fail = AdminDashboard.assemble(index(userSession))
+            const result = AdminDashboard.assemble(index(adminSession))
 
-            expect(result.value.adminId).toBe("admin456")
-            expect(result.value.adminName).toBe("Admin User")
-            expect(result.value.isAdmin).toBe(true)
+            expect(result.unpack().adminId).toBe("admin456")
+            expect(result.unpack().adminName).toBe("Admin User")
+            expect(result.unpack().isAdmin).toBe(true)
         })
     })
 })

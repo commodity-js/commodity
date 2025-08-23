@@ -169,7 +169,7 @@ const testApiClient = ApiClient.supply(
 )
 ```
 
-### $ Object API
+### $ (Supplies) Object API
 
 The `$` callable object provides access to a service's dependencies. `$[depId]` accesses the resource or service, and `$(depId)` is a shorthand to access the value stored in the resource, or built by the service. To remember, I view `$[]` as accessing the "box" that contains the value ([] looks like a box). The resource `$[resourceId]` is of type {id, value, of} and the service `$[serviceId]` is of type {id, value, of, resupply} (see the use of resupply below).
 
