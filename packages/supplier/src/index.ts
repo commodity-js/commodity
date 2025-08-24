@@ -102,23 +102,32 @@ type ToSupply<TEAM extends ProductSupplier<string, any, any>[]> = Merge<
             : never
     }[number]
 >
+type MEMO_FN_CONSTRAINT = <T>({
+    id,
+    unpack
+}: {
+    id: string
+    unpack: () => T
+}) => () => T
+
+type RECALL_FN_CONSTRAINT = (product: Product<string, any>) => void
 
 export const createMarket = <
-    MEMO_FN extends <T>({
-        id,
-        unpack
-    }: {
-        id: string
-        unpack: () => T
-    }) => () => T,
-    RECALL_FN extends (product: Product<string, any>) => void
->(cache?: {
+    MEMO_FN extends MEMO_FN_CONSTRAINT | undefined,
+    RECALL_FN extends RECALL_FN_CONSTRAINT | undefined,
+    MEMO_CONSTRAINT extends boolean = [MEMO_FN] extends [MEMO_FN_CONSTRAINT]
+        ? boolean
+        : false,
+    RECALLABLE_CONSTRAINT extends boolean = [RECALL_FN] extends [
+        RECALL_FN_CONSTRAINT
+    ]
+        ? boolean
+        : false
+>(cacheOpts?: {
     memoFn: MEMO_FN
     recallFn?: RECALL_FN
 }) => {
-    type MEMO_CONSTRAINT = MEMO_FN extends undefined ? false : boolean
-    type RECALL_CONSTRAINT = RECALL_FN extends undefined ? false : boolean
-    const { recallFn, memoFn } = cache || {}
+    const { memoFn, recallFn } = cacheOpts ?? {}
     // Statefulness only used for cache invalidation. Injections do not happen from instances container.
     // Each injection is scoped in its own supply (or resupply) context.
     const dependents = new Map<string, Set<string>>()
@@ -155,14 +164,14 @@ export const createMarket = <
                 },
                 asProduct: <
                     VALUE,
-                    MEMO extends MEMO_CONSTRAINT = MEMO_CONSTRAINT extends false
-                        ? MEMO_CONSTRAINT
-                        : Extract<MEMO_CONSTRAINT, true>,
-                    RECALLABLE extends RECALL_CONSTRAINT = RECALL_CONSTRAINT extends false
-                        ? RECALL_CONSTRAINT
-                        : Extract<RECALL_CONSTRAINT, true>,
+                    RECALLABLE extends RECALLABLE_CONSTRAINT,
                     SUPPLIERS extends Supplier<string, any, any>[] = [],
-                    SUPPLIES extends $<SUPPLIERS> = $<SUPPLIERS>
+                    SUPPLIES extends $<SUPPLIERS> = $<SUPPLIERS>,
+                    MEMO extends MEMO_CONSTRAINT = [MEMO_CONSTRAINT] extends [
+                        false
+                    ]
+                        ? MEMO_CONSTRAINT
+                        : Extract<MEMO_CONSTRAINT, true>
                 >({
                     factory,
                     suppliers = [] as unknown as SUPPLIERS,

@@ -1,11 +1,11 @@
-import { register, type $ } from "supplier"
-import Level4Service from "#components/level-4.tsx"
+import { Level4Supplier } from "#components/level-4.tsx"
+import { market } from "#lib/market.ts"
 
 // Level 3 component - renders Level 4
-const Level3Service = register("level-3").asService({
-    team: [Level4Service],
-    factory: ($: $<[typeof Level4Service]>) => {
-        const Level4Component = $(Level4Service.id)
+export const Level3Supplier = market.offer("level-3").asProduct({
+    suppliers: [Level4Supplier],
+    factory: ($) => {
+        const Level4Component = $(Level4Supplier.name)
 
         return (
             <div className="border-2 border-blue-500 p-4 rounded-lg bg-blue-50">
@@ -22,5 +22,3 @@ const Level3Service = register("level-3").asService({
         )
     }
 })
-
-export default Level3Service

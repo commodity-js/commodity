@@ -249,6 +249,9 @@ describe("Caching System", () => {
         const market = createMarket({
             memoFn: ({ unpack }) => {
                 return memo(unpack)
+            },
+            recallFn: (product) => {
+                memoizeClear(product.unpack)
             }
         })
 

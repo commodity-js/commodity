@@ -23,6 +23,18 @@ describe("supplier", () => {
             expect(resourceSupplier.packs).toBe(true)
         })
 
+        it("should throw error if two supplies with the same name are offered", () => {
+            const market = createMarket()
+
+            // First offer should succeed
+            market.offer("duplicate").asResource<string>()
+
+            // Second offer with same name should throw
+            expect(() => {
+                market.offer("duplicate").asResource<string>()
+            }).toThrow("Name duplicate already exists")
+        })
+
         it("should handle different resource types correctly", () => {
             const market = createMarket()
             const StringSupplier = market.offer("string").asResource<string>()

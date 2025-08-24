@@ -1,3 +1,5 @@
+import { market } from "#lib/market.ts"
+
 export interface AppConfig {
     appName: string
     version: string
@@ -26,5 +28,4 @@ export const defaultConfig: AppConfig = {
     }
 }
 
-import { register } from "supplier"
-export const ConfigResource = register("config").asResource<AppConfig>()
+export const ConfigSupplier = market.offer("config").asResource<AppConfig>()

@@ -49,6 +49,9 @@ importers:
 
   packages/examples/next:
     dependencies:
+      memoize:
+        specifier: ^10.1.0
+        version: 10.1.0
       next:
         specifier: 15.4.5
         version: 15.4.5(react-dom@19.1.0(react@19.1.0))(react@19.1.0)

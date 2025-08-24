@@ -1,28 +1,21 @@
-import { register, type $, index } from "supplier"
-import Level3Service from "#components/level-3.tsx"
-import ConfigRendererService from "#components/config-renderer.tsx"
-import { ConfigResource } from "#lib/config.ts"
+import { Level3Supplier } from "#components/level-3.tsx"
+import { ConfigRendererSupplier } from "#components/config-renderer.tsx"
+import { ConfigSupplier } from "#lib/config.ts"
+import { market } from "#lib/market.ts"
+import { index } from "supplier"
 
 // Level 2 component - displays config and resupplies different config to Level 3+4
-const Level2Service = register("level-2").asService({
-    team: [Level3Service, ConfigRendererService],
-    factory: (
-        $: $<
-            [
-                typeof Level3Service,
-                typeof ConfigRendererService,
-                typeof ConfigResource
-            ]
-        >
-    ) => {
+export const Level2Supplier = market.offer("level-2").asProduct({
+    suppliers: [Level3Supplier, ConfigRendererSupplier, ConfigSupplier],
+    factory: ($) => {
         // Get the current config to display (resource must be supplied at entry point)
-        const currentConfig = $(ConfigResource.id)
+        const currentConfig = $(ConfigSupplier.name)
 
         // Get the config renderer
-        const ConfigRenderer = $(ConfigRendererService.id)
+        const ConfigRenderer = $(ConfigRendererSupplier.name)
 
         // Get Level3Service to resupply with different config
-        const level3Service = $[Level3Service.id]
+        const level3Service = $[Level3Supplier.name]
 
         // Create a modified config for Level 3 and 4
         const modifiedConfig = {
@@ -41,8 +34,8 @@ const Level2Service = register("level-2").asService({
         }
 
         // Resupply Level 3 with the modified config
-        const Level3Component = level3Service.resupply(
-            index(ConfigResource.of(modifiedConfig))
+        const Level3Component = level3Service.reassemble(
+            index(ConfigSupplier.pack(modifiedConfig))
         )
 
         return (
@@ -78,10 +71,8 @@ const Level2Service = register("level-2").asService({
                     display different values than what Level 2 received!
                 </p>
 
-                {Level3Component.value}
+                {Level3Component.unpack()}
             </div>
         )
     }
 })
-
-export default Level2Service

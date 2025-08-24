@@ -1,10 +1,12 @@
-import Level1Service from "#components/level-1.tsx"
-import { ConfigResource, defaultConfig } from "#lib/config.ts"
+import { Level1Supplier } from "#components/level-1.tsx"
+import { ConfigSupplier, defaultConfig } from "#lib/config.ts"
 import { index } from "supplier"
 
 export default function Home() {
     // Supply the config at the entrypoint and render the nested components
-    const result = Level1Service.supply(index(ConfigResource.of(defaultConfig)))
+    const level1Component = Level1Supplier.assemble(
+        index(ConfigSupplier.pack(defaultConfig))
+    ).unpack()
 
     return (
         <div className="min-h-screen bg-gray-100 p-8">
@@ -20,7 +22,7 @@ export default function Home() {
                 </div>
 
                 <div className="bg-white rounded-lg shadow-lg p-6">
-                    {result.value}
+                    {level1Component}
                 </div>
 
                 <div className="mt-8 bg-white rounded-lg shadow-lg p-6">
