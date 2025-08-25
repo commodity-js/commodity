@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { index, narrow, createMarket } from "#index"
+import { index, narrow, createMarket, sleep } from "#index"
 import memo from "memoize"
-import { sleep } from "./lib"
 
 describe("supplier", () => {
     beforeEach(() => {
@@ -207,8 +206,8 @@ describe("supplier", () => {
         })
         it("should enable context switching by calling reassemble on products", () => {
             const market = createMarket({
-                memoFn: ({ unpack }) => {
-                    return memo(unpack)
+                memoFn: ({ factory }) => {
+                    return memo(factory)
                 }
             })
             const ConfigSupplier = market.offer("config").asResource<string>()
@@ -320,8 +319,8 @@ describe("supplier", () => {
             const factoryMock = vi.fn().mockReturnValue("memoized")
 
             const market = createMarket({
-                memoFn: ({ unpack }) => {
-                    return memo(unpack)
+                memoFn: ({ factory }) => {
+                    return memo(factory)
                 }
             })
             const memoizedSupplier = market.offer("memoized").asProduct({
@@ -349,8 +348,8 @@ describe("supplier", () => {
             const factory1Mock = vi.fn().mockReturnValue("product1")
 
             const market = createMarket({
-                memoFn: ({ unpack }) => {
-                    return memo(unpack)
+                memoFn: ({ factory }) => {
+                    return memo(factory)
                 }
             })
             const product1Supplier = market.offer("product1").asProduct({
@@ -430,8 +429,8 @@ describe("supplier", () => {
     describe("Preload Feature", () => {
         it("should preload services with preload: true", async () => {
             const market = createMarket({
-                memoFn: ({ unpack }) => {
-                    return memo(unpack)
+                memoFn: ({ factory }) => {
+                    return memo(factory)
                 }
             })
             const preloadFactoryMock = vi.fn().mockReturnValue("preloaded")

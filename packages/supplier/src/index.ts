@@ -26,11 +26,11 @@ type Product<NAME extends string, VALUE> = Resource<NAME, VALUE> &
     ProductActions<NAME, VALUE>
 
 type ProductActions<NAME extends string, VALUE> = {
-    pack: (value: VALUE) => Resource<NAME, VALUE> & ProductActions<NAME, VALUE>
+    pack: (value: VALUE) => Product<NAME, VALUE>
     dependsOnOneOf: (overrides: SupplyMap) => boolean
     reassemble: ReassembleAction<NAME, VALUE>
     setOptimistic: (value: Awaited<VALUE>) => void
-    recall: () => void
+    recall: (() => void) | undefined
 }
 
 type AssembleAction<NAME extends string, VALUE, TOSUPPLY extends SupplyMap> = (
@@ -104,13 +104,16 @@ type ToSupply<TEAM extends ProductSupplier<string, any, any>[]> = Merge<
 >
 type MEMO_FN_CONSTRAINT = <T>({
     id,
-    unpack
+    factory
 }: {
     id: string
-    unpack: () => T
+    factory: () => T
 }) => () => T
 
-type RECALL_FN_CONSTRAINT = (product: Product<string, any>) => void
+type RECALL_FN_CONSTRAINT = (product: {
+    id: string
+    factory: () => any
+}) => void
 
 export const createMarket = <
     MEMO_FN extends MEMO_FN_CONSTRAINT | undefined,
@@ -164,14 +167,18 @@ export const createMarket = <
                 },
                 asProduct: <
                     VALUE,
-                    RECALLABLE extends RECALLABLE_CONSTRAINT,
                     SUPPLIERS extends Supplier<string, any, any>[] = [],
                     SUPPLIES extends $<SUPPLIERS> = $<SUPPLIERS>,
                     MEMO extends MEMO_CONSTRAINT = [MEMO_CONSTRAINT] extends [
                         false
                     ]
                         ? MEMO_CONSTRAINT
-                        : Extract<MEMO_CONSTRAINT, true>
+                        : Extract<MEMO_CONSTRAINT, true>,
+                    RECALLABLE extends RECALLABLE_CONSTRAINT = [
+                        RECALLABLE_CONSTRAINT
+                    ] extends [false]
+                        ? RECALLABLE_CONSTRAINT
+                        : Extract<RECALLABLE_CONSTRAINT, true>
                 >({
                     factory,
                     suppliers = [] as unknown as SUPPLIERS,
@@ -223,26 +230,97 @@ export const createMarket = <
                                 toSupply
                             ) as unknown as SUPPLIES
 
+                            const memoedFactory =
+                                memo && memoFn
+                                    ? memoFn({
+                                          id,
+                                          factory: () => factory(fullSupplies)
+                                      })
+                                    : () => factory(fullSupplies)
                             let optimistic: Awaited<VALUE> | undefined =
                                 undefined
-
                             const unpack = () => {
-                                // If we have an optimistic value, return it and update in background
+                                // If we have an optimistic value, return it
                                 if (optimistic !== undefined) {
                                     return optimistic
                                 }
-
-                                // No optimistic value, call factory directly
-                                return factory(fullSupplies)
+                                // No optimistic or computed value, call factory directly
+                                return memoedFactory()
                             }
+
+                            const setOptimistic = (
+                                value: Awaited<VALUE>,
+                                timeout = 2000
+                            ) => {
+                                if (optimistic !== undefined) {
+                                    throw new Error(
+                                        `Cannot set optimistic value when one is already set: ${optimistic}`
+                                    )
+                                }
+
+                                if (product.recall) {
+                                    product.recall()
+                                }
+                                optimistic = value
+                                // Update optimistic value in background
+                                Promise.resolve()
+                                    .then(async () => {
+                                        if (memo) {
+                                            await memoedFactory()
+                                        } else {
+                                            await sleep(timeout)
+                                        }
+                                    })
+                                    .catch((error) => {
+                                        // If factory fails, we don't want to keep the optimistic value
+                                        // but we also don't want to throw - just clear optimistic
+                                        console.warn(
+                                            `Factory failed during optimistic update: ${error}`
+                                        )
+                                    })
+                                    .finally(() => {
+                                        optimistic = undefined
+                                    })
+                            }
+
+                            const recall =
+                                recallable && recallFn
+                                    ? () => {
+                                          optimistic = undefined
+                                          recallFn({
+                                              id,
+                                              factory: memoedFactory
+                                          })
+
+                                          // Propagate to all dependents recursively
+                                          const visit = (name: string) => {
+                                              const products =
+                                                  instances.get(name)
+                                              if (!products) return
+
+                                              products.forEach((product) => {
+                                                  if (product.recall) {
+                                                      product.recall()
+                                                  }
+                                              })
+
+                                              // Recursively visit dependents
+                                              const next = dependents.get(name)
+                                              if (next) {
+                                                  next.forEach(visit)
+                                              }
+                                          }
+
+                                          const directDependents =
+                                              dependents.get(name) ?? []
+                                          directDependents.forEach(visit)
+                                      }
+                                    : undefined
 
                             const product = {
                                 id,
                                 name,
-                                unpack:
-                                    memo && memoFn
-                                        ? memoFn({ id, unpack })
-                                        : unpack,
+                                unpack,
                                 reassemble: (overrides: SupplyMap) => {
                                     // Create a mutable copy of overrides with flexible typing
                                     const newSupplies: SupplyMap = {}
@@ -282,59 +360,14 @@ export const createMarket = <
 
                                     return actions.assemble(
                                         newSupplies as typeof toSupply
-                                    ) as unknown as Product<NAME, VALUE>
+                                    )
                                 },
                                 dependsOnOneOf: actions.dependsOnOneOf,
                                 pack: actions.pack,
-                                setOptimistic(value: Awaited<VALUE>) {
-                                    if (optimistic !== undefined) {
-                                        throw new Error(
-                                            `Cannot set optimistic value when one is already set: ${optimistic}`
-                                        )
-                                    }
-
-                                    if (recallFn) {
-                                        product.recall()
-                                    }
-
-                                    optimistic = value
-                                    // Update optimistic value in background
-                                    Promise.resolve()
-                                        .then(() => {
-                                            factory(fullSupplies)
-                                        })
-                                        .catch()
-                                        .finally(() => {
-                                            optimistic = undefined
-                                        })
-                                },
-                                recall() {
-                                    if (!recallFn) return
-
-                                    if (recallable) {
-                                        recallFn(product)
-                                    }
-
-                                    // Propagate to all dependents recursively
-                                    const visit = (name: string) => {
-                                        const products = instances.get(name)
-                                        if (!products) return
-
-                                        products.forEach((product) => {
-                                            product.recall()
-                                        })
-
-                                        // Recursively visit dependents
-                                        const next = dependents.get(name)
-                                        if (next) {
-                                            next.forEach(visit)
-                                        }
-                                    }
-
-                                    const directDependents =
-                                        dependents.get(name) ?? []
-                                    directDependents.forEach(visit)
-                                }
+                                setOptimistic,
+                                recall: recall as unknown as RECALLABLE extends true
+                                    ? Exclude<typeof recall, undefined>
+                                    : undefined
                             }
 
                             // Track instances of this product for recall
@@ -502,4 +535,8 @@ export function narrow<
             RESOURCESUPPLIER["name"],
             RESOURCESUPPLIER["_constraint"] & VALUE
         >
+}
+
+export function sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms))
 }

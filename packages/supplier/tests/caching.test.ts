@@ -1,13 +1,12 @@
 import { describe, it, expect } from "vitest"
-import { index, createMarket, $ } from "#index"
-import { sleep } from "./lib/index.ts"
+import { index, createMarket, $, sleep } from "#index"
 import memo, { memoizeClear } from "memoize"
 
 describe("Caching System", () => {
     it("should reassemble product if dependent suppliers reassembles", async () => {
         const market = createMarket({
-            memoFn: ({ unpack }) => {
-                return memo(unpack)
+            memoFn: ({ factory }) => {
+                return memo(factory)
             }
         })
         // productA will be reassembled
@@ -78,8 +77,8 @@ describe("Caching System", () => {
 
     it("should handle recursive dependency chains correctly", async () => {
         const market = createMarket({
-            memoFn: ({ unpack }) => {
-                return memo(unpack)
+            memoFn: ({ factory }) => {
+                return memo(factory)
             }
         })
         const productASupplier = market.offer("productA").asProduct({
@@ -144,11 +143,11 @@ describe("Caching System", () => {
     it("Recalls product with no dependents without recalling dependencies", async () => {
         // Example of using createMarket with memoization
         const market = createMarket({
-            memoFn: ({ unpack }) => {
-                return memo(unpack)
+            memoFn: ({ factory }) => {
+                return memo(factory)
             },
-            recallFn: (product) => {
-                memoizeClear(product.unpack)
+            recallFn: ({ factory }) => {
+                memoizeClear(factory)
             }
         })
         const productASupplier = market.offer("productA").asProduct({
@@ -187,11 +186,11 @@ describe("Caching System", () => {
 
     it("Should invalidate all dependents", async () => {
         const market = createMarket({
-            memoFn: ({ unpack }) => {
-                return memo(unpack)
+            memoFn: ({ factory }) => {
+                return memo(factory)
             },
-            recallFn: (product) => {
-                memoizeClear(product.unpack)
+            recallFn: ({ factory }) => {
+                memoizeClear(factory)
             }
         })
         const productZSupplier = market.offer("productZ").asProduct({
@@ -247,11 +246,11 @@ describe("Caching System", () => {
 
     it("should respect the memo flag in asService", async () => {
         const market = createMarket({
-            memoFn: ({ unpack }) => {
-                return memo(unpack)
+            memoFn: ({ factory }) => {
+                return memo(factory)
             },
-            recallFn: (product) => {
-                memoizeClear(product.unpack)
+            recallFn: ({ factory }) => {
+                memoizeClear(factory)
             }
         })
 
@@ -303,12 +302,12 @@ describe("Caching System", () => {
 
     it("should respect the recallable flag with memoFn", async () => {
         const market = createMarket({
-            memoFn: ({ unpack }) => {
-                return memo(unpack)
+            memoFn: ({ factory }) => {
+                return memo(factory)
             },
-            recallFn: (product) => {
+            recallFn: ({ factory }) => {
                 // Clear memoization for this service
-                memoizeClear(product.unpack)
+                memoizeClear(factory)
             }
         })
 
@@ -326,6 +325,7 @@ describe("Caching System", () => {
 
         // Create a service that should be memoized but NOT invalidated
         const nonRecallableSupplier = market.offer("non-recallable").asProduct({
+            suppliers: [explicitRecallableSupplier],
             factory: () => Date.now(),
             recallable: false // Should NOT be tracked for invalidation
         })
@@ -364,7 +364,7 @@ describe("Caching System", () => {
         const afterRecall = recallableProduct.unpack()
         expect(afterRecall).not.toBe(firstCall)
 
-        // But the non-invalidating service should still be memoized
+        // But the non-invalidating service should still be memoized, even if a dependent of recallableProduct
         const thirdNonRecallable = nonRecallableProduct.unpack()
         expect(thirdNonRecallable).toBe(firstNonRecallable)
 
@@ -372,13 +372,6 @@ describe("Caching System", () => {
 
         const afterExplicitRecall = explicitRecallableProduct.unpack()
         expect(afterExplicitRecall).not.toBe(firstExplicitRecallable)
-
-        // Test that recall on non-invalidating service doesn't clear memoization
-        nonRecallableProduct.recall()
-
-        // Service should still return memoized value
-        const afterNonRecallableRecall = nonRecallableProduct.unpack()
-        expect(afterNonRecallableRecall).toBe(firstNonRecallable)
     })
 
     it("should respect the recallable flag with custom cache", async () => {
@@ -386,19 +379,19 @@ describe("Caching System", () => {
         const cache = new Map<string, any>()
 
         const market = createMarket({
-            memoFn: ({ id, unpack }) => {
+            memoFn: ({ id, factory }) => {
                 return () => {
                     if (cache.has(id)) {
                         return cache.get(id)
                     }
-                    const product = unpack()
+                    const product = factory()
                     cache.set(id, product)
                     return product
                 }
             },
-            recallFn: (product) => {
+            recallFn: ({ id }) => {
                 // Clear cache entries for this service when invalidated
-                cache.delete(product.id)
+                cache.delete(id)
             }
         })
 
@@ -418,11 +411,11 @@ describe("Caching System", () => {
 
         // Test that both services populate the cache initially
         const recallableProduct = recallableSupplier.assemble({})
-        const firstCall = recallableProduct.unpack()
+        recallableProduct.unpack()
         expect(cache.size).toBeGreaterThan(0) // Cache has entries
 
         const nonRecallableProduct = nonRecallableSupplier.assemble({})
-        const firstNonRecallable = nonRecallableProduct.unpack()
+        nonRecallableProduct.unpack()
         const cacheSizeBeforeRecall = cache.size
 
         // Now test invalidation
@@ -436,10 +429,272 @@ describe("Caching System", () => {
         const remainingCacheSize = cache.size
         expect(remainingCacheSize).toBeGreaterThan(0)
 
-        // Test that recall on non-invalidating service doesn't clear cache
-        nonRecallableProduct.recall()
+        // Test that recall on non-invalidating product doesn't clear cache
+        expect(nonRecallableProduct.recall).toBeUndefined()
 
         // Cache size should be the same (no invalidation)
         expect(cache.size).toBe(remainingCacheSize)
+    })
+
+    it("should support optimistic caching with setOptimistic", async () => {
+        const market = createMarket({
+            memoFn: ({ factory }) => {
+                return memo(factory)
+            },
+            recallFn: ({ factory }) => {
+                memoizeClear(factory)
+            }
+        })
+
+        // Create a service that simulates slow computation
+        let computationCount = 0
+
+        const OptimisticSupplier = market.offer("optimistic").asProduct({
+            factory: async () => {
+                computationCount++
+                await sleep(100) // Simulate actual slow computation
+                return `computed-value-${computationCount}`
+            }
+        })
+
+        // Test optimistic caching with recallable service
+        const optimisticProduct = OptimisticSupplier.assemble({})
+
+        // Set optimistic value before first access
+        optimisticProduct.setOptimistic("optimistic-value")
+
+        // Should return optimistic value immediately
+        expect(await optimisticProduct.unpack()).toBe("optimistic-value")
+
+        // Factory should not have been called once in the background
+        expect(computationCount).toBe(1)
+
+        await sleep(100)
+
+        // After background computation completes, optimistic value should be cleared
+        // and real computed value should be returned
+        const realValue1 = await optimisticProduct.unpack()
+        expect(realValue1).not.toBe("optimistic-value")
+        expect(realValue1).toBe("computed-value-1")
+    })
+
+    it("should handle multiple optimistic values correctly", async () => {
+        const market = createMarket({
+            memoFn: ({ factory }) => {
+                return memo(factory)
+            }
+        })
+
+        const OptimisticSupplier = market.offer("multi-optimistic").asProduct({
+            factory: async () => {
+                await sleep(20)
+                return 300
+            }
+        })
+
+        const product = OptimisticSupplier.assemble({})
+
+        // Set first optimistic value
+        product.setOptimistic(100)
+        expect(await product.unpack()).toBe(100)
+
+        // Try to set second optimistic value - should throw error
+        expect(() => {
+            product.setOptimistic(200)
+        }).toThrow("Cannot set optimistic value when one is already set: 100")
+
+        await sleep(50)
+
+        expect(await product.unpack()).toBe(300)
+    })
+
+    it("should not use timeout parameter in setOptimistic if memoed", async () => {
+        const market = createMarket({
+            memoFn: ({ factory }) => {
+                return memo(factory)
+            }
+        })
+
+        const OptimisticSupplier = market.offer("timeout-test").asProduct({
+            factory: async () => {
+                await sleep(100) // Slow computation
+                return "final-value"
+            }
+        })
+
+        const product = OptimisticSupplier.assemble({})
+
+        // Set optimistic value with custom timeout
+        product.setOptimistic("fast-value", 50) // 50ms timeout
+        expect(await product.unpack()).toBe("fast-value")
+
+        // Wait for timeout to expire
+        await sleep(60)
+
+        // Should still return optimistic value until background computation completes
+        expect(await product.unpack()).toBe("fast-value")
+
+        // Wait for background computation to complete
+        await sleep(100)
+
+        // Now should return real value
+        expect(await product.unpack()).toBe("final-value")
+    })
+
+    it("should respect timeout for non-memoized factories", async () => {
+        const market = createMarket({
+            memoFn: ({ factory }) => {
+                return memo(factory)
+            }
+        })
+
+        let factoryCallCount = 0
+        const NonMemoizedSupplier = market
+            .offer("timeout-non-memoized")
+            .asProduct({
+                factory: () => {
+                    factoryCallCount++
+                    return `factory-result-${factoryCallCount}`
+                },
+                memo: false
+            })
+
+        const product = NonMemoizedSupplier.assemble({})
+
+        // Set optimistic value with custom timeout
+        product.setOptimistic("optimistic-value", 200)
+        expect(product.unpack()).toBe("optimistic-value")
+
+        // Factory should not be called yet
+        expect(factoryCallCount).toBe(0)
+
+        // Wait for a short time - should still return optimistic value
+        await sleep(100)
+        expect(product.unpack()).toBe("optimistic-value")
+        expect(factoryCallCount).toBe(0)
+
+        // Wait for timeout to expire (using default 2000ms)
+        await sleep(200)
+
+        // Should now return real factory result
+        const realValue = product.unpack()
+        expect(realValue).toBe("factory-result-1")
+        expect(realValue).not.toBe("optimistic-value")
+        expect(factoryCallCount).toBe(1)
+
+        // Second call should call factory again (non-memoized)
+        const secondValue = product.unpack()
+        expect(secondValue).toBe("factory-result-2")
+        expect(factoryCallCount).toBe(2)
+    })
+
+    it("should handle factory failures", async () => {
+        const market = createMarket({
+            memoFn: ({ factory }) => {
+                return memo(factory)
+            },
+            recallFn: ({ factory }) => {
+                memoizeClear(factory)
+            }
+        })
+
+        let shouldFail = true
+        const OptimisticSupplier = market.offer("failing-factory").asProduct({
+            factory: async () => {
+                await sleep(100)
+                if (shouldFail) {
+                    throw new Error("Factory failed")
+                }
+                return "success-value"
+            }
+        })
+
+        const product = OptimisticSupplier.assemble({})
+
+        // Set optimistic value
+        product.setOptimistic("optimistic-value")
+        expect(await product.unpack()).toBe("optimistic-value")
+
+        // Wait for background computation to fail
+        await sleep(100)
+
+        // Should run the real factory and throw error
+
+        await expect(product.unpack()).rejects.toThrow()
+
+        // Fix the factory
+        shouldFail = false
+
+        // Set optimistic value again to trigger new background computation
+        product.setOptimistic("new-optimistic")
+        expect(await product.unpack()).toBe("new-optimistic")
+
+        // Wait for successful background computation
+        await sleep(100)
+
+        // Should now return real value
+        expect(await product.unpack()).toBe("success-value")
+    })
+
+    it("should recall optimistic values", async () => {
+        const market = createMarket({
+            memoFn: ({ factory }) => {
+                return memo(factory)
+            },
+            recallFn: ({ factory }) => {
+                memoizeClear(factory)
+            }
+        })
+
+        const OptimisticSupplier = market.offer("recall-optimistic").asProduct({
+            factory: () => Date.now()
+        })
+
+        const product = OptimisticSupplier.assemble({})
+
+        // Set optimistic value
+        product.setOptimistic(999)
+        expect(product.unpack()).toBe(999)
+
+        // Call recall - this should clear the optimistic value
+        product.recall()
+
+        // Should return new computed value, not optimistic value
+        const newValue = product.unpack()
+        expect(newValue).not.toBe(999)
+        expect(typeof newValue).toBe("number")
+    })
+
+    it("should handle optimistic values with dependencies", async () => {
+        const market = createMarket({
+            memoFn: ({ factory }) => {
+                return memo(factory)
+            }
+        })
+
+        const dependencySupplier = market.offer("dependency").asProduct({
+            factory: () => "dependency-value"
+        })
+
+        const OptimisticSupplier = market
+            .offer("dependent-optimistic")
+            .asProduct({
+                suppliers: [dependencySupplier],
+                factory: ($) => `computed-${$(dependencySupplier.name)}`
+            })
+
+        const product = OptimisticSupplier.assemble({})
+
+        // Set optimistic value
+        product.setOptimistic("optimistic-dependent")
+        expect(await product.unpack()).toBe("optimistic-dependent")
+
+        // Wait for background computation
+        await sleep(50)
+
+        // Should return real computed value with dependency
+        const realValue = await product.unpack()
+        expect(realValue).toBe("computed-dependency-value")
+        expect(realValue).not.toBe("optimistic-dependent")
     })
 })

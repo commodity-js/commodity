@@ -38,14 +38,15 @@ importers:
       globals:
         specifier: ^16.1.0
         version: 16.3.0
-      typescript:
-        specifier: latest
-        version: 5.9.2
       typescript-eslint:
         specifier: ^8.32.0
         version: 8.39.1(eslint@9.32.0(jiti@2.5.1))(typescript@5.9.2)
 
-  packages/config/typescript: {}
+  packages/config/typescript:
+    devDependencies:
+      typescript:
+        specifier: latest
+        version: 5.9.2
 
   packages/examples/next:
     dependencies:

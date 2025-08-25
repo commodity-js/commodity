@@ -8,10 +8,11 @@
             "name": "Run tests",
             "type": "node-terminal",
             "request": "launch",
-            "command": "pnpm run test:run",
+            "command": "pnpm run test:run --test-timeout=0 -t \"should handle factory failures\"",
             "cwd": "${workspaceFolder}/packages/supplier",
             "showAsyncStacks": true,
-            "sourceMaps": true
+            "sourceMaps": true,
+            "smartStep": true
         }
     ]
 }
