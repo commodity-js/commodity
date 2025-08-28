@@ -1,6 +1,14 @@
+<style>
+details summary {
+    font-size: 1.2em;
+    font-weight: bold;
+    cursor: pointer;
+}
+</style>
+
 # supplier
 
-Let the market and the supply chain deliver the resources and services ("products") you need, where you need them. No more tedious wiring or prop-drilling.
+Let the market and the supply chain deliver the resources and services ("products") you need, where you need them.
 
 A powerful, type-inferred, and hyper-minimalistic library for Context Propagation, Reactive Caching, Optimistic Mutations, and Waterfall Management.
 
@@ -10,13 +18,13 @@ I created this library to solve multiple pain points I had while working with co
 
 I encountered these pain points working on a big React application, trying to convert my deep component tree to server components without the help of React Context to ease the pains of prop-drilling :'(. But the problems are more general and arise in other contexts, like complex backends with intertwined data dependencies, so this package is completely framework-agnostic.
 
-It is inspired by Dependency Injection frameworks (DI), but don't be scared! I removed all OOP paradigms, all classes, decorators, annotations, reflect-metadata and compiler magic, and I added full type-safety and type-inference. I had the intuition that DI got this complex in OOP world because of the absence of first-class functions in the languages it was most used. But JS DI frameworks currently on the market seem to have been built by imitating how they were built for languages without first-class functions. And I get why, even with first-class functions, DI is a hard and confusing pattern, full of potential recursions and circular dependencies. But once you manage to untangle all of that, it becomes really powerful! I only created this library to solve prop-drilling and context propagation initially, but then I kept seeing pain points of other developers and even frameworks that I could solve easily with my library, so I added caching, preloading and optimistic mutations.
+It is inspired by Dependency Injection frameworks (DI), but don't be scared! I removed all OOP paradigms, all classes, decorators, annotations, reflect-metadata and compiler magic, and I added full type-safety and type-inference. I had the intuition that DI got this complex in OOP world because of the absence of first-class functions and Typescript in the languages it was most used. But TS DI frameworks currently on the market seem to have been built by imitating how they were built for languages without first-class functions. And I get why, even with first-class functions, DI is a hard and confusing pattern, full of potential recursions and circular dependencies. But once you manage to untangle all of that, it becomes really powerful! I only created this library to solve prop-drilling and context propagation initially, but then I kept seeing pain points of other developers and even frameworks that I could solve easily with my library, so I added caching, preloading and optimistic mutations.
 
 STILL IN VERY UNSTABLE, PRE-ALPHA, PLEASE DON'T INSTALL VERSIONS v0.0.x
 
 ## Features
 
-### :sunny: **General**
+### ☀️ **General**
 
 -   **Fully typesafe and type-inferred** - Full TypeScript support with compile-time circular dependency detection.
 -   **Fluent and expressive API** - Learn in minutes, designed for both developers and AI usage.
@@ -35,17 +43,17 @@ STILL IN VERY UNSTABLE, PRE-ALPHA, PLEASE DON'T INSTALL VERSIONS v0.0.x
 -   **Smart memoization** - Dependencies injected once per context for optimal performance
 -   **Context switching** - Add or override context anywhere in the call stack
 
-### 🧠 **Smart Reactive Caching**
+### 🧠 **Smart Reactive Cache Invalidation**
 
--   **Bring Your Own Cache** - Integrate any caching strategy via `memoFn` and `recallFn`.
--   **Reactive Dependency Graph** - Automatically invalidate all dependents when a cached function is recalled (invalidated).
--   **Fine-Grained Control** - Enable or disable memoization and recallability on a per-function basis for maximum flexibility.
+-   **Bring Your Own Cache** - Cache your functions when and how you want using the caching strategy of your choice.
+-   **Recall a product when a cache update is needed** - Simply implement the onRecall handler to invalidate your cache.
+-   **Reactive Dependency Graph** - Recalling a product also recalls all its dependents in the dependency graph.
 
 ### 🚀 **Optimistic Mutations**
 
--   **Immediate UI Updates** - Set optimistic values that get returned instantly while background computation happens.
+-   **Immediate Updates** - Set optimistic values on functions that get returned instantly while background computation happens.
 -   **Background Processing** - Heavy computations run asynchronously without blocking the user experience.
--   **Automatic Fallback** - Seamlessly fall back to computed values when optimistic values are cleared.
+-   **Automatic Fallback** - Seamlessly clear optimistic values when fresh values are available.
 
 ### ⚡ **Waterfall Management**
 
@@ -61,6 +69,8 @@ npm install supplier
 
 ## Quick Start
 
+### Create a market
+
 All resources and products are created from a `market`, which acts like a container in DI.
 
 ```typescript
@@ -69,7 +79,22 @@ import { createMarket } from "supplier"
 const market = createMarket()
 ```
 
-### Creating Products (formerly Services)
+<details>
+<summary>createMarket(opts?) (Advanced, optional)
+</summary>
+
+You can pass a global onRecall event handler to createMarket that will be applied to all product suppliers.
+See below for more details on caching.
+
+```typescript
+const opts = {
+    onRecall?: (cacheKey:string) => void
+}
+```
+
+</details>
+
+### Creating Product (aka Service) Suppliers
 
 Products are factory functions that can depend on other resources or products. Factory functions can return anything (values, functions, etc.).
 
@@ -79,19 +104,18 @@ import { createMarket, type $ } from "supplier"
 const market = createMarket()
 
 // A simple product with no dependencies.
+// "logger" is the unique trademark name to identify this product on the market.
 const LoggerSupplier = market.offer("logger").asProduct({
     factory: () => (message: string) => console.log(`[LOG] ${message}`)
 })
 
 // A product that depends on another product and a resource.
-const ApiClientSupplier = market.offer("api-client").asProduct({
+const ApiSupplier = market.offer("api").asProduct({
     // Simply inject dependencies in-place! Simple, but this pattern unlocks a lot of unforeseen power!
-    //
     // All product dependencies get automatically injected, but Resource dependencies
-    //  will need to be supplied using assemble() at the entrypoint of your app
+    // will need to be supplied using assemble() at the entrypoint of your app
     suppliers: [LoggerSupplier, ConfigSupplier], // ConfigSupplier is defined in the next section
     // You can view $ as a shorthand for supplies.
-    // Use $<> type utility to define the shape of the required supplies.
     factory: ($) => {
         return {
             async get(path: string) {
@@ -106,9 +130,21 @@ const ApiClientSupplier = market.offer("api-client").asProduct({
 })
 ```
 
+#### Product supplier API
+
+```typescript
+const ProductSupplier = {
+    name: "Trademark name (type) of the resource this supplier provides" as string,
+    pack(value: CONSTRAINT): Resource ("Instantiates a resource of this type of value `value`."),
+    // Internals
+    _resource: "Flag for discriminated unions with product suppliers" as true
+    _constraint: "Store for the constraint needed as reference for further type manipulations" as CONSTRAINT
+}
+```
+
 ### Creating Resources
 
-Resources are simple values that can be injected into products in a type-safe way:
+Resources are simple values that can be assembled into products in a type-safe way:
 
 ```typescript
 import { createMarket } from "supplier"
@@ -122,22 +158,47 @@ const ConfigSupplier = market.offer("config").asResource<{
 }>()
 
 // Instantiate a resource with a value
-const config = ConfigSupplier.pack({
+const configResource = ConfigSupplier.pack({
     apiUrl: "https://api.example.com",
     timeout: 5000
 })
 
-console.log(config.name) // "config"
-console.log(config.unpack().apiUrl) // "https://api.example.com"
+console.log(configResource.name) // "config"
+console.log(configResource.unpack().apiUrl) // "https://api.example.com"
+```
+
+#### Resource supplier API
+
+```typescript
+const ResourceSupplier = {
+    name: "Trademark name (type) of the resource this supplier provides" as string,
+    pack(value: CONSTRAINT): Resource ("Instantiates a resource of this type of value `value`."),
+    // Internals
+    _resource: "Flag for discriminated unions with product suppliers" as true
+    _constraint: "Store for the constraint needed as reference for further type manipulations" as CONSTRAINT
+}
+```
+
+#### Resource API
+
+```typescript
+const resource = {
+    id: "Unique id for this instance. Used for caching" as string,
+    name: "Same as resourceSupplier.name" as string,
+    pack(value: CONSTRAINT): Resource ("Same as resourceSupplier.pack(), to pack a new instance of resource `name` with a new value"),
+    unpack(): CONSTRAINT ("Returns the value")
+}
 ```
 
 ### Assembling at the entry point
 
-You pass to the `assemble` method of a product supplier (e.g. `ApiClientSupplier.assemble(supplies)`) all resources it and its dependencies need (recursively). Typescript helps you if you miss any.
+You pass to the `assemble` method of a product supplier all resources it and its dependencies need (recursively). Typescript helps you if you miss any.
+
+Here is how to instantiate the ApiSupplier defined above:
 
 ```typescript
-//LoggerSupplier is injected automatically, but ConfigSupplier needs to be supplied
-const apiClient = ApiClientSupplier.assemble({
+//LoggerSupplier's product is supplied automatically, but ConfigSupplier's resource needs to be supplied in assemble at the entry-point. Resources can be viewed as the "context" of your app: global values that need to be accessed anywhere, like the db client, or the http request.
+const apiProduct = ApiSupplier.assemble({
     [ConfigSupplier.name]: ConfigSupplier.pack({
         apiUrl: "https://api.example.com",
         timeout: 5000
@@ -145,18 +206,78 @@ const apiClient = ApiClientSupplier.assemble({
 })
 
 // Use the resulting product
-await apiClient.unpack().get("/users")
+await apiProduct.unpack().get("/users")
 ```
 
 You can use `index()` utility as a shorthand to easily transform a list of resources to an object `assemble()` can easily typecheck.
 
 ```typescript
-const apiClient = ApiClientSupplier.assemble(
+// This is the same as above
+const api = ApiSupplier.assemble(
     index(
         ConfigSupplier.pack({
             apiUrl: "https://api.example.com",
             timeout: 5000
         })
+    )
+)
+```
+
+### $ (Supplies) Object API
+
+The `$` callable object provides access to a product's supplies. `$[supplyName]` accesses the resource or product, and `$(supplyName)` is a shorthand to access the value packed in the resource or product. To remember, I view `$[]` as accessing the pack, the "box", that contains the value ([] looks like a box). The resource `$[resourceName]` is of type `{name, unpack, pack}` and the product `$[productName]` is of type `{name, unpack, pack, reassemble}` (see the use of `reassemble` below).
+
+```typescript
+const MyProductSupplier = market.offer("my-product").asProduct({
+    suppliers: [SomeProductSupplier],
+    factory: ($) => {
+        // Both of these work:
+        const product = $(SomeProductSupplier.name) // Function call
+        const sameProduct = $[SomeProductSupplier.name].unpack() // Property access
+        //...
+    }
+})
+```
+
+#### `$[resourceName]` API
+
+`$[resourceName]` contains the following utilities:
+
+```typescript
+const resource = {
+    id: "A unique identifier for this resource instance",
+    name: "The unique trademark name of this resource (the one that was passed to market.offer() at registration)",
+    unpack(): "Method to access the value of the resource".
+    pack(value: any): "To create a new resource instance of this type with a different value."
+}
+```
+
+#### `$[productName]` API
+
+`$[productName]` contains the following utilities:
+
+```typescript
+const product = {
+    id: "A unique identifier for this product instance",
+    name: "The unique trademark name of this resource (the one that was passed to market.offer() at registration)",
+    unpack(): "Method to access the value of the resource".
+    pack(value: any): "To create a new resource of this type with a different value."
+}
+```
+
+#### Testing and mocking
+
+For easy testing and mocking, you can also easily overwrite a product by using `ProductSupplier.pack(value)`. The product's factory will not be called, the value will be used as-is, much like `ResourceSupplier.pack()`.
+
+```typescript
+// Override the logger for testing
+const testApiClient = ApiClientSupplier.assemble(
+    index(
+        // Create a test logger that doesn't actually log
+        LoggerSupplier.pack((message: string) => {
+            /* silent */
+        }),
+        ConfigSupplier.pack({ apiUrl: "http://localhost", timeout: 1000 })
     )
 )
 ```
@@ -188,39 +309,6 @@ const SomeProductSupplier = market.offer("product").asProduct({
 
 // Both DatabaseSupplier and CacheSupplier start initializing immediately
 const product = SomeProductSupplier.assemble()
-```
-
-#### Testing and mocking
-
-For easy testing and mocking, you can also easily overwrite a product by using `ProductSupplier.pack(value)`. The product's factory will not be called, the value will be used as-is, much like `ResourceSupplier.pack()`.
-
-```typescript
-// Override the logger for testing
-const testApiClient = ApiClientSupplier.assemble(
-    index(
-        // Create a test logger that doesn't actually log
-        LoggerSupplier.pack((message: string) => {
-            /* silent */
-        }),
-        ConfigSupplier.pack({ apiUrl: "http://localhost", timeout: 1000 })
-    )
-)
-```
-
-### $ (Supplies) Object API
-
-The `$` callable object provides access to a product's dependencies. `$[depName]` accesses the resource or product, and `$(depName)` is a shorthand to access the value stored in the resource, or built by the product. To remember, I view `$[]` as accessing the "box" that contains the value ([] looks like a box). The resource `$[resourceName]` is of type `{name, unpack, pack}` and the product `$[productName]` is of type `{name, unpack, pack, reassemble}` (see the use of `reassemble` below).
-
-```typescript
-const MyProductSupplier = market.offer("my-product").asProduct({
-    suppliers: [SomeProductSupplier],
-    factory: ($: $<[typeof SomeProductSupplier]>) => {
-        // Both of these work:
-        const product = $(SomeProductSupplier.name) // Function call
-        const sameProduct = $[SomeProductSupplier.name].unpack() // Property access
-        //...
-    }
-})
 ```
 
 #### Type narrowing

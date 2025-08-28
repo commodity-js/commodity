@@ -7,7 +7,7 @@ type Merge<U> = (U extends any ? (k: U) => void : never) extends (
     : never
 
 type Resource<NAME extends string, VALUE> = {
-    id: string
+    cacheKey: string
     name: NAME
     unpack(): VALUE
 }
@@ -18,7 +18,7 @@ type ResourceActions<NAME extends string, VALUE> = {
 
 type ResourceSupplier<NAME extends string, CONSTRAINT> = {
     name: NAME
-    packs: true
+    _resource: true
     _constraint: CONSTRAINT
 } & ResourceActions<NAME, CONSTRAINT>
 
@@ -30,7 +30,7 @@ type ProductActions<NAME extends string, VALUE> = {
     dependsOnOneOf: (overrides: SupplyMap) => boolean
     reassemble: ReassembleAction<NAME, VALUE>
     setOptimistic: (value: Awaited<VALUE>) => void
-    recall: (() => void) | undefined
+    recall: (soft?: boolean) => void
 }
 
 type AssembleAction<NAME extends string, VALUE, TOSUPPLY extends SupplyMap> = (
@@ -44,11 +44,9 @@ type ReassembleAction<NAME extends string, VALUE> = (
 type ProductSupplier<NAME extends string, TOSUPPLY extends SupplyMap, VALUE> = {
     name: NAME
     suppliers?: Supplier<string, any, any>[]
-    assembles: true
     assemble: AssembleAction<NAME, VALUE, TOSUPPLY>
     preload: boolean
-    memo: boolean
-    recallable: boolean
+    _product: true
 } & Pick<ProductActions<NAME, VALUE>, "pack" | "dependsOnOneOf">
 
 type Supplier<NAME extends string, TOSUPPLY extends SupplyMap, VALUE> =
@@ -102,39 +100,15 @@ type ToSupply<TEAM extends ProductSupplier<string, any, any>[]> = Merge<
             : never
     }[number]
 >
-type MEMO_FN_CONSTRAINT = <T>({
-    id,
-    factory
-}: {
-    id: string
-    factory: () => T
-}) => () => T
 
-type RECALL_FN_CONSTRAINT = (product: {
-    id: string
-    factory: () => any
-}) => void
-
-export const createMarket = <
-    MEMO_FN extends MEMO_FN_CONSTRAINT | undefined,
-    RECALL_FN extends RECALL_FN_CONSTRAINT | undefined,
-    MEMO_CONSTRAINT extends boolean = [MEMO_FN] extends [MEMO_FN_CONSTRAINT]
-        ? boolean
-        : false,
-    RECALLABLE_CONSTRAINT extends boolean = [RECALL_FN] extends [
-        RECALL_FN_CONSTRAINT
-    ]
-        ? boolean
-        : false
->(cacheOpts?: {
-    memoFn: MEMO_FN
-    recallFn?: RECALL_FN
+export const createMarket = (opts?: {
+    onRecall?: (cacheKey: string) => void
 }) => {
-    const { memoFn, recallFn } = cacheOpts ?? {}
+    const cacher = Cacher()
     // Statefulness only used for cache invalidation. Injections do not happen from instances container.
-    // Each injection is scoped in its own supply (or resupply) context.
-    const dependents = new Map<string, Set<string>>()
-    const instances = new Map<string, Product<string, any>[]>()
+    // Each injection is scoped in its own assemble (or reassemble) context.
+    const dependents = new WeakMap<object, Set<object>>()
+    const instances = new WeakMap<object, Product<string, any>[]>()
     const names = new Set<string>()
     return {
         offer: <NAME extends string>(name: NAME) => {
@@ -142,16 +116,15 @@ export const createMarket = <
                 throw new Error(`Name ${name} already exists`)
             }
             names.add(name)
-            const id = `${name}-${nanoid()}`
             return {
                 asResource: <CONSTRAINT>() => {
                     const resourceSupplier = {
-                        id,
                         name,
-                        packs: true as const,
+                        _resource: true as const,
                         pack: <VALUE extends CONSTRAINT>(value: VALUE) => {
+                            const cacheKey = `${name}-${nanoid()}`
                             return {
-                                id,
+                                cacheKey,
                                 name,
                                 unpack: () => value,
                                 pack: <VALUE extends CONSTRAINT>(
@@ -168,43 +141,23 @@ export const createMarket = <
                 asProduct: <
                     VALUE,
                     SUPPLIERS extends Supplier<string, any, any>[] = [],
-                    SUPPLIES extends $<SUPPLIERS> = $<SUPPLIERS>,
-                    MEMO extends MEMO_CONSTRAINT = [MEMO_CONSTRAINT] extends [
-                        false
-                    ]
-                        ? MEMO_CONSTRAINT
-                        : Extract<MEMO_CONSTRAINT, true>,
-                    RECALLABLE extends RECALLABLE_CONSTRAINT = [
-                        RECALLABLE_CONSTRAINT
-                    ] extends [false]
-                        ? RECALLABLE_CONSTRAINT
-                        : Extract<RECALLABLE_CONSTRAINT, true>
+                    SUPPLIES extends $<SUPPLIERS> = $<SUPPLIERS>
                 >({
                     factory,
                     suppliers = [] as unknown as SUPPLIERS,
                     preload = false,
-                    memo = !!memoFn as MEMO,
-                    recallable = !!recallFn as RECALLABLE
+                    onRecall,
+                    timeout
                 }: {
                     factory: (supplies: SUPPLIES) => VALUE
                     suppliers?: SUPPLIERS
                     preload?: boolean
-                    memo?: MEMO
-                    recallable?: RECALLABLE
+                    onRecall?: (cacheKey: string) => void
+                    timeout?: number
                 }) => {
-                    // No memoization at factory level - will be done at unpack level
-                    //Set this supplier as a dependent of all its dependencies
-                    for (const supplier of suppliers) {
-                        dependents.set(
-                            supplier.name,
-                            (dependents.get(supplier.name) || new Set()).add(
-                                name
-                            )
-                        )
-                    }
                     const team = suppliers.filter(
                         (supplier) =>
-                            "assembles" in supplier && supplier.assembles
+                            "_product" in supplier && supplier._product
                     ) as Extract<
                         SUPPLIERS[number],
                         ProductSupplier<string, any, any>
@@ -226,19 +179,20 @@ export const createMarket = <
                              * and put them back, you end up with the original type. Here toSupply is type guarded to be $<DEPS> - Services<team>,
                              * and hire merges toSupply and team products together, so the result must extend $<DEPS>. But TS cannot guarantee it.
                              */
+                            const cacheKey = `${name}-${nanoid()}`
                             const fullSupplies = hire(team).assemble(
                                 toSupply
                             ) as unknown as SUPPLIES
 
-                            const memoedFactory =
-                                memo && memoFn
-                                    ? memoFn({
-                                          id,
-                                          factory: () => factory(fullSupplies)
-                                      })
-                                    : () => factory(fullSupplies)
+                            const memoedFactory = cacher.memo(() =>
+                                factory(fullSupplies)
+                            )
+
                             let optimistic: Awaited<VALUE> | undefined =
                                 undefined
+                            let timeoutId:
+                                | ReturnType<typeof setTimeout>
+                                | undefined = undefined
                             const unpack = () => {
                                 // If we have an optimistic value, return it
                                 if (optimistic !== undefined) {
@@ -248,10 +202,7 @@ export const createMarket = <
                                 return memoedFactory()
                             }
 
-                            const setOptimistic = (
-                                value: Awaited<VALUE>,
-                                timeout = 2000
-                            ) => {
+                            const setOptimistic = (value: Awaited<VALUE>) => {
                                 if (optimistic !== undefined) {
                                     throw new Error(
                                         `Cannot set optimistic value when one is already set: ${optimistic}`
@@ -265,11 +216,7 @@ export const createMarket = <
                                 // Update optimistic value in background
                                 Promise.resolve()
                                     .then(async () => {
-                                        if (memo) {
-                                            await memoedFactory()
-                                        } else {
-                                            await sleep(timeout)
-                                        }
+                                        await memoedFactory()
                                     })
                                     .catch((error) => {
                                         // If factory fails, we don't want to keep the optimistic value
@@ -283,42 +230,46 @@ export const createMarket = <
                                     })
                             }
 
-                            const recall =
-                                recallable && recallFn
-                                    ? () => {
-                                          optimistic = undefined
-                                          recallFn({
-                                              id,
-                                              factory: memoedFactory
-                                          })
+                            const recall = (soft: boolean = false) => {
+                                optimistic = undefined
+                                if (timeoutId !== undefined) {
+                                    clearTimeout(timeoutId)
+                                    timeoutId = undefined
+                                }
+                                cacher.recall(memoedFactory)
+                                try {
+                                    productSupplier.onRecall?.(cacheKey)
+                                } catch (error) {
+                                    console.warn(
+                                        `Error calling onRecall for ${name}: ${error}`
+                                    )
+                                }
 
-                                          // Propagate to all dependents recursively
-                                          const visit = (name: string) => {
-                                              const products =
-                                                  instances.get(name)
-                                              if (!products) return
+                                if (soft) return
 
-                                              products.forEach((product) => {
-                                                  if (product.recall) {
-                                                      product.recall()
-                                                  }
-                                              })
+                                // First, collect all dependent products into a set
+                                const allDependents = new Set<object>()
+                                const collectDependents = (
+                                    supplier: object
+                                ) => {
+                                    allDependents.add(supplier)
+                                    const deps = dependents.get(supplier) ?? []
+                                    deps.forEach(collectDependents)
+                                }
 
-                                              // Recursively visit dependents
-                                              const next = dependents.get(name)
-                                              if (next) {
-                                                  next.forEach(visit)
-                                              }
-                                          }
-
-                                          const directDependents =
-                                              dependents.get(name) ?? []
-                                          directDependents.forEach(visit)
-                                      }
-                                    : undefined
+                                collectDependents(productSupplier)
+                                allDependents.delete(productSupplier)
+                                Array.from(allDependents).map((supplier) => {
+                                    const products = instances.get(supplier)
+                                    if (!products) return
+                                    products.forEach((product) => {
+                                        product.recall(true)
+                                    })
+                                })
+                            }
 
                             const product = {
-                                id,
+                                cacheKey,
                                 name,
                                 unpack,
                                 reassemble: (overrides: SupplyMap) => {
@@ -365,22 +316,32 @@ export const createMarket = <
                                 dependsOnOneOf: actions.dependsOnOneOf,
                                 pack: actions.pack,
                                 setOptimistic,
-                                recall: recall as unknown as RECALLABLE extends true
-                                    ? Exclude<typeof recall, undefined>
-                                    : undefined
+                                recall
+                            }
+
+                            // Schedule auto-recall if timeout is provided
+                            if (typeof timeout === "number" && timeout > 0) {
+                                timeoutId = setTimeout(() => {
+                                    try {
+                                        product.recall()
+                                    } catch {
+                                        // noop - recall should be safe
+                                    }
+                                }, timeout)
                             }
 
                             // Track instances of this product for recall
-                            instances.set(name, [
-                                ...(instances.get(name) || []),
+                            instances.set(productSupplier, [
+                                ...(instances.get(productSupplier) || []),
                                 product
                             ])
 
                             return product
                         },
                         pack: (value: VALUE) => {
+                            const cacheKey = `${name}-${nanoid()}`
                             const product = {
-                                id,
+                                cacheKey,
                                 name,
                                 unpack: () => value,
                                 reassemble: () => product,
@@ -418,14 +379,23 @@ export const createMarket = <
 
                     const productSupplier = {
                         name,
-                        assembles: true as const,
+                        _product: true as const,
                         preload,
-                        memo,
-                        recallable,
                         suppliers,
                         pack: actions.pack,
                         assemble: actions.assemble,
-                        dependsOnOneOf: actions.dependsOnOneOf
+                        dependsOnOneOf: actions.dependsOnOneOf,
+                        onRecall: onRecall ?? opts?.onRecall
+                    }
+
+                    //Set this supplier as a dependent of all its dependencies
+                    for (const supplier of suppliers) {
+                        dependents.set(
+                            supplier,
+                            (dependents.get(supplier) || new Set()).add(
+                                productSupplier
+                            )
+                        )
                     }
 
                     return productSupplier
@@ -539,4 +509,32 @@ export function narrow<
 
 export function sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function Cacher() {
+    const cacheStore = new WeakMap<object, any>()
+    const cacher = {
+        memo: <T>(factory: () => T) => {
+            const cache: any[] = [undefined]
+            const memoized = (): T => {
+                if (cache[0] !== undefined) {
+                    return cache[0]
+                }
+                const value = factory()
+                cache[0] = value
+                return value
+            }
+
+            cacheStore.set(memoized, cache)
+            return memoized
+        },
+        recall: <T>(factory: () => T) => {
+            const cache = cacheStore.get(factory)
+            if (cache) {
+                cache[0] = undefined
+            }
+        }
+    }
+
+    return cacher
 }

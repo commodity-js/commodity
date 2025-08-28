@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { index, narrow, createMarket, sleep } from "#index"
-import memo from "memoize"
 
 describe("supplier", () => {
     beforeEach(() => {
@@ -19,7 +18,7 @@ describe("supplier", () => {
             expect(resource.unpack()).toBe("test-value")
             expect(resource.name).toBe("resource")
             expect(resourceSupplier.name).toBe("resource")
-            expect(resourceSupplier.packs).toBe(true)
+            expect(resourceSupplier._resource).toBe(true)
         })
 
         it("should throw error if two supplies with the same name are offered", () => {
@@ -63,7 +62,7 @@ describe("supplier", () => {
 
             expect(product.unpack()).toBe("product")
             expect(ProductSupplier.name).toBe("product")
-            expect(ProductSupplier.assembles).toBe(true)
+            expect(ProductSupplier._product).toBe(true)
         })
 
         it("should offer a product with suppliers", () => {
@@ -205,11 +204,7 @@ describe("supplier", () => {
             })
         })
         it("should enable context switching by calling reassemble on products", () => {
-            const market = createMarket({
-                memoFn: ({ factory }) => {
-                    return memo(factory)
-                }
-            })
+            const market = createMarket()
             const ConfigSupplier = market.offer("config").asResource<string>()
             const NameSupplier = market.offer("name").asResource<string>()
             const CountSupplier = market.offer("count").asResource<number>()
@@ -318,11 +313,7 @@ describe("supplier", () => {
         it("should memoize unpack calls when accessed multiple times within the same assembly context", () => {
             const factoryMock = vi.fn().mockReturnValue("memoized")
 
-            const market = createMarket({
-                memoFn: ({ factory }) => {
-                    return memo(factory)
-                }
-            })
+            const market = createMarket()
             const memoizedSupplier = market.offer("memoized").asProduct({
                 factory: factoryMock
             })
@@ -347,11 +338,7 @@ describe("supplier", () => {
         it("should handle complex nested supplier dependencies with memoization", () => {
             const factory1Mock = vi.fn().mockReturnValue("product1")
 
-            const market = createMarket({
-                memoFn: ({ factory }) => {
-                    return memo(factory)
-                }
-            })
+            const market = createMarket()
             const product1Supplier = market.offer("product1").asProduct({
                 factory: factory1Mock
             })
@@ -428,11 +415,7 @@ describe("supplier", () => {
 
     describe("Preload Feature", () => {
         it("should preload services with preload: true", async () => {
-            const market = createMarket({
-                memoFn: ({ factory }) => {
-                    return memo(factory)
-                }
-            })
+            const market = createMarket()
             const preloadFactoryMock = vi.fn().mockReturnValue("preloaded")
             const normalFactoryMock = vi.fn().mockReturnValue("normal")
 

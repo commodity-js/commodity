@@ -1,14 +1,9 @@
-import { describe, it, expect } from "vitest"
-import { index, createMarket, $, sleep } from "#index"
-import memo, { memoizeClear } from "memoize"
+import { describe, it, expect, vi } from "vitest"
+import { index, createMarket, sleep } from "#index"
 
 describe("Caching System", () => {
     it("should reassemble product if dependent suppliers reassembles", async () => {
-        const market = createMarket({
-            memoFn: ({ factory }) => {
-                return memo(factory)
-            }
-        })
+        const market = createMarket()
         // productA will be reassembled
         const productASupplier = market.offer("productA").asProduct({
             factory: () => Date.now()
@@ -76,11 +71,7 @@ describe("Caching System", () => {
     })
 
     it("should handle recursive dependency chains correctly", async () => {
-        const market = createMarket({
-            memoFn: ({ factory }) => {
-                return memo(factory)
-            }
-        })
+        const market = createMarket()
         const productASupplier = market.offer("productA").asProduct({
             factory: () => Date.now()
         })
@@ -142,14 +133,7 @@ describe("Caching System", () => {
 
     it("Recalls product with no dependents without recalling dependencies", async () => {
         // Example of using createMarket with memoization
-        const market = createMarket({
-            memoFn: ({ factory }) => {
-                return memo(factory)
-            },
-            recallFn: ({ factory }) => {
-                memoizeClear(factory)
-            }
-        })
+        const market = createMarket()
         const productASupplier = market.offer("productA").asProduct({
             factory: () => Date.now()
         })
@@ -185,14 +169,7 @@ describe("Caching System", () => {
     })
 
     it("Should invalidate all dependents", async () => {
-        const market = createMarket({
-            memoFn: ({ factory }) => {
-                return memo(factory)
-            },
-            recallFn: ({ factory }) => {
-                memoizeClear(factory)
-            }
-        })
+        const market = createMarket()
         const productZSupplier = market.offer("productZ").asProduct({
             factory: () => Date.now()
         })
@@ -244,207 +221,8 @@ describe("Caching System", () => {
         mainSupplier.assemble({})
     })
 
-    it("should respect the memo flag in asService", async () => {
-        const market = createMarket({
-            memoFn: ({ factory }) => {
-                return memo(factory)
-            },
-            recallFn: ({ factory }) => {
-                memoizeClear(factory)
-            }
-        })
-
-        // Create a service with memo: true (default when memoFn is provided)
-        const memoizedSupplier = market.offer("memoized").asProduct({
-            factory: () => Date.now()
-        })
-
-        // Create a service with memo: false
-        const nonMemoizedSupplier = market.offer("non-memoized").asProduct({
-            factory: () => Date.now(),
-            memo: false
-        })
-
-        // Create a service with memo: true (explicit)
-        const ExplicitMemoizedService = market
-            .offer("explicit-memoized")
-            .asProduct({
-                factory: () => Date.now(),
-                memo: true
-            })
-
-        // Test memoized service - should return same result on multiple calls
-        const memoizedProduct = memoizedSupplier.assemble({})
-        const firstCall = memoizedProduct.unpack()
-        await sleep(10) // Small delay to ensure timestamp would be different
-
-        // Second call should return cached result
-        const secondCall = memoizedProduct.unpack()
-        expect(firstCall).toBe(secondCall)
-
-        // Test non-memoized service - should return different result on each call
-        const nonMemoizedProduct = nonMemoizedSupplier.assemble({})
-        const firstNonMemoized = nonMemoizedProduct.unpack()
-        await sleep(10) // Small delay to ensure timestamp would be different
-
-        // Second call should return new result (no caching)
-        const secondNonMemoized = nonMemoizedProduct.unpack()
-        expect(firstNonMemoized).not.toBe(secondNonMemoized)
-
-        // Test explicit memoized service - should behave same as default
-        const explicitProduct = ExplicitMemoizedService.assemble({})
-        const firstExplicit = explicitProduct.unpack()
-        await sleep(10)
-
-        const secondExplicit = explicitProduct.unpack()
-        expect(firstExplicit).toBe(secondExplicit)
-    })
-
-    it("should respect the recallable flag with memoFn", async () => {
-        const market = createMarket({
-            memoFn: ({ factory }) => {
-                return memo(factory)
-            },
-            recallFn: ({ factory }) => {
-                // Clear memoization for this service
-                memoizeClear(factory)
-            }
-        })
-
-        // Create a service that should be memoized and invalidated
-        const recallableSupplier = market.offer("recallable").asProduct({
-            factory: () => Date.now()
-        })
-        // Create a service that should be memoized and invalidated
-        const explicitRecallableSupplier = market
-            .offer("explicit-recallable")
-            .asProduct({
-                factory: () => Date.now(),
-                recallable: true // Should be tracked for invalidation
-            })
-
-        // Create a service that should be memoized but NOT invalidated
-        const nonRecallableSupplier = market.offer("non-recallable").asProduct({
-            suppliers: [explicitRecallableSupplier],
-            factory: () => Date.now(),
-            recallable: false // Should NOT be tracked for invalidation
-        })
-
-        // Test that both services are memoized initially
-        const recallableProduct = recallableSupplier.assemble({})
-        const firstCall = recallableProduct.unpack()
-        await sleep(10) // Small delay
-
-        const secondCall = recallableProduct.unpack()
-        // Should return memoized result (same timestamp)
-        expect(firstCall).toBe(secondCall)
-
-        const explicitRecallableProduct = explicitRecallableSupplier.assemble(
-            {}
-        )
-        const firstExplicitRecallable = explicitRecallableProduct.unpack()
-        await sleep(10)
-
-        const secondExplicitRecallable = explicitRecallableProduct.unpack()
-        expect(firstExplicitRecallable).toBe(secondExplicitRecallable)
-
-        const nonRecallableProduct = nonRecallableSupplier.assemble({})
-        const firstNonRecallable = nonRecallableProduct.unpack()
-        await sleep(10)
-
-        const secondNonRecallable = nonRecallableProduct.unpack()
-        // Should also return memoized result
-        expect(firstNonRecallable).toBe(secondNonRecallable)
-
-        // Now test invalidation
-        // Call recall on the cacheable service - this should clear its memoization
-        recallableProduct.recall()
-
-        // Next call should create new memoized value
-        const afterRecall = recallableProduct.unpack()
-        expect(afterRecall).not.toBe(firstCall)
-
-        // But the non-invalidating service should still be memoized, even if a dependent of recallableProduct
-        const thirdNonRecallable = nonRecallableProduct.unpack()
-        expect(thirdNonRecallable).toBe(firstNonRecallable)
-
-        explicitRecallableProduct.recall()
-
-        const afterExplicitRecall = explicitRecallableProduct.unpack()
-        expect(afterExplicitRecall).not.toBe(firstExplicitRecallable)
-    })
-
-    it("should respect the recallable flag with custom cache", async () => {
-        // Create a simple cache using Map
-        const cache = new Map<string, any>()
-
-        const market = createMarket({
-            memoFn: ({ id, factory }) => {
-                return () => {
-                    if (cache.has(id)) {
-                        return cache.get(id)
-                    }
-                    const product = factory()
-                    cache.set(id, product)
-                    return product
-                }
-            },
-            recallFn: ({ id }) => {
-                // Clear cache entries for this service when invalidated
-                cache.delete(id)
-            }
-        })
-
-        // Create a service that uses custom caching and should be invalidated
-        const recallableSupplier = market.offer("recallable").asProduct({
-            factory: () => Date.now()
-        })
-
-        // Create a service that uses custom caching but should NOT be invalidated
-        const nonRecallableSupplier = market
-            .offer("non-invalidating")
-            .asProduct({
-                factory: () => Date.now(),
-                memo: true,
-                recallable: false // Should NOT be tracked for invalidation
-            })
-
-        // Test that both services populate the cache initially
-        const recallableProduct = recallableSupplier.assemble({})
-        recallableProduct.unpack()
-        expect(cache.size).toBeGreaterThan(0) // Cache has entries
-
-        const nonRecallableProduct = nonRecallableSupplier.assemble({})
-        nonRecallableProduct.unpack()
-        const cacheSizeBeforeRecall = cache.size
-
-        // Now test invalidation
-        // Call recall on the cacheable service - this should clear its cache entries
-        recallableProduct.recall()
-
-        // The cache should be smaller now (cacheable service entries cleared)
-        expect(cache.size).toBeLessThan(cacheSizeBeforeRecall)
-
-        // But the non-invalidating service entries should still be in cache
-        const remainingCacheSize = cache.size
-        expect(remainingCacheSize).toBeGreaterThan(0)
-
-        // Test that recall on non-invalidating product doesn't clear cache
-        expect(nonRecallableProduct.recall).toBeUndefined()
-
-        // Cache size should be the same (no invalidation)
-        expect(cache.size).toBe(remainingCacheSize)
-    })
-
-    it("should support optimistic caching with setOptimistic", async () => {
-        const market = createMarket({
-            memoFn: ({ factory }) => {
-                return memo(factory)
-            },
-            recallFn: ({ factory }) => {
-                memoizeClear(factory)
-            }
-        })
+    it("should support optimistic updates with setOptimistic", async () => {
+        const market = createMarket()
 
         // Create a service that simulates slow computation
         let computationCount = 0
@@ -479,11 +257,7 @@ describe("Caching System", () => {
     })
 
     it("should handle multiple optimistic values correctly", async () => {
-        const market = createMarket({
-            memoFn: ({ factory }) => {
-                return memo(factory)
-            }
-        })
+        const market = createMarket()
 
         const OptimisticSupplier = market.offer("multi-optimistic").asProduct({
             factory: async () => {
@@ -508,95 +282,8 @@ describe("Caching System", () => {
         expect(await product.unpack()).toBe(300)
     })
 
-    it("should not use timeout parameter in setOptimistic if memoed", async () => {
-        const market = createMarket({
-            memoFn: ({ factory }) => {
-                return memo(factory)
-            }
-        })
-
-        const OptimisticSupplier = market.offer("timeout-test").asProduct({
-            factory: async () => {
-                await sleep(100) // Slow computation
-                return "final-value"
-            }
-        })
-
-        const product = OptimisticSupplier.assemble({})
-
-        // Set optimistic value with custom timeout
-        product.setOptimistic("fast-value", 50) // 50ms timeout
-        expect(await product.unpack()).toBe("fast-value")
-
-        // Wait for timeout to expire
-        await sleep(60)
-
-        // Should still return optimistic value until background computation completes
-        expect(await product.unpack()).toBe("fast-value")
-
-        // Wait for background computation to complete
-        await sleep(100)
-
-        // Now should return real value
-        expect(await product.unpack()).toBe("final-value")
-    })
-
-    it("should respect timeout for non-memoized factories", async () => {
-        const market = createMarket({
-            memoFn: ({ factory }) => {
-                return memo(factory)
-            }
-        })
-
-        let factoryCallCount = 0
-        const NonMemoizedSupplier = market
-            .offer("timeout-non-memoized")
-            .asProduct({
-                factory: () => {
-                    factoryCallCount++
-                    return `factory-result-${factoryCallCount}`
-                },
-                memo: false
-            })
-
-        const product = NonMemoizedSupplier.assemble({})
-
-        // Set optimistic value with custom timeout
-        product.setOptimistic("optimistic-value", 200)
-        expect(product.unpack()).toBe("optimistic-value")
-
-        // Factory should not be called yet
-        expect(factoryCallCount).toBe(0)
-
-        // Wait for a short time - should still return optimistic value
-        await sleep(100)
-        expect(product.unpack()).toBe("optimistic-value")
-        expect(factoryCallCount).toBe(0)
-
-        // Wait for timeout to expire (using default 2000ms)
-        await sleep(200)
-
-        // Should now return real factory result
-        const realValue = product.unpack()
-        expect(realValue).toBe("factory-result-1")
-        expect(realValue).not.toBe("optimistic-value")
-        expect(factoryCallCount).toBe(1)
-
-        // Second call should call factory again (non-memoized)
-        const secondValue = product.unpack()
-        expect(secondValue).toBe("factory-result-2")
-        expect(factoryCallCount).toBe(2)
-    })
-
     it("should handle factory failures", async () => {
-        const market = createMarket({
-            memoFn: ({ factory }) => {
-                return memo(factory)
-            },
-            recallFn: ({ factory }) => {
-                memoizeClear(factory)
-            }
-        })
+        const market = createMarket()
 
         let shouldFail = true
         const OptimisticSupplier = market.offer("failing-factory").asProduct({
@@ -637,14 +324,7 @@ describe("Caching System", () => {
     })
 
     it("should recall optimistic values", async () => {
-        const market = createMarket({
-            memoFn: ({ factory }) => {
-                return memo(factory)
-            },
-            recallFn: ({ factory }) => {
-                memoizeClear(factory)
-            }
-        })
+        const market = createMarket()
 
         const OptimisticSupplier = market.offer("recall-optimistic").asProduct({
             factory: () => Date.now()
@@ -666,11 +346,7 @@ describe("Caching System", () => {
     })
 
     it("should handle optimistic values with dependencies", async () => {
-        const market = createMarket({
-            memoFn: ({ factory }) => {
-                return memo(factory)
-            }
-        })
+        const market = createMarket()
 
         const dependencySupplier = market.offer("dependency").asProduct({
             factory: () => "dependency-value"
@@ -696,5 +372,197 @@ describe("Caching System", () => {
         const realValue = await product.unpack()
         expect(realValue).toBe("computed-dependency-value")
         expect(realValue).not.toBe("optimistic-dependent")
+    })
+
+    it("should call onRecall when product is recalled", () => {
+        const recalledCacheKeys: string[] = []
+        const market = createMarket({
+            onRecall: (cacheKey: string) => {
+                recalledCacheKeys.push(cacheKey)
+            }
+        })
+
+        const productSupplier = market.offer("test-product").asProduct({
+            factory: () => Date.now()
+        })
+
+        const product = productSupplier.assemble({})
+        const initialCacheKey = product.cacheKey
+
+        // Recall the product
+        product.recall()
+
+        // onRecall should have been called with the cache key
+        expect(recalledCacheKeys).toHaveLength(1)
+        expect(recalledCacheKeys[0]).toBe(initialCacheKey)
+    })
+
+    it("should call onRecall for all recalled products in dependency chain", () => {
+        const recalledCacheKeys: string[] = []
+        const market = createMarket({
+            onRecall: (cacheKey: string) => {
+                recalledCacheKeys.push(cacheKey)
+            }
+        })
+
+        const productASupplier = market.offer("productA").asProduct({
+            factory: () => Date.now()
+        })
+
+        const productBSupplier = market.offer("productB").asProduct({
+            suppliers: [productASupplier],
+            factory: () => Date.now()
+        })
+
+        const productCSupplier = market.offer("productC").asProduct({
+            suppliers: [productBSupplier],
+            factory: () => Date.now()
+        })
+
+        const mainSupplier = market.offer("main").asProduct({
+            suppliers: [productASupplier, productBSupplier, productCSupplier],
+            factory: ($) => ({
+                productA: $[productASupplier.name],
+                productB: $[productBSupplier.name],
+                productC: $[productCSupplier.name]
+            })
+        })
+
+        const mainProduct = mainSupplier.assemble({})
+        const productA = mainProduct.unpack().productA
+        const productB = mainProduct.unpack().productB
+        const productC = mainProduct.unpack().productC
+
+        // Clear the recalled cache keys array
+        recalledCacheKeys.length = 0
+
+        // Recall productA - this should trigger recall of productB, productC and mainProduct as well
+        productA.recall()
+
+        // onRecall should have been called for all 4 products exactly once each
+        expect(recalledCacheKeys).toHaveLength(4)
+        expect(recalledCacheKeys).toContain(productA.cacheKey)
+        expect(recalledCacheKeys).toContain(productB.cacheKey)
+        expect(recalledCacheKeys).toContain(productC.cacheKey)
+
+        // Verify no duplicate cache keys (each product recalled exactly once)
+        const uniqueCacheKeys = new Set(recalledCacheKeys)
+        expect(uniqueCacheKeys.size).toBe(4)
+    })
+
+    it("should call onRecall when product with onRecall is recalled", () => {
+        const market = createMarket()
+        const recalledCacheKeys: string[] = []
+
+        const productSupplier = market.offer("test-product").asProduct({
+            factory: () => Date.now(),
+            onRecall: (cacheKey: string) => {
+                recalledCacheKeys.push(cacheKey)
+            }
+        })
+
+        const product = productSupplier.assemble({})
+        const initialCacheKey = product.cacheKey
+
+        // Recall the product
+        product.recall()
+
+        // Product-specific onRecall should have been called
+        expect(recalledCacheKeys).toHaveLength(1)
+        expect(recalledCacheKeys[0]).toBe(initialCacheKey)
+    })
+
+    it("should not call onRecall when product is not recalled", () => {
+        const recalledCacheKeys: string[] = []
+        const market = createMarket({
+            onRecall: (cacheKey: string) => {
+                recalledCacheKeys.push(cacheKey)
+            }
+        })
+
+        const productSupplier = market.offer("test-product").asProduct({
+            factory: () => Date.now()
+        })
+
+        const product = productSupplier.assemble({})
+
+        // Just access the product without recalling
+        product.unpack()
+
+        // onRecall should not have been called
+        expect(recalledCacheKeys).toHaveLength(0)
+    })
+
+    it("should handle onRecall errors gracefully", () => {
+        const consoleSpy = vi
+            .spyOn(console, "warn")
+            .mockImplementation(() => undefined)
+
+        const market = createMarket({
+            onRecall: (cacheKey: string) => {
+                throw new Error(`Error in onRecall for ${cacheKey}`)
+            }
+        })
+
+        const productSupplier = market.offer("test-product").asProduct({
+            factory: () => Date.now()
+        })
+
+        const product = productSupplier.assemble({})
+
+        // Recall should not throw even if onRecall fails
+        expect(() => product.recall()).not.toThrow()
+
+        // Clean up
+        consoleSpy.mockRestore()
+    })
+
+    it("should call onRecall with correct cache key for reassembled products", () => {
+        const recalledCacheKeys: string[] = []
+        const market = createMarket({
+            onRecall: (cacheKey: string) => {
+                recalledCacheKeys.push(cacheKey)
+            }
+        })
+
+        const productSupplier = market.offer("test-product").asProduct({
+            factory: () => Date.now()
+        })
+
+        const initialProduct = productSupplier.assemble({})
+        const initialCacheKey = initialProduct.cacheKey
+
+        // Reassemble the product
+        const newProduct = initialProduct.reassemble({})
+        const newCacheKey = newProduct.cacheKey
+
+        // Cache keys should be different
+        expect(newCacheKey).not.toBe(initialCacheKey)
+
+        // Recall the new product
+        newProduct.recall()
+
+        // onRecall should have been called with the new cache key
+        expect(recalledCacheKeys).toHaveLength(1)
+        expect(recalledCacheKeys[0]).toBe(newCacheKey)
+    })
+
+    it("should auto recall product after timeout", async () => {
+        const market = createMarket()
+
+        const timedSupplier = market.offer("timed").asProduct({
+            factory: () => Date.now(),
+            timeout: 50
+        })
+
+        const product = timedSupplier.assemble({})
+
+        const initial = product.unpack()
+
+        await sleep(70)
+
+        const after = product.unpack()
+
+        expect(after).not.toBe(initial)
     })
 })
