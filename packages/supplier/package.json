@@ -38,11 +38,9 @@
     "devDependencies": {
         "@config.supplier/eslint": "*",
         "@config.supplier/typescript": "*",
+        "memoize": "^10.1.0",
         "tsup": "^8.5.0",
         "turbo": "^2.5.5",
         "vitest": "^3.2.4"
-    },
-    "dependencies": {
-        "nanoid": "^5.1.5"
     }
 }

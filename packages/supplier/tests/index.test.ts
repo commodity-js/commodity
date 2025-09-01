@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { index, narrow, createMarket, sleep } from "#index"
+import memo from "memoize"
 
 describe("supplier", () => {
     beforeEach(() => {
@@ -287,13 +288,13 @@ describe("supplier", () => {
         })
     })
 
-    describe("Memoization and Lazy Evaluation", () => {
+    describe("Referential integrity and Lazy Evaluation", () => {
         it("should create separate memoization contexts for different assembly calls", () => {
             const factoryMock = vi.fn().mockReturnValue("product")
 
             const market = createMarket()
             const productSupplier = market.offer("product").asProduct({
-                factory: factoryMock
+                factory: memo(factoryMock)
             })
 
             const product = productSupplier.assemble({})
@@ -310,12 +311,12 @@ describe("supplier", () => {
             expect(factoryMock).toHaveBeenCalledTimes(2)
         })
 
-        it("should memoize unpack calls when accessed multiple times within the same assembly context", () => {
+        it("should respect memoized calls when accessed multiple times within the same assembly context", () => {
             const factoryMock = vi.fn().mockReturnValue("memoized")
 
             const market = createMarket()
             const memoizedSupplier = market.offer("memoized").asProduct({
-                factory: factoryMock
+                factory: memo(factoryMock)
             })
 
             const TestSupplier = market.offer("test").asProduct({
@@ -335,17 +336,18 @@ describe("supplier", () => {
             expect(factoryMock).toHaveBeenCalledTimes(1)
         })
 
-        it("should handle complex nested supplier dependencies with memoization", () => {
+        it("should keep memoization even if multiple dependents are nested", () => {
             const factory1Mock = vi.fn().mockReturnValue("product1")
 
             const market = createMarket()
             const product1Supplier = market.offer("product1").asProduct({
-                factory: factory1Mock
+                factory: memo(factory1Mock)
             })
 
             const product2Supplier = market.offer("product2").asProduct({
                 suppliers: [product1Supplier],
-                factory: () => {
+                factory: ($) => {
+                    $(product1Supplier.name)
                     return "product2"
                 }
             })
@@ -367,8 +369,137 @@ describe("supplier", () => {
                 product2: "product2"
             })
 
-            // Each factory should only be called once due to memoization within the same context
+            // factory1  should only be called once due to memoization within the same context
             expect(factory1Mock).toHaveBeenCalledTimes(1)
+        })
+
+        it("should reassemble product if dependent suppliers reassembles", async () => {
+            const market = createMarket()
+            // productA will be reassembled
+            const productASupplier = market.offer("productA").asProduct({
+                factory: memo(() => Date.now())
+            })
+
+            // productB will be reassembled when productA reassembles
+            const productBSupplier = market.offer("productB").asProduct({
+                suppliers: [productASupplier],
+                factory: memo(() => Date.now())
+            })
+
+            // productC - doesn't depend on anything, so it will not be reassembled
+            const productCSupplier = market.offer("productC").asProduct({
+                factory: memo(() => Date.now())
+            })
+
+            // productD will be reassembled when productB reassembles
+            const productDSupplier = market.offer("productD").asProduct({
+                suppliers: [productBSupplier],
+                factory: memo(() => Date.now())
+            })
+
+            // Create a main product that includes all products in its team for testing
+            const mainSupplier = market.offer("main").asProduct({
+                suppliers: [
+                    productASupplier,
+                    productBSupplier,
+                    productCSupplier,
+                    productDSupplier
+                ],
+                factory: ($) => {
+                    return {
+                        productA: $(productASupplier.name),
+                        productB: $(productBSupplier.name),
+                        productC: $(productCSupplier.name),
+                        productD: $(productDSupplier.name)
+                    }
+                }
+            })
+
+            // Create the initial supplies
+            const initialMainProduct = mainSupplier.assemble({})
+            const initialProductA = initialMainProduct.unpack().productA
+            const initialProductB = initialMainProduct.unpack().productB
+            const initialProductC = initialMainProduct.unpack().productC
+            const initialProductD = initialMainProduct.unpack().productD
+
+            // Wait a bit to ensure timestamps are different
+            await sleep(100)
+
+            // Override productA - this should trigger resupply of productB and productD
+            // but productC should remain cached
+            const newMainProduct = initialMainProduct.reassemble(
+                index(productASupplier.pack(Date.now()))
+            )
+
+            // productA should be updated
+            expect(newMainProduct.unpack().productA).not.toBe(initialProductA)
+
+            // productB should be reassembled
+            expect(newMainProduct.unpack().productB).not.toBe(initialProductB)
+
+            expect(newMainProduct.unpack().productC).toBe(initialProductC)
+            expect(newMainProduct.unpack().productD).not.toBe(initialProductD)
+        })
+
+        it("should handle recursive dependency chains correctly", async () => {
+            const market = createMarket()
+            const productASupplier = market.offer("productA").asProduct({
+                factory: memo(() => Date.now())
+            })
+
+            const productBSupplier = market.offer("productB").asProduct({
+                suppliers: [productASupplier],
+                factory: memo(() => Date.now())
+            })
+
+            const productCSupplier = market.offer("productC").asProduct({
+                suppliers: [productBSupplier],
+                factory: memo(() => Date.now())
+            })
+
+            const productDSupplier = market.offer("productD").asProduct({
+                suppliers: [productCSupplier],
+                factory: memo(() => Date.now())
+            })
+
+            // Create a main service that includes all services for testing
+            const mainSupplier = market.offer("main").asProduct({
+                suppliers: [
+                    productASupplier,
+                    productBSupplier,
+                    productCSupplier,
+                    productDSupplier
+                ],
+                factory: ($) => {
+                    return {
+                        productA: $(productASupplier.name),
+                        productB: $(productBSupplier.name),
+                        productC: $(productCSupplier.name),
+                        productD: $(productDSupplier.name)
+                    }
+                }
+            })
+
+            const mainProduct = mainSupplier.assemble({})
+
+            const initialProductA = mainProduct.unpack().productA
+            const initialProductB = mainProduct.unpack().productB
+            const initialProductC = mainProduct.unpack().productC
+            const initialProductD = mainProduct.unpack().productD
+
+            // Wait a bit to ensure timestamps are different
+            await sleep(100)
+
+            // Override productA - this should cascade through B, C, and D
+            const newMainProduct = mainProduct.reassemble(
+                index(productASupplier.pack(Date.now()))
+            )
+
+            // Verify the cascade worked
+            expect(newMainProduct.unpack().productA).not.toBe(initialProductA)
+            expect(newMainProduct.unpack().productB).not.toBe(initialProductB)
+            expect(newMainProduct.unpack().productC).not.toBe(initialProductC)
+            expect(newMainProduct.unpack().productD).not.toBe(initialProductD)
         })
     })
 
@@ -608,7 +739,7 @@ describe("supplier", () => {
                 now: new Date()
             })
 
-            // @ts-expect-error - Expected: missing logger dependency
+            // @ts-expect-error - Expected: admin dashboard requires admin session
             const fail = AdminDashboard.assemble(index(userSession))
             const result = AdminDashboard.assemble(index(adminSession))
 

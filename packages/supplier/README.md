@@ -10,7 +10,7 @@ details summary {
 
 Let the market and the supply chain deliver the resources and services ("products") you need, where you need them.
 
-A powerful, type-inferred, and hyper-minimalistic library for Context Propagation, Reactive Caching, Optimistic Mutations, and Waterfall Management.
+A powerful, type-inferred, and hyper-minimalistic library for Context Propagation, Reactive Caching, Optimistic Mutations, Waterfall Management, and Dependency Injection (DI).
 
 ## Background
 
@@ -39,21 +39,9 @@ STILL IN VERY UNSTABLE, PRE-ALPHA, PLEASE DON'T INSTALL VERSIONS v0.0.x
 
 ### 📦 **Context Propagation**
 
--   **Shared context** - Assemble the context once at the entry point, access everywhere without prop-drilling
--   **Smart memoization** - Dependencies injected once per context for optimal performance
--   **Context switching** - Add or override context anywhere in the call stack
-
-### 🧠 **Smart Reactive Cache Invalidation**
-
--   **Bring Your Own Cache** - Cache your functions when and how you want using the caching strategy of your choice.
--   **Recall a product when a cache update is needed** - Simply implement the onRecall handler to invalidate your cache.
--   **Reactive Dependency Graph** - Recalling a product also recalls all its dependents in the dependency graph.
-
-### 🚀 **Optimistic Mutations**
-
--   **Immediate Updates** - Set optimistic values on functions that get returned instantly while background computation happens.
--   **Background Processing** - Heavy computations run asynchronously without blocking the user experience.
--   **Automatic Fallback** - Seamlessly clear optimistic values when fresh values are available.
+-   **Shared context** - Assemble the context once at the entry point, access everywhere without prop-drilling.
+-   **Smart memoization** - Dependencies injected once per context for optimal performance.
+-   **Context switching** - Add or override context anywhere in the call stack.
 
 ### ⚡ **Waterfall Management**
 
@@ -79,24 +67,9 @@ import { createMarket } from "supplier"
 const market = createMarket()
 ```
 
-<details>
-<summary>createMarket(opts?) (Advanced, optional)
-</summary>
-
-You can pass a global onRecall event handler to createMarket that will be applied to all product suppliers.
-See below for more details on caching.
-
-```typescript
-const opts = {
-    onRecall?: (cacheKey:string) => void
-}
-```
-
-</details>
-
 ### Creating Product (aka Service) Suppliers
 
-Products are factory functions that can depend on other resources or products. Factory functions can return anything (values, functions, etc.).
+Product suppliers are factory functions that can depend on other resources or product suppliers. Factory functions can return anything (values, functions, etc.).
 
 ```typescript
 import { createMarket, type $ } from "supplier"
@@ -106,7 +79,7 @@ const market = createMarket()
 // A simple product with no dependencies.
 // "logger" is the unique trademark name to identify this product on the market.
 const LoggerSupplier = market.offer("logger").asProduct({
-    factory: () => (message: string) => console.log(`[LOG] ${message}`)
+    factory: ($) => (message: string) => console.log(`[LOG] ${message}`)
 })
 
 // A product that depends on another product and a resource.
@@ -119,7 +92,7 @@ const ApiSupplier = market.offer("api").asProduct({
     factory: ($) => {
         return {
             async get(path: string) {
-                const config = $(ConfigSupplier.name)
+                const config = $(ConfigSupplier.name) //Access any supply using $()
                 const logger = $(LoggerSupplier.name)
                 logger(`GET ${config.apiUrl}${path}`)
                 // ... implementation
@@ -130,17 +103,60 @@ const ApiSupplier = market.offer("api").asProduct({
 })
 ```
 
-#### Product supplier API
+<details>
+<summary> asProduct() API
+</summary>
+
+```typescript
+const asProduct = ({
+    factory:
+        "Function that creates the product value using injected supplies" as (
+            $: SUPPLIES
+        ) => VALUE,
+    suppliers:
+        "Array of suppliers this product depends on (defaults to empty array)" as Supplier[],
+    preload:
+        "Whether to eagerly initialize this product when assemble() is called (defaults to false)" as boolean,
+}) => ProductSupplier
+
+```
+
+</details>
+
+<details>
+<summary> Product supplier API
+</summary>
 
 ```typescript
 const ProductSupplier = {
-    name: "Trademark name (type) of the resource this supplier provides" as string,
-    pack(value: CONSTRAINT): Resource ("Instantiates a resource of this type of value `value`."),
+    name: "Trademark name (type) of the product this supplier provides" as string,
+    suppliers: "Array of other suppliers this product depends on" as Supplier[],
+    assemble(toSupply: $): Product ("Assembles the product with the required resources and dependencies"),
+    preload: "Whether to eagerly initialize this product when assemble() is called" as boolean,
+    pack(value: VALUE): Product ("Creates a product instance with a predefined value, bypassing the factory"),
     // Internals
-    _resource: "Flag for discriminated unions with product suppliers" as true
-    _constraint: "Store for the constraint needed as reference for further type manipulations" as CONSTRAINT
+    _dependsOnOneOf(overrides: $): boolean ("Checks if any dependencies need resupplying"),
+    _product: "Flag for discriminated unions with resource suppliers" as true
 }
 ```
+
+</details>
+
+<details>
+<summary> Product  API
+</summary>
+
+```typescript
+const product = {
+    cacheKey: "Unique id for this instance. Use for your caching" as string,
+    name: "Same as productSupplier.name" as string,
+    unpack(): VALUE ("Returns the computed value from the factory or optimistic value"),
+    pack(value: VALUE): Product ("Same as productSupplier.pack(), to create a new product instance with a predefined value"),
+    reassemble(overrides: SupplyMap): Product ("Reassembles the product with new context overrides"),
+}
+```
+
+</details>S
 
 ### Creating Resources
 
@@ -167,7 +183,9 @@ console.log(configResource.name) // "config"
 console.log(configResource.unpack().apiUrl) // "https://api.example.com"
 ```
 
-#### Resource supplier API
+<details>
+<summary> Resource Supplier API
+</summary>
 
 ```typescript
 const ResourceSupplier = {
@@ -179,20 +197,25 @@ const ResourceSupplier = {
 }
 ```
 
-#### Resource API
+</details>
+<details>
+<summary> Resource  API
+</summary>
 
 ```typescript
 const resource = {
     id: "Unique id for this instance. Used for caching" as string,
     name: "Same as resourceSupplier.name" as string,
-    pack(value: CONSTRAINT): Resource ("Same as resourceSupplier.pack(), to pack a new instance of resource `name` with a new value"),
+    pack(value: CONSTRAINT): Resource ("Same as resourceSupplier.pack(), to create a new resource of type `name` with a new value"),
     unpack(): CONSTRAINT ("Returns the value")
 }
 ```
 
+</details>
+
 ### Assembling at the entry point
 
-You pass to the `assemble` method of a product supplier all resources it and its dependencies need (recursively). Typescript helps you if you miss any.
+You pass to the `assemble` method of a product supplier all resources it and the dependencies it needs (recursively). Typescript helps you if you miss any.
 
 Here is how to instantiate the ApiSupplier defined above:
 
@@ -225,44 +248,18 @@ const api = ApiSupplier.assemble(
 
 ### $ (Supplies) Object API
 
-The `$` callable object provides access to a product's supplies. `$[supplyName]` accesses the resource or product, and `$(supplyName)` is a shorthand to access the value packed in the resource or product. To remember, I view `$[]` as accessing the pack, the "box", that contains the value ([] looks like a box). The resource `$[resourceName]` is of type `{name, unpack, pack}` and the product `$[productName]` is of type `{name, unpack, pack, reassemble}` (see the use of `reassemble` below).
+The `$` callable object provides access to a product's supplies. `$[supplyName]` accesses the resource or product (see Product and Resource API above), and `$(supplyName)` is a shorthand to access the value packed in the resource or product. To remember, I view `$[]` as accessing the pack, the "box", that contains the value ([] looks like a box).
 
 ```typescript
 const MyProductSupplier = market.offer("my-product").asProduct({
     suppliers: [SomeProductSupplier],
     factory: ($) => {
-        // Both of these work:
+        // Both of these are equivalent:
         const product = $(SomeProductSupplier.name) // Function call
         const sameProduct = $[SomeProductSupplier.name].unpack() // Property access
         //...
     }
 })
-```
-
-#### `$[resourceName]` API
-
-`$[resourceName]` contains the following utilities:
-
-```typescript
-const resource = {
-    id: "A unique identifier for this resource instance",
-    name: "The unique trademark name of this resource (the one that was passed to market.offer() at registration)",
-    unpack(): "Method to access the value of the resource".
-    pack(value: any): "To create a new resource instance of this type with a different value."
-}
-```
-
-#### `$[productName]` API
-
-`$[productName]` contains the following utilities:
-
-```typescript
-const product = {
-    id: "A unique identifier for this product instance",
-    name: "The unique trademark name of this resource (the one that was passed to market.offer() at registration)",
-    unpack(): "Method to access the value of the resource".
-    pack(value: any): "To create a new resource of this type with a different value."
-}
 ```
 
 #### Testing and mocking
@@ -287,39 +284,28 @@ const testApiClient = ApiClientSupplier.assemble(
 For performance-critical scenarios and waterfall loading management, you can enable eager preloading:
 
 ```typescript
-// These 2 products will be initialized immediately when assemble() is called
+// DatabaseSupplier will be initialized immediately when assemble() is called
 const DatabaseSupplier = market.offer("database").asProduct({
     factory: () => createDatabaseConnection(),
     preload: true // Eager initialization
 })
 
-const CacheSupplier = market.offer("cache").asProduct({
-    factory: () => createCacheConnection(),
-    preload: true // Eager initialization
-})
-
 const SomeProductSupplier = market.offer("product").asProduct({
-    suppliers: [DatabaseSupplier, CacheSupplier],
+    suppliers: [DatabaseSupplier],
     factory: ($) => {
         // DatabaseSupplier and CacheSupplier are already initialized,
         // so the $() call is instantaneous
-        return someFn($(DatabaseSupplier.name), $(CacheSupplier.name))
+        return someFn($(DatabaseSupplier.name))
     }
 })
 
-// Both DatabaseSupplier and CacheSupplier start initializing immediately
+// Both DatabaseSupplier starts initializing immediately
 const product = SomeProductSupplier.assemble()
 ```
 
 #### Type narrowing
 
-The `narrow()` function allows you to specify additional type constraints on resources at runtime. This is very powerful, as it allows you to remove almost all runtime type guards. No more if (!user && !user.role==="...") throw ... at the top of all your functions!
-
-The `narrow()` function:
-
--   **Does nothing at runtime** - It's just a pass-through function
--   **Applies type constraints** - When used in `deps`, it narrows the resource type
--   **Enables compile-time safety** - TypeScript ensures the resource satisfies the constraint
+The `narrow()` function allows you to specify additional type constraints on resources. This is very powerful, as it allows you to remove almost all runtime type guards. No more if (!user && !user.role==="...") throw ... at the top of all your functions!
 
 ```typescript
 type Session = { user: User; now: Date }
@@ -330,9 +316,10 @@ const SessionSupplier = market.offer("session").asResource<Session>()
 // But admin dashboard requires admin session
 const AdminDashboardSupplier = market.offer("admin-dashboard").asProduct({
     // Use the narrow() function to specify that this service requires an admin session
+    // Does nothing at runtime, just a pass-through function.
     suppliers: [narrow(SessionSupplier)<{ user: { role: "admin" } }>()],
     // The factory automatically gets the narrowed type
-    factory: ($: $<[typeof narrow<{ user: { role: "admin" } }>(SessionSupplier)]>) => {
+    factory: ($) => {
         const session = $(SessionSupplier.name)
         // No runtime check needed - TypeScript ensures session.user.role === "admin"
         return {
@@ -362,42 +349,38 @@ const adminDashboard = AdminDashboardSupplier.assemble(
 )
 ```
 
-#### Context switching
+#### Context switching (Reassembling)
 
 Use `product.reassemble()` to load a product in a different context. Example use cases: Impersonate another user, or run a query in a db transaction instead of the default db session.
 The parent supplies in `$` are preserved, you just need to overwrite what you want to change or add.
 
 ```typescript
-// Wallet product that depends on user session
-const WalletSupplier = market.offer("wallet-service").asProduct({
-    suppliers: [SessionSupplier],
-    factory: ($: $<[typeof SessionSupplier]>) => {
-        const session = $(SessionSupplier.name)
+const CreateWalletEntrySupplier = market
+    .offer("create-wallet-entry")
+    .asProduct({
+        suppliers: [SessionSupplier],
+        factory: ($) => {
+            const session = $(SessionSupplier.name)
 
-        return (amount: number) => {
-            // Add entry into the current user's wallet
-            // ...
+            return (amount: number) => {
+                // Add entry into the current user's wallet
+                // ...
+            }
         }
-    }
-})
+    })
 
 // Money transfer product that switches contexts
 const TransferSupplier = market.offer("transfer").asProduct({
-    suppliers: [WalletSupplier, SessionSupplier],
-    factory: ($: $<[typeof WalletSupplier, typeof SessionSupplier]>) => {
-        function deductFromSender(amount: number) {
-            const session = $(SessionSupplier.name)
-            // Deduct from current user's wallet
-        }
-
+    suppliers: [CreateWalletEntrySupplier, SessionSupplier],
+    factory: ($) => {
         return (toUserId: string, amount: number) => {
             // First, deduct from sender's wallet (current context)
-            deductFromSender(amount)
-
-            const fromUserId = $(SessionSupplier.name).user.id
+            $(CreateWalletEntry.name)(-amount)
 
             // Then, switch to recipient's context to accept the transfer
-            const recipientWallet = $[WalletSupplier.name].reassemble(
+            const createRecipientWalletEntryProduct = $[
+                CreateWalletEntrySupplier.name
+            ].reassemble(
                 index(
                     SessionSupplier.pack({
                         user: { id: toUserId, role: "user" },
@@ -407,105 +390,25 @@ const TransferSupplier = market.offer("transfer").asProduct({
             )
 
             // Accept the transfer in recipient's wallet
-            recipientWallet.unpack()(amount)
-
-            return { success: true, amount, fromUserId, toUserId }
+            createRecipientWalletEntryProduct.unpack()(amount)
         }
     }
 })
 ```
-
-### Memoization and Performance
-
-Memoization is not enabled by default. To enable it, you must provide a `memoFn` when creating your market. This function will be used to wrap the `unpack` method of each product. You can use any memoization library you like.
-
-```typescript
-import { createMarket } from "supplier"
-import memo from "memoize"
-
-// To enable memoization, provide a memoFn to createMarket
-const market = createMarket({
-    memoFn: ({ unpack }) => memo(unpack)
-})
-
-const ExpensiveProductSupplier = market.offer("expensive").asProduct({
-    factory: () => {
-        console.log("This will only run once per assembly context")
-        return performExpensiveComputation()
-    }
-})
-
-const ConsumerProductSupplier = market.offer("consumer").asProduct({
-    suppliers: [ExpensiveProductSupplier],
-    factory: ($) => {
-        const result1 = $(ExpensiveProductSupplier.name) // Computed
-        const result2 = $(ExpensiveProductSupplier.name) // Memoized
-        const result3 = $(ExpensiveProductSupplier.name) // Memoized
-
-        return { result1, result2, result3 } // All identical
-    }
-})
-
-// You can also disable memoization for specific products
-const NonMemoizedProductSupplier = market.offer("non-memoized").asProduct({
-    factory: () => new Date().getTime(),
-    memo: false
-})
-```
-
-### Advanced Caching and Invalidation
-
-Supplier provides a powerful caching mechanism that allows you to bring your own caching strategy and intelligently invalidate dependencies. This is managed through `memoFn` and `recallFn` when creating a market.
-
-#### Custom Cache Implementation
-
-Here's how you can implement a custom cache using a simple `Map`:
-
-```typescript
-import { createMarket } from "supplier"
-
-// Create a simple cache using Map
-const cache = new Map<string, any>()
-
-const market = createMarket({
-    memoFn: ({ id, unpack }) => {
-        return () => {
-            if (cache.has(id)) {
-                return cache.get(id)
-            }
-            const product = unpack()
-            cache.set(id, product)
-            return product
-        }
-    },
-    recallFn: (product) => {
-        // Clear cache entries for this product when recalled
-        cache.delete(product.id)
-    }
-})
-```
-
--   `memoFn` wraps the `unpack` function of a product. It receives the product's unique `id`. You can use this `id` as a cache key.
--   `recallFn` is called when a product needs to be invalidated. It receives the `product` instance, and you can use `product.id` to remove it from your cache.
 
 #### Recalling Products
 
-You can manually invalidate a product's cache using the `.recall()` method on an assembled product. This will also recursively invalidate all products that depend on it.
+You can manually invalidate a product's internal cache using the `.recall()` method on an assembled product. This will also recursively recall all products that depend on it. All recalled products in the dependency chain will call their supplier's `onRecall()` function (if provided), or the global `onRecall()` if provided on the createMarket() call. You implement the onRecall function yourself to invalidate your own cache.
 
 ```typescript
-const UserDataSupplier = market.offer("user-data").asProduct({
-    factory: async () => fetchUserData()
-})
-
-const UserDashboardSupplier = market.offer("user-dashboard").asProduct({
-    suppliers: [UserDataSupplier],
+const SomeProductSupplier = market.offer("some-product").asProduct({
     factory: ($) => {
         const userData = $(UserDataSupplier.name)
         return createDashboard(userData)
     }
 })
 
-const dashboardProduct = UserDashboardSupplier.assemble({})
+const someProduct = SomeProductSupplier.assemble({})
 
 // initial fetch
 await dashboardProduct.unpack()
@@ -518,15 +421,6 @@ dashboardProduct.recall()
 
 // this will re-fetch the user data upon next access
 await dashboardProduct.unpack()
-```
-
-By default, all products created in a market with a `recallFn` are `recallable`. You can opt-out a specific product from being recalled by setting `recallable: false`.
-
-```typescript
-const NonRecallableSupplier = market.offer("non-recallable").asProduct({
-    factory: () => "some static value",
-    recallable: false // This product's cache will not be cleared by recall()
-})
 ```
 
 ### Optimistic Mutations

@@ -1,5 +1,3 @@
-import { nanoid } from "nanoid"
-
 type Merge<U> = (U extends any ? (k: U) => void : never) extends (
     k: infer I
 ) => void
@@ -7,9 +5,9 @@ type Merge<U> = (U extends any ? (k: U) => void : never) extends (
     : never
 
 type Resource<NAME extends string, VALUE> = {
-    cacheKey: string
     name: NAME
     unpack(): VALUE
+    _supplier: ResourceSupplier<NAME, VALUE>
 }
 
 type ResourceActions<NAME extends string, VALUE> = {
@@ -22,15 +20,19 @@ type ResourceSupplier<NAME extends string, CONSTRAINT> = {
     _constraint: CONSTRAINT
 } & ResourceActions<NAME, CONSTRAINT>
 
-type Product<NAME extends string, VALUE> = Resource<NAME, VALUE> &
-    ProductActions<NAME, VALUE>
+type Product<NAME extends string, VALUE> = Omit<
+    Resource<NAME, VALUE>,
+    "_supplier"
+> &
+    ProductActions<NAME, VALUE> & {
+        _supplier: ProductSupplier<NAME, any, VALUE>
+    }
 
 type ProductActions<NAME extends string, VALUE> = {
-    pack: (value: VALUE) => Product<NAME, VALUE>
-    dependsOnOneOf: (overrides: SupplyMap) => boolean
+    pack: <PACK_VALUE extends VALUE>(
+        value: PACK_VALUE
+    ) => Product<NAME, PACK_VALUE>
     reassemble: ReassembleAction<NAME, VALUE>
-    setOptimistic: (value: Awaited<VALUE>) => void
-    recall: (soft?: boolean) => void
 }
 
 type AssembleAction<NAME extends string, VALUE, TOSUPPLY extends SupplyMap> = (
@@ -45,44 +47,47 @@ type ProductSupplier<NAME extends string, TOSUPPLY extends SupplyMap, VALUE> = {
     name: NAME
     suppliers?: Supplier<string, any, any>[]
     assemble: AssembleAction<NAME, VALUE, TOSUPPLY>
+    hire: (
+        ...hiredTeam: ProductSupplier<string, any, any>[]
+    ) => ProductSupplier<NAME, any, VALUE>
     preload: boolean
+    _dependsOnOneOf: (overrides: SupplyMap) => boolean
     _product: true
-} & Pick<ProductActions<NAME, VALUE>, "pack" | "dependsOnOneOf">
+} & Pick<ProductActions<NAME, VALUE>, "pack">
 
 type Supplier<NAME extends string, TOSUPPLY extends SupplyMap, VALUE> =
     | ProductSupplier<NAME, TOSUPPLY, VALUE>
     | ResourceSupplier<NAME, VALUE>
 
-type SupplyMapFromList<SUPPLIESLIST extends Resource<any, any>[]> =
-    SUPPLIESLIST extends []
-        ? Record<never, never>
-        : Merge<
-              {
-                  [K in keyof SUPPLIESLIST]: {
-                      [NAME in SUPPLIESLIST[K]["name"]]: SUPPLIESLIST[K]
-                  }
-              }[number]
-          >
+type SupplyMapFromList<
+    SUPPLIESLIST extends (Resource<any, any> | Product<any, any>)[]
+> = SUPPLIESLIST extends []
+    ? Record<never, never>
+    : Merge<
+          {
+              [K in keyof SUPPLIESLIST]: {
+                  [NAME in SUPPLIESLIST[K]["name"]]: SUPPLIESLIST[K]
+              }
+          }[number]
+      >
 
 type SupplyMap = Record<string, Product<string, any> | Resource<string, any>>
 
 type SupplyMapFromSuppliers<SUPPLIERS extends Supplier<string, any, any>[]> = {
-    [SUPPLIER in SUPPLIERS[number] as SUPPLIER["name"]]: SUPPLIER extends ProductSupplier<
-        string,
-        any,
-        any
+    [SUPPLIER in SUPPLIERS[number] as SUPPLIER["name"]]: ReturnType<
+        SUPPLIER["pack"]
     >
-        ? ReturnType<SUPPLIER["assemble"]>
-        : SUPPLIER extends ResourceSupplier<string, any>
-        ? ReturnType<SUPPLIER["pack"]>
-        : never
 }
 
 export type $<SUPPLIERS extends Supplier<string, any, any>[]> = (<
-    TYPE extends keyof SupplyMapFromSuppliers<SUPPLIERS>
+    NAME extends keyof SupplyMapFromSuppliers<SUPPLIERS>
 >(
-    type: TYPE
-) => SupplyMapFromSuppliers<SUPPLIERS>[TYPE] extends {
+    name:
+        | NAME
+        | {
+              name: NAME
+          }
+) => SupplyMapFromSuppliers<SUPPLIERS>[NAME] extends {
     unpack(): infer VALUE
 }
     ? VALUE
@@ -90,52 +95,54 @@ export type $<SUPPLIERS extends Supplier<string, any, any>[]> = (<
     SupplyMapFromSuppliers<SUPPLIERS>
 
 type ToSupply<TEAM extends ProductSupplier<string, any, any>[]> = Merge<
-    {
-        [I in keyof TEAM]: TEAM[I] extends ProductSupplier<
-            string,
-            infer TOSUPPLY,
-            any
-        >
-            ? TOSUPPLY
-            : never
-    }[number]
+    TEAM[number] extends ProductSupplier<string, infer TOSUPPLY, any>
+        ? TOSUPPLY
+        : never
 >
 
-export const createMarket = (opts?: {
-    onRecall?: (cacheKey: string) => void
-}) => {
-    const cacher = Cacher()
-    // Statefulness only used for cache invalidation. Injections do not happen from instances container.
-    // Each injection is scoped in its own assemble (or reassemble) context.
-    const dependents = new WeakMap<object, Set<object>>()
-    const instances = new WeakMap<object, Product<string, any>[]>()
-    const names = new Set<string>()
+function isProduct(
+    supply: SupplyMap[keyof SupplyMap]
+): supply is Product<string, any> {
+    return "_product" in supply._supplier
+}
+
+export const createMarket = () => {
     return {
-        offer: <NAME extends string>(name: NAME) => {
-            if (names.has(name)) {
-                throw new Error(`Name ${name} already exists`)
-            }
-            names.add(name)
+        offer<
+            MARKET extends { offer: (name: string) => any },
+            NAME extends string
+        >(this: MARKET, name: NAME) {
             return {
                 asResource: <CONSTRAINT>() => {
                     const resourceSupplier = {
                         name,
                         _resource: true as const,
-                        pack: <VALUE extends CONSTRAINT>(value: VALUE) => {
-                            const cacheKey = `${name}-${nanoid()}`
+                        pack<
+                            RESOURCE_SUPPLIER extends {
+                                pack: (value: any) => any
+                            },
+                            VALUE extends CONSTRAINT
+                        >(this: RESOURCE_SUPPLIER, value: VALUE) {
                             return {
-                                cacheKey,
                                 name,
                                 unpack: () => value,
-                                pack: <VALUE extends CONSTRAINT>(
-                                    value: VALUE
-                                ) => {
-                                    return resourceSupplier.pack(value)
-                                }
+                                pack<
+                                    RESOURCE extends {
+                                        _supplier: any
+                                    },
+                                    INNER_VALUE extends CONSTRAINT
+                                >(this: RESOURCE, value: INNER_VALUE) {
+                                    return {
+                                        ...resourceSupplier.pack(value),
+                                        _supplier: this._supplier
+                                    }
+                                },
+                                _supplier: this
                             }
                         },
                         _constraint: null as unknown as CONSTRAINT
                     }
+
                     return resourceSupplier
                 },
                 asProduct: <
@@ -145,15 +152,11 @@ export const createMarket = (opts?: {
                 >({
                     factory,
                     suppliers = [] as unknown as SUPPLIERS,
-                    preload = false,
-                    onRecall,
-                    timeout
+                    preload = false
                 }: {
                     factory: (supplies: SUPPLIES) => VALUE
                     suppliers?: SUPPLIERS
                     preload?: boolean
-                    onRecall?: (cacheKey: string) => void
-                    timeout?: number
                 }) => {
                     const team = suppliers.filter(
                         (supplier) =>
@@ -163,130 +166,61 @@ export const createMarket = (opts?: {
                         ProductSupplier<string, any, any>
                     >[]
 
+                    type TOSUPPLY = Omit<
+                        SUPPLIES,
+                        keyof SupplyMapFromSuppliers<typeof team>
+                    > &
+                        ToSupply<typeof team> &
+                        SupplyMap
+
+                    function pack<
+                        THIS extends { _supplier: any },
+                        PACK_VALUE extends VALUE
+                    >(this: THIS, value: PACK_VALUE) {
+                        return {
+                            ...actions.pack(value),
+                            _supplier: this._supplier
+                        }
+                    }
                     const actions = {
-                        assemble: (
-                            toSupply: Omit<
-                                SUPPLIES,
-                                keyof SupplyMapFromSuppliers<typeof team>
-                            > &
-                                ToSupply<typeof team> &
-                                SupplyMap
-                        ) => {
+                        assemble<
+                            PRODUCT_SUPPLIER extends {
+                                pack: (value: any) => any
+                                assemble: (toSupply: TOSUPPLY) => any
+                            }
+                        >(this: PRODUCT_SUPPLIER, toSupply: TOSUPPLY) {
                             /**
                              * A type assertion that tells TypeScript to trust us that the resulting
-                             * supplies is compatible with the generic type `$<DEPS>`. This is a necessary
+                             * supplies is compatible with the generic type `SUPPLIES`. This is a necessary
                              * type hole because TypeScript's static analysis can't remember that when you Omit properties
                              * and put them back, you end up with the original type. Here toSupply is type guarded to be $<DEPS> - Services<team>,
                              * and hire merges toSupply and team products together, so the result must extend $<DEPS>. But TS cannot guarantee it.
                              */
-                            const cacheKey = `${name}-${nanoid()}`
                             const fullSupplies = hire(team).assemble(
                                 toSupply
                             ) as unknown as SUPPLIES
 
-                            const memoedFactory = cacher.memo(() =>
-                                factory(fullSupplies)
-                            )
-
-                            let optimistic: Awaited<VALUE> | undefined =
-                                undefined
-                            let timeoutId:
-                                | ReturnType<typeof setTimeout>
-                                | undefined = undefined
-                            const unpack = () => {
-                                // If we have an optimistic value, return it
-                                if (optimistic !== undefined) {
-                                    return optimistic
-                                }
-                                // No optimistic or computed value, call factory directly
-                                return memoedFactory()
-                            }
-
-                            const setOptimistic = (value: Awaited<VALUE>) => {
-                                if (optimistic !== undefined) {
-                                    throw new Error(
-                                        `Cannot set optimistic value when one is already set: ${optimistic}`
-                                    )
-                                }
-
-                                if (product.recall) {
-                                    product.recall()
-                                }
-                                optimistic = value
-                                // Update optimistic value in background
-                                Promise.resolve()
-                                    .then(async () => {
-                                        await memoedFactory()
-                                    })
-                                    .catch((error) => {
-                                        // If factory fails, we don't want to keep the optimistic value
-                                        // but we also don't want to throw - just clear optimistic
-                                        console.warn(
-                                            `Factory failed during optimistic update: ${error}`
-                                        )
-                                    })
-                                    .finally(() => {
-                                        optimistic = undefined
-                                    })
-                            }
-
-                            const recall = (soft: boolean = false) => {
-                                optimistic = undefined
-                                if (timeoutId !== undefined) {
-                                    clearTimeout(timeoutId)
-                                    timeoutId = undefined
-                                }
-                                cacher.recall(memoedFactory)
-                                try {
-                                    productSupplier.onRecall?.(cacheKey)
-                                } catch (error) {
-                                    console.warn(
-                                        `Error calling onRecall for ${name}: ${error}`
-                                    )
-                                }
-
-                                if (soft) return
-
-                                // First, collect all dependent products into a set
-                                const allDependents = new Set<object>()
-                                const collectDependents = (
-                                    supplier: object
-                                ) => {
-                                    allDependents.add(supplier)
-                                    const deps = dependents.get(supplier) ?? []
-                                    deps.forEach(collectDependents)
-                                }
-
-                                collectDependents(productSupplier)
-                                allDependents.delete(productSupplier)
-                                Array.from(allDependents).map((supplier) => {
-                                    const products = instances.get(supplier)
-                                    if (!products) return
-                                    products.forEach((product) => {
-                                        product.recall(true)
-                                    })
-                                })
-                            }
+                            const unpack = () => factory(fullSupplies)
 
                             const product = {
-                                cacheKey,
                                 name,
                                 unpack,
-                                reassemble: (overrides: SupplyMap) => {
+                                reassemble<
+                                    PRODUCT extends {
+                                        _supplier: {
+                                            assemble: (
+                                                toSupply: TOSUPPLY
+                                            ) => any
+                                        }
+                                    }
+                                >(this: PRODUCT, overrides: SupplyMap) {
                                     // Create a mutable copy of overrides with flexible typing
                                     const newSupplies: SupplyMap = {}
 
                                     // Loop over all supplies and check if they need resupplying
-                                    for (const [name, supply] of Object.entries(
-                                        fullSupplies
-                                    )) {
-                                        if (
-                                            !supply ||
-                                            typeof supply !== "object"
-                                        ) {
-                                            continue
-                                        }
-
+                                    for (const [name, supply] of Object.entries<
+                                        SupplyMap[keyof SupplyMap]
+                                    >(fullSupplies)) {
                                         if (
                                             name in overrides &&
                                             overrides[name]
@@ -297,68 +231,79 @@ export const createMarket = (opts?: {
 
                                         // If the supply is a resource, add it to newSupplies
                                         if (
-                                            !("dependsOnOneOf" in supply) ||
-                                            typeof supply.dependsOnOneOf !==
-                                                "function" ||
-                                            // If the supply doesn't need resupplying, keep it cached in newSupplies
-                                            !supply.dependsOnOneOf(overrides)
+                                            !isProduct(supply) ||
+                                            !supply._supplier._dependsOnOneOf(
+                                                overrides
+                                            )
                                         ) {
-                                            newSupplies[name] =
-                                                supply as SupplyMap[typeof name]
-                                            continue
+                                            newSupplies[name] = supply
                                         }
                                     }
 
-                                    return actions.assemble(
+                                    return this._supplier.assemble(
                                         newSupplies as typeof toSupply
                                     )
                                 },
-                                dependsOnOneOf: actions.dependsOnOneOf,
-                                pack: actions.pack,
-                                setOptimistic,
-                                recall
+                                pack,
+                                _supplier: this
                             }
-
-                            // Schedule auto-recall if timeout is provided
-                            if (typeof timeout === "number" && timeout > 0) {
-                                timeoutId = setTimeout(() => {
-                                    try {
-                                        product.recall()
-                                    } catch {
-                                        // noop - recall should be safe
-                                    }
-                                }, timeout)
-                            }
-
-                            // Track instances of this product for recall
-                            instances.set(productSupplier, [
-                                ...(instances.get(productSupplier) || []),
-                                product
-                            ])
 
                             return product
                         },
-                        pack: (value: VALUE) => {
-                            const cacheKey = `${name}-${nanoid()}`
+                        pack<PRODUCT_SUPPLIER, PACK_VALUE extends VALUE>(
+                            this: PRODUCT_SUPPLIER,
+                            value: PACK_VALUE
+                        ) {
                             const product = {
-                                cacheKey,
                                 name,
                                 unpack: () => value,
-                                reassemble: () => product,
-                                pack: actions.pack,
-                                dependsOnOneOf: actions.dependsOnOneOf,
-                                setOptimistic: () => {
-                                    return
+                                reassemble<
+                                    PRODUCT extends {
+                                        _supplier: any
+                                    }
+                                >(this: PRODUCT) {
+                                    return this
                                 },
-                                recall() {
-                                    // Value is set and cannot change. Do Nothing
-                                    return
-                                }
+                                pack,
+                                _supplier: this
                             }
 
                             return product
                         },
-                        dependsOnOneOf: (overrides: SupplyMap) => {
+                        hire<
+                            PRODUCT_SUPPLIER extends {
+                                _market: MARKET
+                            },
+                            HIRED_TEAM extends ProductSupplier<
+                                string,
+                                any,
+                                any
+                            >[]
+                        >(this: PRODUCT_SUPPLIER, ...hiredTeam: HIRED_TEAM) {
+                            // Combine and deduplicate using "last wins" strategy
+                            const combinedSuppliers = [...team, ...hiredTeam]
+
+                            const supplierMap = new Map()
+                            combinedSuppliers.forEach((supplier) => {
+                                supplierMap.set(supplier.name, supplier)
+                            })
+                            const deduplicatedHiredSuppliers = Array.from(
+                                supplierMap.values()
+                            )
+
+                            return this._market.offer(name).asProduct({
+                                factory,
+                                suppliers: deduplicatedHiredSuppliers as [
+                                    ...Exclude<
+                                        (typeof team)[number],
+                                        { name: HIRED_TEAM[number]["name"] }
+                                    >[],
+                                    ...HIRED_TEAM
+                                ],
+                                preload
+                            })
+                        },
+                        _dependsOnOneOf: (overrides: SupplyMap) => {
                             // Check if any dependencies need resupplying
                             for (const supplier of suppliers) {
                                 // Check if this dependency is directly overridden
@@ -367,8 +312,8 @@ export const createMarket = (opts?: {
                                 }
                                 // Recursively check if this dependency needs resupplying
                                 if (
-                                    "dependsOnOneOf" in supplier &&
-                                    supplier.dependsOnOneOf(overrides)
+                                    "_dependsOnOneOf" in supplier &&
+                                    supplier._dependsOnOneOf(overrides)
                                 ) {
                                     return true
                                 }
@@ -379,23 +324,14 @@ export const createMarket = (opts?: {
 
                     const productSupplier = {
                         name,
-                        _product: true as const,
                         preload,
                         suppliers,
                         pack: actions.pack,
                         assemble: actions.assemble,
-                        dependsOnOneOf: actions.dependsOnOneOf,
-                        onRecall: onRecall ?? opts?.onRecall
-                    }
-
-                    //Set this supplier as a dependent of all its dependencies
-                    for (const supplier of suppliers) {
-                        dependents.set(
-                            supplier,
-                            (dependents.get(supplier) || new Set()).add(
-                                productSupplier
-                            )
-                        )
+                        hire: actions.hire,
+                        _market: this,
+                        _dependsOnOneOf: actions._dependsOnOneOf,
+                        _product: true as const
                     }
 
                     return productSupplier
@@ -408,10 +344,11 @@ export const createMarket = (opts?: {
 function hire(suppliers: ProductSupplier<string, any, any>[]) {
     return {
         assemble: (supplied: Record<string, any>) => {
-            const supplies: any = (id: string) => {
-                const supply = supplies[id]
+            const supplies: any = (name: string | { name: string }) => {
+                const actualName = typeof name === "string" ? name : name.name
+                const supply = supplies[actualName]
                 if (!supply?.unpack) {
-                    throw new Error(`Unsatisfied dependency: ${id}`)
+                    throw new Error(`Unsatisfied dependency: ${actualName}`)
                 }
                 return supply.unpack()
             }
@@ -472,7 +409,7 @@ function hire(suppliers: ProductSupplier<string, any, any>[]) {
 }
 
 // Utilities
-function once<T extends () => any>(func: T) {
+export function once<T extends () => any>(func: T) {
     let called = false
     let result: ReturnType<T>
 
@@ -485,9 +422,9 @@ function once<T extends () => any>(func: T) {
     }
 }
 
-export function index<SUPPLIESLIST extends Resource<any, any>[]>(
-    ...suppliesList: SUPPLIESLIST
-) {
+export function index<
+    SUPPLIESLIST extends (Resource<any, any> | Product<any, any>)[]
+>(...suppliesList: SUPPLIESLIST) {
     return suppliesList.reduce(
         (acc, r) => ({ ...acc, [r.name]: r }),
         {}
@@ -500,41 +437,22 @@ export function narrow<
         _constraint: any
     }
 >(supplier: RESOURCESUPPLIER) {
-    return <VALUE>() =>
-        supplier as unknown as ResourceSupplier<
+    return <VALUE>() => {
+        type NarrowedSupplier = ResourceSupplier<
             RESOURCESUPPLIER["name"],
             RESOURCESUPPLIER["_constraint"] & VALUE
         >
+        return supplier as unknown as Omit<NarrowedSupplier, "pack"> & {
+            pack: (value: VALUE) => Omit<
+                ReturnType<NarrowedSupplier["pack"]>,
+                "_supplier"
+            > & {
+                _supplier: RESOURCESUPPLIER
+            }
+        }
+    }
 }
 
 export function sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-function Cacher() {
-    const cacheStore = new WeakMap<object, any>()
-    const cacher = {
-        memo: <T>(factory: () => T) => {
-            const cache: any[] = [undefined]
-            const memoized = (): T => {
-                if (cache[0] !== undefined) {
-                    return cache[0]
-                }
-                const value = factory()
-                cache[0] = value
-                return value
-            }
-
-            cacheStore.set(memoized, cache)
-            return memoized
-        },
-        recall: <T>(factory: () => T) => {
-            const cache = cacheStore.get(factory)
-            if (cache) {
-                cache[0] = undefined
-            }
-        }
-    }
-
-    return cacher
 }
