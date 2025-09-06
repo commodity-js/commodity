@@ -13,11 +13,7 @@
         "url": "git+https://github.com/supplier-js/supplier.git"
     },
     "imports": {
-        "#*": {
-            "types": "./dist/*.d.ts",
-            "import": "./dist/*.js",
-            "require": "./dist/*.cjs"
-        }
+        "#*": "./src/*.ts"
     },
     "exports": {
         ".": {
@@ -32,8 +28,9 @@
     "scripts": {
         "build": "tsup",
         "dev": "tsup --watch",
-        "test": "vitest",
-        "test:run": "vitest run"
+        "test": "vitest --typecheck",
+        "test:run": "vitest run --typecheck",
+        "typecheck": "vitest run --typecheck.only"
     },
     "devDependencies": {
         "@config.supplier/eslint": "*",
