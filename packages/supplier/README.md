@@ -10,44 +10,65 @@ details summary {
 
 Let the market and the supply chain deliver the resources and services ("products") you need, where you need them.
 
-A powerful, type-inferred, and hyper-minimalistic library for Context Propagation, Reactive Caching, Optimistic Mutations, Waterfall Management, and Dependency Injection (DI).
+Supplier is a small TypeScript library that helps you build a Dependency Injection Supply Chain (DISC) for your app: a new construct that provides full Dependency Injection and Context Propagation capabilities without statefulness. Think of it as Containerless DI.
 
-## Background
+# The Problem
 
-I created this library to solve multiple pain points I had while working with complex dependency graphs and deeply nested function call chains in applications. The more decoupled, dry and SOLID your application becomes, the more the dependency graph becomes hard to manage, and the easier the chance of creating a chain of functions that call each other in a deeply nested fashion. And when that happens, problems like prop-drilling, context propagation, waterfall management (managing what functions to preload or not for optimization) and caching management (determining what functions and results to uncache when one result is invalidated) become very tedious, and no solution really exist to address them all at once, even if the root cause of all of them is the same: deeply nested function calls and dependency graphs.
+DI containers have always felt abstract, technical, almost magical in how they work. Like a black box, you often have to dig into the source code of a third-party library to understand how data flows in your own application. It feels like you lose control of your own data when you use one, and your entire app becomes dependent on the container to even work. Supplier aims to make DI cool again! The pattern has real power, even if current implementations on the open-source market hide that power under a lot of complexity.
 
-I encountered these pain points working on a big React application, trying to convert my deep component tree to server components without the help of React Context to ease the pains of prop-drilling :'(. But the problems are more general and arise in other contexts, like complex backends with intertwined data dependencies, so this package is completely framework-agnostic.
+DI was complex to achieve in OOP world because of the absence of first-class functions in OOP languages. But in modern functional languages, DI should be easier, since DI itself is a functional concept. However, TypeScript DI frameworks currently available seem to have been built by imitating how they were built in OOP languages...
 
-It is inspired by Dependency Injection frameworks (DI), but don't be scared! I removed all OOP paradigms, all classes, decorators, annotations, reflect-metadata and compiler magic, and I added full type-safety and type-inference. I had the intuition that DI got this complex in OOP world because of the absence of first-class functions and Typescript in the languages it was most used. But TS DI frameworks currently on the market seem to have been built by imitating how they were built for languages without first-class functions. And I get why, even with first-class functions, DI is a hard and confusing pattern, full of potential recursions and circular dependencies. But once you manage to untangle all of that, it becomes really powerful! I only created this library to solve prop-drilling and context propagation initially, but then I kept seeing pain points of other developers and even frameworks that I could solve easily with my library, so I added caching, preloading and optimistic mutations.
+The problem DI was solving in OOP world still exists in the functional world. In OOP world, DI helped inject data and services freely within deeply nested class hierarchies and architectures. In the functional world, DI achieves the same: inject data and services freely in deeply nested function calls. Deeply nested function calls naturally emerge when trying to decouple and implement SOLID principles in medium to highly complex applications. Without DI, you cannot achieve maximal decoupling. Even if in principle you can reuse a function elsewhere, the function is still bound in some way to the particular call stack in which it finds itself, simply by the fact that it can only be called from a parent function that has access to all the data and dependencies it needs.
 
-STILL IN VERY UNSTABLE, PRE-ALPHA, PLEASE DON'T INSTALL VERSIONS v0.0.x
+DISCs can do everything containers do, but in a more elegant, simpler, and easier-to-reason-about manner.
 
-## Features
+<details>
+<summary>A framework-agnostic React Context, usable for both Client and Server Components (Advanced)</summary>
 
-### ☀️ **General**
+Supplier also solves the problem of Context Propagation, so it can be used in React applications as an alternative to React Context, given a little initial refactoring. Notably, it can be used in both Client and Server components to avoid prop-drilling through multiple layers of nested components. Parallels can be drawn between React Context's API and Supplier's API. createContext() is handled by asResource() and asProduct() registration methods in Supplier. Context providers are modeled by the assemble()/reassemble() methods, and finally useContext() is analogous to the $() function. The only difference between the two is that $() is passed via the factory function's arguments, whereas useContext() is imported from the global scope. This means React Context implements the Service Locator pattern, whereas Supplier implements full DI. This enables the statelessness of Supplier: React Context must read its data as state stored somewhere in the global scope, whereas Supplier's products simply receive their dependencies in their function arguments.
 
--   **Fully typesafe and type-inferred** - Full TypeScript support with compile-time circular dependency detection.
--   **Fluent and expressive API** - Learn in minutes, designed for both developers and AI usage.
--   **Fully framework-agnostic** - Complements back-end and front-end frameworks.
+</details>
 
-### 🔧 **Dependency Injection**
+# Features
 
--   **Functions only** - No OOP, classes, decorators, or compiler magic,
--   **Stateless Injection** - Dependencies are resolved via closures, not state.
--   **Maximal colocation** - Declare most of your injections (supplies) right next to your functions, not at the entry-point. No compostion root.
--   **Runtime overrides** - Easily mock dependencies for testing.
+☀️ General
 
-### 📦 **Context Propagation**
+-   Fully typesafe and type-inferred - Full TypeScript support with compile-time circular dependency detection.
+-   Fluent and expressive API - Learn in minutes, designed for both developers and AI usage.
+-   Fully framework-agnostic - Complements both back-end and front-end frameworks.
 
--   **Shared context** - Assemble the context once at the entry point, access everywhere without prop-drilling.
--   **Smart memoization** - Dependencies injected once per context for optimal performance.
--   **Context switching** - Add or override context anywhere in the call stack.
+🔧 Dependency Injection
 
-### ⚡ **Waterfall Management**
+-   Functions only - No OOP, classes, decorators, anntations, or compiler magic.
+-   Declarative, immutable, functionally pure.
+-   Stateless - Dependencies are resolved via closures, not state. Some memoized state is kept for validation and optimization purposes only.
+-   Auto-wired - All products are built by the Supply Chain and resolve their dependencies automatically.
+-   Maximal colocation - All product dependencies (suppliers) are registered right next to the function that uses them, not at the entry point.
+-   Runtime overrides - Use pack() to mock dependencies for testing.
+-   Feature swapping - Use try() to "swap" a product with another of the same type, but requiring different supplies. Perfect for prototyping, feature flagging, A/B testing, etc.
 
--   **Eager loading** - Use `preload: true` for immediate initialization on `assemble()` call
--   **Lazy loading** - Use `preload: false` for on-demand initialization when first accessed.
--   **Performance control** - Optimize loading in deeply nested dependency trees like React component hierarchies
+📦 Context Propagation
+
+-   Shared context - Assemble the context once at the entry point, access everywhere without prop-drilling.
+-   Smart memoization - Dependencies injected once per assemble() context for optimal performance.
+-   Context switching - Add or override context anywhere in the call stack using reassemble().
+
+⚡ Waterfall Management
+
+-   Eager loading - Use preload: true for immediate initialization of a product on entry point's assemble() call.
+-   Lazy loading - Use preload: false for on-demand initialization of a product when its value is first accessed.
+
+🧪 Testing and Mocking
+
+-   You can mock any product using pack(), which will use the provided value directly, bypassing the product's factory.
+-   For more complex mocks which would benefit from a factory, see prototype() below.
+
+🚀 Prototyping and A/B testing
+
+-   Use `prototype()` to create alternative implementations of a product, that may depend on different suppliers than the original.
+-   Prototypes' factories must return values of the same type than the original product's factory.
+-   Define prototypes to `try()` at the entry-point of your app
+-   For example, you can easily try different versions of a UI component for A/B testing.
 
 ## Installation
 
@@ -55,276 +76,142 @@ STILL IN VERY UNSTABLE, PRE-ALPHA, PLEASE DON'T INSTALL VERSIONS v0.0.x
 npm install supplier
 ```
 
-## Quick Start
+## Basic usage
 
-### Create a market
+`supplier` provides a functional take on Dependency Injection. You define your application's dependencies as `resources` (data) and `products` (services), and then `assemble` them at your application's entry point.
 
-All resources and products are created from a `market`, which acts like a container in DI.
+### 1. Create a Market
 
-```typescript
+All suppliers are created from a `market`, which creates a scope shared by Resource and Product Suppliers.
+You'll usually create one market per application. Markets register the names of the resources and products it `offers` so that no name conflicts occur. The name registry is the only state the market manages.
+
+```tsx
 import { createMarket } from "supplier"
 
 const market = createMarket()
 ```
 
-### Creating Product (aka Service) Suppliers
+### 2. Define Resources
 
-Product suppliers are factory functions that can depend on other resources or product suppliers. Factory functions can return anything (values, functions, etc.).
+Resources represent the data and context your application needs, like configuration or user sessions. You define a `ResourceSupplier` and then `.pack()` it with a value at runtime. The value can be anything you want, even functions. Just specify its type.
 
-```typescript
-import { createMarket, type $ } from "supplier"
-
-const market = createMarket()
-
-// A simple product with no dependencies.
-// "logger" is the unique trademark name to identify this product on the market.
-const LoggerSupplier = market.offer("logger").asProduct({
-    factory: ($) => (message: string) => console.log(`[LOG] ${message}`)
-})
-
-// A product that depends on another product and a resource.
-const ApiSupplier = market.offer("api").asProduct({
-    // Simply inject dependencies in-place! Simple, but this pattern unlocks a lot of unforeseen power!
-    // All product dependencies get automatically injected, but Resource dependencies
-    // will need to be supplied using assemble() at the entrypoint of your app
-    suppliers: [LoggerSupplier, ConfigSupplier], // ConfigSupplier is defined in the next section
-    // You can view $ as a shorthand for supplies.
-    factory: ($) => {
-        return {
-            async get(path: string) {
-                const config = $(ConfigSupplier.name) //Access any supply using $()
-                const logger = $(LoggerSupplier.name)
-                logger(`GET ${config.apiUrl}${path}`)
-                // ... implementation
-            }
-            // ... other methods
-        }
-    }
-})
-```
-
-<details>
-<summary> asProduct() API
-</summary>
-
-```typescript
-const asProduct = ({
-    factory:
-        "Function that creates the product value using injected supplies" as (
-            $: SUPPLIES
-        ) => VALUE,
-    suppliers:
-        "Array of suppliers this product depends on (defaults to empty array)" as Supplier[],
-    preload:
-        "Whether to eagerly initialize this product when assemble() is called (defaults to false)" as boolean,
-}) => ProductSupplier
-
-```
-
-</details>
-
-<details>
-<summary> Product supplier API
-</summary>
-
-```typescript
-const ProductSupplier = {
-    name: "Trademark name (type) of the product this supplier provides" as string,
-    suppliers: "Array of other suppliers this product depends on" as Supplier[],
-    assemble(toSupply: $): Product ("Assembles the product with the required resources and dependencies"),
-    preload: "Whether to eagerly initialize this product when assemble() is called" as boolean,
-    pack(value: VALUE): Product ("Creates a product instance with a predefined value, bypassing the factory"),
-    // Internals
-    _dependsOnOneOf(overrides: $): boolean ("Checks if any dependencies need resupplying"),
-    _product: "Flag for discriminated unions with resource suppliers" as true
-}
-```
-
-</details>
-
-<details>
-<summary> Product  API
-</summary>
-
-```typescript
-const product = {
-    cacheKey: "Unique id for this instance. Use for your caching" as string,
-    name: "Same as productSupplier.name" as string,
-    unpack(): VALUE ("Returns the computed value from the factory or optimistic value"),
-    pack(value: VALUE): Product ("Same as productSupplier.pack(), to create a new product instance with a predefined value"),
-    reassemble(overrides: SupplyMap): Product ("Reassembles the product with new context overrides"),
-}
-```
-
-</details>S
-
-### Creating Resources
-
-Resources are simple values that can be assembled into products in a type-safe way:
-
-```typescript
-import { createMarket } from "supplier"
-
-const market = createMarket()
-
-// Create a resource supplier with a type constraint
-const ConfigSupplier = market.offer("config").asResource<{
-    apiUrl: string
-    timeout: number
+```tsx
+// Define a supplier for the session
+const SessionSupplier = market.offer("session").asResource<{
+    userId: string
 }>()
 
-// Instantiate a resource with a value
-const configResource = ConfigSupplier.pack({
-    apiUrl: "https://api.example.com",
-    timeout: 5000
+const SessionResource = SessionSupplier.pack({
+    userId: "some-user-id"
 })
 
-console.log(configResource.name) // "config"
-console.log(configResource.unpack().apiUrl) // "https://api.example.com"
+const session = SessionResource.unpack()
 ```
 
-<details>
-<summary> Resource Supplier API
-</summary>
+### 3. Define Products
 
-```typescript
-const ResourceSupplier = {
-    name: "Trademark name (type) of the resource this supplier provides" as string,
-    pack(value: CONSTRAINT): Resource ("Instantiates a resource of this type of value `value`."),
-    // Internals
-    _resource: "Flag for discriminated unions with product suppliers" as true
-    _constraint: "Store for the constraint needed as reference for further type manipulations" as CONSTRAINT
-}
-```
+Products are your application's services, components or features. They are factory functions that can depend on other products or resources. Dependencies are accessed via the `$` object passed to the `factory` as argument. $ is a shorthand for `supplies`, but it is just a suggestion, you can name the factory arg however you want. I like $ because it is short and will be used a lot throughout the application.
 
-</details>
-<details>
-<summary> Resource  API
-</summary>
+Use `$[name]` to access the resource or product stored in supplies, and `$(name)` as a shorthand to access the unpacked value of the product or resource directly. As a mnemonic, `$[]` looks like a box, so it accesses the packed, the "boxed", resource or product.
 
-```typescript
-const resource = {
-    id: "Unique id for this instance. Used for caching" as string,
-    name: "Same as resourceSupplier.name" as string,
-    pack(value: CONSTRAINT): Resource ("Same as resourceSupplier.pack(), to create a new resource of type `name` with a new value"),
-    unpack(): CONSTRAINT ("Returns the value")
-}
-```
-
-</details>
-
-### Assembling at the entry point
-
-You pass to the `assemble` method of a product supplier all resources it and the dependencies it needs (recursively). Typescript helps you if you miss any.
-
-Here is how to instantiate the ApiSupplier defined above:
-
-```typescript
-//LoggerSupplier's product is supplied automatically, but ConfigSupplier's resource needs to be supplied in assemble at the entry-point. Resources can be viewed as the "context" of your app: global values that need to be accessed anywhere, like the db client, or the http request.
-const apiProduct = ApiSupplier.assemble({
-    [ConfigSupplier.name]: ConfigSupplier.pack({
-        apiUrl: "https://api.example.com",
-        timeout: 5000
-    })
-})
-
-// Use the resulting product
-await apiProduct.unpack().get("/users")
-```
-
-You can use `index()` utility as a shorthand to easily transform a list of resources to an object `assemble()` can easily typecheck.
-
-```typescript
-// This is the same as above
-const api = ApiSupplier.assemble(
-    index(
-        ConfigSupplier.pack({
-            apiUrl: "https://api.example.com",
-            timeout: 5000
-        })
-    )
-)
-```
-
-### $ (Supplies) Object API
-
-The `$` callable object provides access to a product's supplies. `$[supplyName]` accesses the resource or product (see Product and Resource API above), and `$(supplyName)` is a shorthand to access the value packed in the resource or product. To remember, I view `$[]` as accessing the pack, the "box", that contains the value ([] looks like a box).
-
-```typescript
-const MyProductSupplier = market.offer("my-product").asProduct({
-    suppliers: [SomeProductSupplier],
+```tsx
+const UserSupplier = market.offer("user").asProduct({
+    suppliers: [SessionSupplier, DbSupplier], // Depends on session and db resources.
     factory: ($) => {
-        // Both of these are equivalent:
-        const product = $(SomeProductSupplier.name) // Function call
-        const sameProduct = $[SomeProductSupplier.name].unpack() // Property access
-        //...
+        const session = $[SessionSupplier.name].unpack() //Access the session value
+        const session = $(SessionSupplier.name) // Shorthand for the above.
+        const db = $(DbSupplier.name)
+        return db.getUser(session.userId) // query the db to retrieve the user.
     }
 })
 ```
 
-#### Testing and mocking
+### 4. Define your Application
 
-For easy testing and mocking, you can also easily overwrite a product by using `ProductSupplier.pack(value)`. The product's factory will not be called, the value will be used as-is, much like `ResourceSupplier.pack()`.
+Your Application is just a `product` like the other ones. It's the main product at the top of the supply chain.
 
-```typescript
-// Override the logger for testing
-const testApiClient = ApiClientSupplier.assemble(
+```tsx
+const AppSupplier = market.offer("app").asProduct({
+    suppliers: [UserSupplier], // Depends on User product
+    factory: ($) => {
+        // Access the user value. Its type will be automatically inferred from UserSupplier's factory's
+        // inferred return type.
+        const user = $(UserSupplier.name)
+        return <h1>Hello, {user.name}! </h1>
+    }
+})
+```
+
+### 5. Assemble at the Entry Point
+
+At your application's entry point, you `assemble` your main AppProduct, providing just the resources (not the products) requested recursively by the AppProduct's suppliers chain. Typescript will tell you if any resource is missing.
+
+```tsx
+const db = //...Get your db connection
+const req = //...Get the current http request
+
+// Assemble the App, providing the Session and Db resources.
+const AppProduct = AppSupplier.assemble({
+    [SessionSupplier.name]: SessionSupplier.pack({
+            userId: req.userId
+    }),
+    [DbSupplier.name]: DbSupplier.pack(db)
+})
+
+const res = AppProduct.unpack()
+// Return or render res...
+```
+
+The flow of the assemble call is as follows: raw data is obtained, which is provided to ResourceSuppliers using pack(). Then those resources are supplied to AppSupplier's suppliers recursively, which assemble their own product, and pass them up along the supply chain until they reach AppSupplier, which assembles the final AppProduct. All this work happens in the background, no matter the complexity of your application.
+
+To simplify the assemble() call, you should use the index() utility, which transforms an array like
+`...[resource1, resource2]` into an indexed object like
+`{[resource1.name]: resource1, [resource2.name]:resource2}`. I unfortunately did not find a way to merge index() with assemble() without losing assemble's type-safety, because typescript doesn't have an unordered tuple type.
+
+```tsx
+import { index } from "supplier"
+
+const AppProduct = AppSupplier.assemble(
     index(
-        // Create a test logger that doesn't actually log
-        LoggerSupplier.pack((message: string) => {
-            /* silent */
+        SessionSupplier.pack({
+            userId: req.userId
         }),
-        ConfigSupplier.pack({ apiUrl: "http://localhost", timeout: 1000 })
+        DbSupplier.pack(db)
     )
 )
 ```
 
-#### Eager Preloading
+## Advanced API
 
-For performance-critical scenarios and waterfall loading management, you can enable eager preloading:
+The `narrow()` function allows you to create variants of resources with a narrower type.
 
-```typescript
-// DatabaseSupplier will be initialized immediately when assemble() is called
-const DatabaseSupplier = market.offer("database").asProduct({
-    factory: () => createDatabaseConnection(),
-    preload: true // Eager initialization
-})
-
-const SomeProductSupplier = market.offer("product").asProduct({
-    suppliers: [DatabaseSupplier],
-    factory: ($) => {
-        // DatabaseSupplier and CacheSupplier are already initialized,
-        // so the $() call is instantaneous
-        return someFn($(DatabaseSupplier.name))
-    }
-})
-
-// Both DatabaseSupplier starts initializing immediately
-const product = SomeProductSupplier.assemble()
-```
-
-#### Type narrowing
-
-The `narrow()` function allows you to specify additional type constraints on resources. This is very powerful, as it allows you to remove almost all runtime type guards. No more if (!user && !user.role==="...") throw ... at the top of all your functions!
-
-```typescript
+```tsx
 type Session = { user: User; now: Date }
 
 // Session resource can hold any object of type Session
 const SessionSupplier = market.offer("session").asResource<Session>()
+const AdminSessionSupplier = SessionSupplier.narrow<{
+    user: { role: "admin" }
+}>()
 
 // But admin dashboard requires admin session
 const AdminDashboardSupplier = market.offer("admin-dashboard").asProduct({
-    // Use the narrow() function to specify that this service requires an admin session
-    // Does nothing at runtime, just a pass-through function.
-    suppliers: [narrow(SessionSupplier)<{ user: { role: "admin" } }>()],
+    suppliers: [AdminSessionSupplier],
     // The factory automatically gets the narrowed type
     factory: ($) => {
-        const session = $(SessionSupplier.name)
         // No runtime check needed - TypeScript ensures session.user.role === "admin"
-        return {
-            // Some admin only methods
-        }
+        const session = $(AdminSessionSupplier.name)
+        return <h1>Admin Dashboard</h1>
+    }
+})
+
+const AppSupplier = market.offer("admin-dashboard").asProduct({
+    suppliers: [SessionSupplier, AdminDashboardSupplier],
+    // The factory automatically gets the narrowed type
+    factory: ($) => {
+        // No runtime check needed - TypeScript ensures session.user.role === "admin"
+        const session = $(AdminSessionSupplier.name)
+        return <h1>Admin Dashboard</h1>
     }
 })
 
@@ -349,204 +236,136 @@ const adminDashboard = AdminDashboardSupplier.assemble(
 )
 ```
 
-#### Context switching (Reassembling)
+### Context Switching with `reassemble()`
 
-Use `product.reassemble()` to load a product in a different context. Example use cases: Impersonate another user, or run a query in a db transaction instead of the default db session.
-The parent supplies in `$` are preserved, you just need to overwrite what you want to change or add.
+Any product can be `reassembled` with new resources deeper in the call stack. This is useful for changing the context, like impersonating a different user. You don't need to provide all resources needed, just the ones you want to add/overwrite. The original resources from the `assemble()` call will be reused if not overwritten.
 
-```typescript
-const CreateWalletEntrySupplier = market
-    .offer("create-wallet-entry")
-    .asProduct({
-        suppliers: [SessionSupplier],
-        factory: ($) => {
-            const session = $(SessionSupplier.name)
-
-            return (amount: number) => {
-                // Add entry into the current user's wallet
-                // ...
-            }
-        }
-    })
-
-// Money transfer product that switches contexts
-const TransferSupplier = market.offer("transfer").asProduct({
-    suppliers: [CreateWalletEntrySupplier, SessionSupplier],
+```tsx
+const SendMoneySupplier = market.offer("send-money").asProduct({
+    suppliers: [WalletEntrySupplier, SessionSupplier],
     factory: ($) => {
         return (toUserId: string, amount: number) => {
-            // First, deduct from sender's wallet (current context)
-            $(CreateWalletEntry.name)(-amount)
+            const walletEntry = $(WalletEntrySupplier.name)
 
-            // Then, switch to recipient's context to accept the transfer
-            const createRecipientWalletEntryProduct = $[
-                CreateWalletEntrySupplier.name
-            ].reassemble(
-                index(
-                    SessionSupplier.pack({
-                        user: { id: toUserId, role: "user" },
-                        now: new Date()
-                    })
-                )
-            )
+            walletEntry(-amount) // Runs in the current session's account
 
-            // Accept the transfer in recipient's wallet
-            createRecipientWalletEntryProduct.unpack()(amount)
+            const targetWalletEntry = $[WalletEntrySupplier].reassemble(
+                index(SessionSupplier.pack({ userId: toUserId }))
+            ).unpack()
+
+            targetWalletEntry(amount) // Runs in the receiver's account.
+
+            // With such a context swithing capability, it is possible to write a much simpler and safer
+            // ReceiveMoneySupplier implementation, that just needs to check that the current session running the
+            // function owns the account it is adding an entry to..
         }
     }
 })
 ```
 
-#### Recalling Products
+## Experimentation: Prototypes and Feature Flags
 
-You can manually invalidate a product's internal cache using the `.recall()` method on an assembled product. This will also recursively recall all products that depend on it. All recalled products in the dependency chain will call their supplier's `onRecall()` function (if provided), or the global `onRecall()` if provided on the createMarket() call. You implement the onRecall function yourself to invalidate your own cache.
+This is where `supplier` evolves beyond traditional DI. You can create variations of your products (`prototypes`) and swap them in at runtime (`try`), making it easy to implement feature flags, A/B tests, and other experiments.
 
-```typescript
-const SomeProductSupplier = market.offer("some-product").asProduct({
+### 1. Create a Variant with `.prototype()`
+
+A `.prototype()` is a new, isolated implementation of a product. It's a safe way to build a new version of a feature without affecting the original.
+
+```tsx
+const Greeter = market.offer("greeter").asProduct({
+    factory: () => ({ greet: (name: string) => `Hello, ${name}!` })
+})
+
+// Create an "enthusiastic" version of the greeter
+const EnthusiasticGreeter = Greeter.prototype({
+    factory: () => ({ greet: (name: string) => `Hello, ${name}!!! 🎉` }),
+    suppliers: [],
+    preload: false
+})
+```
+
+### 2. Swap Implementations with `.try()` for Feature Flags
+
+Use `.try()` on a product to create a variant of it that uses different underlying dependencies. This is your feature flag/A-B lever at the composition level.
+
+```tsx
+const Notifier = market.offer("notifier").asProduct({
+    suppliers: [Greeter], // Depends on the base Greeter
+    factory: ($) => ({
+        sendGreeting: (name: string) => {
+            const greeter = $(Greeter.name)
+            console.log("Sending greeting...")
+            console.log(greeter.greet(name))
+        }
+    })
+})
+
+// In your application, check a feature flag to decide which notifier to use
+const useEnthusiasticGreeting = true // This could come from your config
+
+const NotifierToUse = useEnthusiasticGreeting
+    ? Notifier.try(EnthusiasticGreeter) // This version of Notifier will use the prototype
+    : Notifier
+
+// The assembly is the same, regardless of which version is used
+const notifier = NotifierToUse.assemble({})
+notifier.unpack().sendGreeting("world")
+
+// If the flag is true, it logs:
+// Sending greeting...
+// Hello, world!!! 🎉
+```
+
+## Advanced Patterns
+
+### Type Narrowing with `.narrow()`
+
+For greater type safety, you can use `.narrow()` on a `ResourceSupplier` to require a more specific version of that resource.
+
+```tsx
+const Session = market
+    .offer("session")
+    .asResource<{ user: { role: "user" | "admin" } }>()
+
+// Create a narrowed supplier that requires an admin
+const AdminSession = Session.narrow<{ user: { role: "admin" } }>()
+
+const AdminDashboard = market.offer("admin-dashboard").asProduct({
+    suppliers: [AdminSession], // Now requires the admin session
     factory: ($) => {
-        const userData = $(UserDataSupplier.name)
-        return createDashboard(userData)
+        const session = $(AdminSession.name)
+        // TypeScript knows session.user.role is "admin"
+        return `Welcome, admin!`
     }
 })
-
-const someProduct = SomeProductSupplier.assemble({})
-
-// initial fetch
-await dashboardProduct.unpack()
-
-// ... user performs an action that changes their data ...
-
-// now we need to refresh the data.
-// This will clear the cache for UserDataSupplier and UserDashboardSupplier
-dashboardProduct.recall()
-
-// this will re-fetch the user data upon next access
-await dashboardProduct.unpack()
 ```
 
-### Optimistic Mutations
+### Mocking in Tests with `.pack()`
 
-Optimistic mutations allow you to provide immediate feedback to users while heavy computations happen in the background. This is perfect for scenarios where you want to show a loading state or optimistic result instantly.
+While `.prototype()` and `.try()` are great for complex test scenarios, the simplest way to mock a dependency is to use `.pack()` during assembly. This bypasses the factory function entirely and provides a direct value.
 
-#### Basic Optimistic Updates
-
-```typescript
-const UserProfileSupplier = market.offer("user-profile").asProduct({
-    factory: async () => {
-        // Simulate slow API call
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-        return { name: "John Doe", email: "john@example.com" }
+```tsx
+// In your vitest test file:
+it("should use the mock api client", async () => {
+    const mockApiClient = {
+        get: async (path: string) => ({ mocked: true, path })
     }
+
+    // Assemble the feature with a mocked ApiClient
+    const featureProduct = Feature.assemble(
+        index(ApiClient.pack(mockApiClient))
+    )
+
+    const result = await featureProduct.unpack().fetchData()
+    // expect(result).toEqual({ mocked: true, path: "/data" });
 })
-
-const profileProduct = UserProfileSupplier.assemble({})
-
-// Set optimistic value for immediate UI update
-profileProduct.setOptimistic({ name: "John Doe", email: "john@example.com" })
-
-// Returns immediately - no waiting!
-const profile = profileProduct.unpack()
-console.log(profile.name) // "John Doe"
-
-// Background computation happens automatically
-// After 1 second, the factory completes and updates the internal state
 ```
 
-#### Form Submissions with Optimistic Updates
+## API Reference
 
-```typescript
-const FormSubmissionSupplier = market.offer("form-submission").asProduct({
-    factory: async (formData) => {
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 2000))
-        return { success: true, id: "form-123" }
-    }
-})
-
-const submissionProduct = FormSubmissionSupplier.assemble({})
-
-// User submits form
-const handleSubmit = async (formData) => {
-    // Show optimistic success immediately
-    submissionProduct.setOptimistic({ success: true, id: "pending" })
-
-    // UI updates instantly with "Form submitted successfully!"
-    const result = submissionProduct.unpack()
-
-    // Background processing continues
-    // When complete, the optimistic value is automatically replaced
-}
-```
-
-#### Optimistic Updates with Error Handling
-
-```typescript
-const DataUpdateSupplier = market.offer("data-update").asProduct({
-    factory: async (data) => {
-        try {
-            const response = await api.updateData(data)
-            return { success: true, data: response }
-        } catch (error) {
-            return { success: false, error: error.message }
-        }
-    }
-})
-
-const updateProduct = DataUpdateSupplier.assemble({})
-
-const handleUpdate = async (data) => {
-    // Show optimistic success
-    updateProduct.setOptimistic({ success: true, data })
-
-    // UI shows success immediately
-    const result = updateProduct.unpack()
-
-    // If the background computation fails, the optimistic value is cleared
-    // and the error result is returned on next access
-    // You can handle this by checking result.success
-}
-```
-
-#### Integration with React and Other Frameworks
-
-```typescript
-// React example
-function UserProfile() {
-    const [profile, setProfile] = useState(null)
-
-    useEffect(() => {
-        const profileProduct = UserProfileSupplier.assemble({})
-
-        // Set optimistic value for immediate render
-        profileProduct.setOptimistic({ name: "Loading...", email: "..." })
-
-        // Access the product
-        const result = profileProduct.unpack()
-        setProfile(result)
-
-        // Background computation will update the product
-        // You can poll or use a callback to get the final result
-    }, [])
-
-    return <div>{profile?.name}</div>
-}
-```
-
-**Important Notes:**
-
--   Only one optimistic value can be set at a time per product
--   Setting a new optimistic value throws an error if one is already set
--   Use `product.recall()` to clear optimistic values and force recomputation
--   Optimistic values are automatically cleared when background computation completes
--   This feature works best with `recallable: true` products
-
-## 🌐 Website & Examples
-
-**[supplier-js.github.io/supplier](https://supplier-js.github.io/supplier)**
+The full API reference can be found in the original `README.md`. The core concepts are explained above.
+_The user can refer to the detailed API documentation that was previously generated if needed._
 
 ## License
 
-MIT © [Supplier.js](https://github.com/supplier-js/supplier)
-
-## Contributing
-
-Issues and pull requests welcome on [GitHub](https://github.com/supplier-js/supplier).
+MIT

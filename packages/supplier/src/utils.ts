@@ -1,4 +1,4 @@
-import { Product, Resource, SupplyMapFromList, ResourceSupplier } from "#types"
+import { type MapFromList } from "#types"
 
 export function once<T extends () => any>(func: T) {
     let called = false
@@ -13,13 +13,11 @@ export function once<T extends () => any>(func: T) {
     }
 }
 
-export function index<
-    SUPPLIESLIST extends (Resource<any, any> | Product<any, any>)[]
->(...suppliesList: SUPPLIESLIST) {
-    return suppliesList.reduce(
+export function index<LIST extends { name: string }[]>(...list: LIST) {
+    return list.reduce(
         (acc, r) => ({ ...acc, [r.name]: r }),
         {}
-    ) as SupplyMapFromList<SUPPLIESLIST>
+    ) as MapFromList<LIST>
 }
 
 export function sleep(ms: number) {

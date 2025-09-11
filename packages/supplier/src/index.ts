@@ -6,12 +6,15 @@ import {
     type Resource,
     type ResourceSupplier,
     type $,
-    type Team,
     type ToSupply,
-    type TrySuppliers
-} from "./types"
+    type MergeSuppliers,
+    type HasCircularDependency,
+    type ExcludeSuppliersType,
+    type MapFromList
+} from "#types"
 
-import { hire } from "#assembler"
+import { hire } from "#assemble"
+import { index } from "#utils"
 export * from "#utils"
 
 function isProduct(
@@ -54,9 +57,6 @@ export const createMarket = () => {
                                 unpack: () => value
                             }
                         },
-                        narrow: <VALUE>() => {
-                            return offer.asResource<CONSTRAINT & VALUE>()
-                        },
                         _constraint: null as unknown as CONSTRAINT
                     }
 
@@ -69,19 +69,34 @@ export const createMarket = () => {
                         any,
                         any,
                         any,
-                        PROTOTYPE extends false ? false : boolean
+                        any,
+                        any,
+                        IS_PROTOTYPE extends false ? false : boolean
                     >[] = [],
-                    PROTOTYPE extends boolean = false
+                    ASSEMBLERS extends ProductSupplier<
+                        string,
+                        any,
+                        any,
+                        any,
+                        any,
+                        any
+                    >[] = [],
+                    IS_PROTOTYPE extends boolean = false
                 >({
                     suppliers = [] as unknown as SUPPLIERS,
+                    assemblers = [] as unknown as ASSEMBLERS,
                     factory,
                     preload = false,
-                    prototype = false as PROTOTYPE
+                    isPrototype = false as IS_PROTOTYPE
                 }: {
                     suppliers?: [...SUPPLIERS]
-                    factory: (supplies: $<SUPPLIERS>) => VALUE
+                    assemblers?: [...ASSEMBLERS]
+                    factory: (
+                        supplies: $<SUPPLIERS>,
+                        assemblers: MapFromList<[...ASSEMBLERS]>
+                    ) => VALUE
                     preload?: boolean
-                    prototype?: PROTOTYPE
+                    isPrototype?: IS_PROTOTYPE
                 }) => {
                     // Check for duplicate names in suppliers
                     const supplierNames = new Set<string>()
@@ -97,8 +112,10 @@ export const createMarket = () => {
                     function assemble<
                         THIS extends ProductSupplier<
                             NAME,
+                            VALUE,
+                            Supplier<string, any, any, any, any, any, any>[],
                             any,
-                            Supplier<string, any, any, any, any>[],
+                            any,
                             any,
                             any
                         >
@@ -106,7 +123,10 @@ export const createMarket = () => {
                         const team = this.suppliers.filter(
                             (supplier) =>
                                 "_product" in supplier && supplier._product
-                        ) as Team<THIS["suppliers"]>
+                        ) as ExcludeSuppliersType<
+                            THIS["suppliers"],
+                            ResourceSupplier<string, any>
+                        >
                         /**
                          * A type assertion that tells TypeScript to trust us that the resulting
                          * supplies is compatible with the generic type `SUPPLIES`. This is a necessary
@@ -119,9 +139,10 @@ export const createMarket = () => {
                         ) as unknown as $<THIS["suppliers"]>
 
                         const unpack = () =>
-                            this.factory(fullSupplies) as ReturnType<
-                                THIS["factory"]
-                            >
+                            this.factory(
+                                fullSupplies,
+                                index(...assemblers)
+                            ) as ReturnType<THIS["factory"]>
 
                         const product = {
                             name: this.name,
@@ -200,7 +221,15 @@ export const createMarket = () => {
                     }
 
                     function pack<
-                        THIS extends ProductSupplier<NAME, VALUE, any, any>,
+                        THIS extends ProductSupplier<
+                            NAME,
+                            VALUE,
+                            any,
+                            any,
+                            any,
+                            any,
+                            any
+                        >,
                         NEW_VALUE extends VALUE
                     >(this: THIS, value: NEW_VALUE) {
                         return {
@@ -223,62 +252,117 @@ export const createMarket = () => {
                             NAME,
                             VALUE,
                             SUPPLIERS,
+                            ASSEMBLERS,
                             $<SUPPLIERS>,
-                            PROTOTYPE
+                            MapFromList<[...ASSEMBLERS]>,
+                            IS_PROTOTYPE
                         >,
-                        PROTOTYPE_SUPPLIERS extends ProductSupplier<
+                        TRIED_SUPPLIERS extends ProductSupplier<
                             string,
+                            any,
+                            any,
                             any,
                             any,
                             any,
                             true
-                        >[]
+                        >[],
+                        TRIED_ASSEMBLERS extends ProductSupplier<
+                            string,
+                            any,
+                            any,
+                            any,
+                            any,
+                            any,
+                            true
+                        >[] = []
                     >(
                         this: THIS,
-                        ...prototypeSuppliers: [...PROTOTYPE_SUPPLIERS]
+                        {
+                            suppliers,
+                            assemblers = [] as unknown as [...TRIED_ASSEMBLERS]
+                        }: {
+                            suppliers: [...TRIED_SUPPLIERS]
+                            assemblers?: [...TRIED_ASSEMBLERS]
+                        }
                     ) {
-                        type NEW_SUPPLIERS = TrySuppliers<
+                        type MERGED_SUPPLIERS = MergeSuppliers<
                             THIS["suppliers"],
-                            PROTOTYPE_SUPPLIERS
+                            TRIED_SUPPLIERS
                         >
 
-                        return {
+                        type MERGED_ASSEMBLERS = MergeSuppliers<
+                            THIS["assemblers"],
+                            TRIED_ASSEMBLERS
+                        >
+
+                        const supplier = {
                             name: this.name,
                             suppliers: [
-                                ...prototypeSuppliers,
+                                ...suppliers,
                                 ...this.suppliers.filter(
-                                    (supplier) =>
-                                        !prototypeSuppliers.some(
-                                            (prototypeSupplier) =>
-                                                prototypeSupplier.name ===
-                                                supplier.name
+                                    (oldSupplier) =>
+                                        !suppliers.some(
+                                            (newSupplier) =>
+                                                newSupplier.name ===
+                                                oldSupplier.name
                                         )
                                 )
-                            ] as unknown as NEW_SUPPLIERS,
-                            factory: this.factory as (
-                                supplies: $<NEW_SUPPLIERS>
+                            ] as unknown as MERGED_SUPPLIERS,
+                            assemblers: [
+                                ...assemblers,
+                                ...this.assemblers.filter(
+                                    (oldSupplier) =>
+                                        !assemblers.some(
+                                            (newSupplier) =>
+                                                newSupplier.name ===
+                                                oldSupplier.name
+                                        )
+                                )
+                            ] as unknown as MERGED_ASSEMBLERS,
+                            factory: this.factory as unknown as (
+                                supplies: $<MERGED_SUPPLIERS>,
+                                assemblers: MapFromList<[...MERGED_ASSEMBLERS]>
                             ) => VALUE,
                             preload: this.preload,
                             pack,
                             assemble,
-                            innovate: this.innovate,
+                            prototype: this.prototype,
                             try: this.try,
-                            _prototype: true as const,
+                            _isPrototype: true as const,
                             _product: true as const
                         }
+
+                        return supplier as HasCircularDependency<
+                            typeof supplier
+                        > extends true
+                            ? unknown
+                            : typeof supplier
                     }
 
-                    function innovate<
+                    function prototype<
                         THIS extends ProductSupplier<
                             NAME,
                             VALUE,
                             SUPPLIERS,
+                            ASSEMBLERS,
                             $<SUPPLIERS>,
-                            PROTOTYPE
+                            MapFromList<[...ASSEMBLERS]>,
+                            IS_PROTOTYPE
                         >,
                         NEW_VALUE extends VALUE,
-                        NEW_SUPPLIERS extends Supplier<
+                        SUPPLIERS_OF_PROTOTYPE extends Supplier<
                             string,
+                            any,
+                            any,
+                            any,
+                            any,
+                            any,
+                            false
+                        >[] = [],
+                        ASSEMBLERS_OF_PROTOTYPE extends ProductSupplier<
+                            string,
+                            any,
+                            any,
                             any,
                             any,
                             any,
@@ -288,42 +372,60 @@ export const createMarket = () => {
                         this: THIS,
                         {
                             factory,
-                            suppliers,
+                            suppliers = [] as unknown as SUPPLIERS_OF_PROTOTYPE,
+                            assemblers = [] as unknown as ASSEMBLERS_OF_PROTOTYPE,
                             preload
                         }: {
-                            factory: (supplies: $<NEW_SUPPLIERS>) => NEW_VALUE
-                            suppliers: [...NEW_SUPPLIERS]
+                            factory: (
+                                supplies: $<SUPPLIERS_OF_PROTOTYPE>,
+                                assemblers: MapFromList<
+                                    [...ASSEMBLERS_OF_PROTOTYPE]
+                                >
+                            ) => NEW_VALUE
+                            suppliers?: [...SUPPLIERS_OF_PROTOTYPE]
+                            assemblers?: [...ASSEMBLERS_OF_PROTOTYPE]
                             preload: boolean
                         }
                     ) {
-                        return {
+                        const supplier = {
                             name: this.name,
                             suppliers,
+                            assemblers,
                             factory,
                             preload,
                             pack,
                             assemble,
-                            innovate: this.innovate,
+                            prototype: this.prototype,
                             try: this.try,
-                            _prototype: true as const,
+                            _isPrototype: true as const,
                             _product: true as const
                         }
+                        return supplier as HasCircularDependency<
+                            typeof supplier
+                        > extends true
+                            ? unknown
+                            : typeof supplier
                     }
 
                     const productSupplier = {
                         name,
                         suppliers,
+                        assemblers,
                         factory,
                         preload,
                         pack,
                         assemble,
                         try: _try,
-                        innovate,
-                        _prototype: prototype,
+                        prototype,
+                        _isPrototype: isPrototype,
                         _product: true as const
                     }
 
-                    return productSupplier
+                    return productSupplier as HasCircularDependency<
+                        typeof productSupplier
+                    > extends true
+                        ? unknown
+                        : typeof productSupplier
                 }
             }
 
