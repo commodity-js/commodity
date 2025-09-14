@@ -4,17 +4,16 @@ import { once } from "#utils"
 export function hire(suppliers: ProductSupplier<string, any, any, any>[]) {
     return {
         assemble: (supplied: Record<string, any>) => {
-            const supplies: any = (name: string | { name: string }) => {
-                const actualName = typeof name === "string" ? name : name.name
-                const supply = supplies[actualName]
+            const $: any = (supplier: { name: string }) => {
+                const supply = $[supplier.name]
                 if (!supply?.unpack) {
-                    throw new Error(`Unsatisfied dependency: ${actualName}`)
+                    throw new Error(`Unsatisfied dependency: ${supplier.name}`)
                 }
                 return supply.unpack()
             }
 
             Object.defineProperties(
-                supplies,
+                $,
                 Object.getOwnPropertyDescriptors(supplied)
             )
 
@@ -28,8 +27,8 @@ export function hire(suppliers: ProductSupplier<string, any, any, any>[]) {
                     continue
                 }
 
-                Object.defineProperty(supplies, supplier.name, {
-                    get: once(() => supplier.assemble(supplies)),
+                Object.defineProperty($, supplier.name, {
+                    get: once(() => supplier.assemble($)),
                     enumerable: true,
                     configurable: true
                 })
@@ -48,7 +47,7 @@ export function hire(suppliers: ProductSupplier<string, any, any, any>[]) {
                 .map((supplier) => {
                     // Access the getter to trigger memoization
                     try {
-                        return Promise.resolve(supplies(supplier.name))
+                        return Promise.resolve($(supplier))
                     } catch (error) {
                         // If preloading fails, we don't want to break the entire supply chain
                         // The error will be thrown again when the dependency is actually needed
@@ -63,7 +62,7 @@ export function hire(suppliers: ProductSupplier<string, any, any, any>[]) {
                 })
             }
 
-            return supplies
+            return $
         }
     }
 }

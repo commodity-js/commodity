@@ -30,51 +30,42 @@ export type ProductSupplier<
     NAME extends string,
     VALUE,
     SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[] = [],
-    ASSEMBLERS extends ProductSupplier<
-        string,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any
-    >[] = [],
+    JUST_IN_TIME extends Supplier<string, any, any, any, any, any, any>[] = [],
     SUPPLIES extends $<SUPPLIERS> = $<SUPPLIERS>,
-    ASSEMBLER_MAP extends MapFromList<[...ASSEMBLERS]> = MapFromList<
-        [...ASSEMBLERS]
+    JUST_IN_TIME_MAP extends MapFromList<[...JUST_IN_TIME]> = MapFromList<
+        [...JUST_IN_TIME]
     >,
     IS_PROTOTYPE extends boolean = false
 > = {
     name: NAME
     suppliers: SUPPLIERS
-    assemblers: ASSEMBLERS
-    factory: (supplies: SUPPLIES, assemblers: ASSEMBLER_MAP) => VALUE
+    justInTime: JUST_IN_TIME
+    factory: (supplies: SUPPLIES, justInTime: JUST_IN_TIME_MAP) => VALUE
     assemble: (toSupply: ToSupply<SUPPLIERS>) => Product<NAME, VALUE>
     pack: (value: VALUE) => Product<NAME, VALUE>
-    try: ({
-        suppliers,
-        assemblers
-    }: {
-        suppliers: ProductSupplier<string, any, any, any, any, any, true>[]
-        assemblers: ProductSupplier<string, any, any, any, any, any, true>[]
-    }) => ProductSupplier<NAME, VALUE, any, any, any, any, true>
+    try: (
+        ...suppliers: ProductSupplier<string, any, any, any, any, any, true>[]
+    ) => ProductSupplier<NAME, VALUE, any, any, any, any, true>
     prototype: ({
         factory,
         suppliers,
-        assemblers,
+        justInTime,
         preload
     }: {
         factory: (
-            supplies: $<Supplier<string, any, any, any, any, any, any>[]>
+            supplies: $<Supplier<string, any, any, any, any, any, any>[]>,
+            justInTime: MapFromList<
+                Supplier<string, any, any, any, any, any, any>[]
+            >
         ) => VALUE
         suppliers?: Supplier<string, any, any, any, any, any, any>[]
-        assemblers?: ProductSupplier<string, any, any, any, any, any, any>[]
+        justInTime?: Supplier<string, any, any, any, any, any, any>[]
         preload: boolean
     }) => ProductSupplier<
         NAME,
         VALUE,
         Supplier<string, any, any, any, any, any, any>[],
-        ProductSupplier<string, any, any, any, any, any, any>[],
+        Supplier<string, any, any, any, any, any, any>[],
         any,
         any,
         true
@@ -88,18 +79,18 @@ export type Supplier<
     NAME extends string,
     VALUE,
     SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[],
-    ASSEMBLERS extends ProductSupplier<string, any, any, any, any, any, any>[],
+    JUST_IN_TIME extends Supplier<string, any, any, any, any, any, any>[],
     SUPPLIES extends $<SUPPLIERS>,
-    ASSEMBLER_MAP extends MapFromList<[...ASSEMBLERS]>,
+    JUST_IN_TIME_MAP extends MapFromList<[...JUST_IN_TIME]>,
     IS_PROTOTYPE extends boolean
 > =
     | ProductSupplier<
           NAME,
           VALUE,
           SUPPLIERS,
-          ASSEMBLERS,
+          JUST_IN_TIME,
           SUPPLIES,
-          ASSEMBLER_MAP,
+          JUST_IN_TIME_MAP,
           IS_PROTOTYPE
       >
     | ResourceSupplier<NAME, VALUE>
@@ -138,13 +129,9 @@ export type SupplyMapFromSuppliers<
 }
 export type $<
     SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[]
-> = (<NAME extends keyof SupplyMapFromSuppliers<SUPPLIERS>>(
-    name:
-        | NAME
-        | {
-              name: NAME
-          }
-) => SupplyMapFromSuppliers<SUPPLIERS>[NAME] extends {
+> = (<NAME extends keyof SupplyMapFromSuppliers<SUPPLIERS>>(supplier: {
+    name: NAME
+}) => SupplyMapFromSuppliers<SUPPLIERS>[NAME] extends {
     unpack(): infer VALUE
 }
     ? VALUE

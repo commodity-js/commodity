@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, assertType } from "vitest"
 import { createMarket, index } from "#index"
-import type { HasCircularDependency, TransitiveSuppliers } from "#types"
 
 describe("Prototype Method", () => {
     it("should allow prototypes with extended value types", () => {
@@ -22,7 +21,7 @@ describe("Prototype Method", () => {
         const enhancedSupplier = basicSupplier.prototype({
             factory: ($) => ({
                 core: "functionality",
-                analytics: $(analyticsSupplier.name),
+                analytics: $(analyticsSupplier),
                 enhanced: true
             }),
             suppliers: [analyticsSupplier],
@@ -46,7 +45,7 @@ describe("Prototype Method", () => {
 
         const baseSupplier = market.offer("base").asProduct({
             suppliers: [someResourceSupplier],
-            factory: ($) => ({ base: $(someResourceSupplier.name) })
+            factory: ($) => ({ base: $(someResourceSupplier) })
         })
 
         const prototypedSupplier = baseSupplier.prototype({
@@ -97,7 +96,7 @@ describe("Prototype Method", () => {
         const step1 = baseSupplier.prototype({
             factory: ($) => ({
                 features: ["base", "feature1"],
-                feature1: $(feature1Supplier.name)
+                feature1: $(feature1Supplier)
             }),
             suppliers: [feature1Supplier],
             preload: false
@@ -106,8 +105,8 @@ describe("Prototype Method", () => {
         const step2 = step1.prototype({
             factory: ($) => ({
                 features: ["base", "feature1", "feature2"],
-                feature1: $(feature1Supplier.name),
-                feature2: $(feature2Supplier.name)
+                feature1: $(feature1Supplier),
+                feature2: $(feature2Supplier)
             }),
             suppliers: [feature1Supplier, feature2Supplier],
             preload: false
@@ -136,7 +135,7 @@ describe("Prototype Method", () => {
         })
 
         const prototypedSupplier = baseSupplier.prototype({
-            factory: ($) => $(preloadSupplier.name),
+            factory: ($) => $(preloadSupplier),
             suppliers: [preloadSupplier],
             preload: true // innovation enables preloading
         })
@@ -175,9 +174,9 @@ describe("Prototype Method", () => {
         const prototypedService = baseProductSupplier.prototype({
             factory: ($) => ({
                 basic: true, // preserve base property
-                config: $(configResourceSupplier.name),
-                apiKey: $(apiKeyResourceSupplier.name),
-                logger: $(loggerProductSupplier.name),
+                config: $(configResourceSupplier),
+                apiKey: $(apiKeyResourceSupplier),
+                logger: $(loggerProductSupplier),
                 enhanced: true
             }),
             suppliers: [
@@ -224,13 +223,13 @@ describe("Prototype Method", () => {
 
         const serviceBSupplier = market.offer("serviceB").asProduct({
             suppliers: [serviceASupplier],
-            factory: ($) => "serviceB uses " + $(serviceASupplier.name)
+            factory: ($) => "serviceB uses " + $(serviceASupplier)
         })
 
         // Try to create circular dependency through try using prototype
         // This should be caught by the circular dependency detection
         const mockASupplier = serviceASupplier.prototype({
-            factory: ($) => "mockA uses " + $(serviceBSupplier.name),
+            factory: ($) => "mockA uses " + $(serviceBSupplier),
             suppliers: [serviceBSupplier], // This creates a potential circle
             preload: false
         })
@@ -255,8 +254,8 @@ describe("Try Method", () => {
         const serviceSupplier = market.offer("service").asProduct({
             suppliers: [dbSupplier, cacheSupplier],
             factory: ($) => ({
-                db: $(dbSupplier.name),
-                cache: $(cacheSupplier.name),
+                db: $(dbSupplier),
+                cache: $(cacheSupplier),
                 result: "production"
             })
         })
@@ -298,9 +297,9 @@ describe("Try Method", () => {
         const serviceSupplier = market.offer("service").asProduct({
             suppliers: [dbSupplier, cacheSupplier, loggerSupplier],
             factory: ($) => ({
-                db: $(dbSupplier.name),
-                cache: $(cacheSupplier.name),
-                logger: $(loggerSupplier.name)
+                db: $(dbSupplier),
+                cache: $(cacheSupplier),
+                logger: $(loggerSupplier)
             })
         })
 
@@ -317,9 +316,10 @@ describe("Try Method", () => {
             preload: false
         })
 
-        const testServiceSupplier = serviceSupplier.try({
-            suppliers: [mockDbSupplier, mockCacheSupplier]
-        })
+        const testServiceSupplier = serviceSupplier.try(
+            mockDbSupplier,
+            mockCacheSupplier
+        )
         const testService = testServiceSupplier.assemble({})
 
         expect(testService.unpack()).toEqual({
@@ -339,7 +339,7 @@ describe("Try Method", () => {
         const serviceSupplier = market.offer("service").asProduct({
             suppliers: [dbSupplier],
             factory: ($) => ({
-                db: $(dbSupplier.name)
+                db: $(dbSupplier)
             })
         })
 
@@ -377,8 +377,8 @@ describe("Try Method", () => {
         const serviceSupplier = market.offer("service").asProduct({
             suppliers: [dbSupplier, cacheSupplier],
             factory: ($) => ({
-                db: $(dbSupplier.name),
-                cache: $(cacheSupplier.name)
+                db: $(dbSupplier),
+                cache: $(cacheSupplier)
             })
         })
 
@@ -415,9 +415,7 @@ describe("Try Method", () => {
         })
 
         // Try with no suppliers - should work fine
-        const testServiceSupplier = serviceSupplier.try({
-            suppliers: []
-        })
+        const testServiceSupplier = serviceSupplier.try()
         const testService = testServiceSupplier.assemble({})
 
         expect(testService.unpack()).toBe("service")
@@ -433,7 +431,7 @@ describe("Try Method", () => {
 
         const serviceSupplier = market.offer("service").asProduct({
             suppliers: [dbSupplier],
-            factory: ($) => ({ db: $(dbSupplier.name) })
+            factory: ($) => ({ db: $(dbSupplier) })
         })
 
         const mockDb1 = dbSupplier.prototype({
@@ -448,9 +446,7 @@ describe("Try Method", () => {
             preload: false
         })
 
-        const mockedSupplier = serviceSupplier.try({
-            suppliers: [mockDb1, mockDb2]
-        })
+        const mockedSupplier = serviceSupplier.try(mockDb1, mockDb2)
         const test = mockedSupplier.suppliers
         expect(test).toEqual([mockDb1, mockDb2])
         const result = mockedSupplier.assemble({}).unpack()
@@ -472,10 +468,8 @@ describe("Try Method", () => {
             isPrototype: false
         })
 
-        const testSupplier = baseSupplier.try({
-            //@ts-expect-error - non-prototype supplier in try
-            suppliers: [nonPrototypeSupplier]
-        })
+        //@ts-expect-error - non-prototype supplier in try
+        const testSupplier = baseSupplier.try(nonPrototypeSupplier)
     })
 })
 
@@ -501,7 +495,7 @@ describe("Edge Cases and Type Safety Circumvention Attempts", () => {
         const step1 = baseSupplier.prototype({
             factory: ($) => ({
                 level: 1,
-                feature1: $(feature1Supplier.name)
+                feature1: $(feature1Supplier)
             }),
             suppliers: [feature1Supplier],
             preload: false
@@ -512,7 +506,7 @@ describe("Edge Cases and Type Safety Circumvention Attempts", () => {
         const step3 = step2.prototype({
             factory: ($) => ({
                 level: 2,
-                feature1: $(feature1Supplier.name),
+                feature1: $(feature1Supplier),
                 final: true
             }),
             suppliers: [feature1Supplier],

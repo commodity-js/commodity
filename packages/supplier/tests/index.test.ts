@@ -37,15 +37,15 @@ describe("supplier", () => {
 
         it("should handle different resource types correctly", () => {
             const market = createMarket()
-            const StringSupplier = market.offer("string").asResource<string>()
-            const NumberSupplier = market.offer("number").asResource<number>()
-            const ObjectSupplier = market.offer("object").asResource<{
+            const stringSupplier = market.offer("string").asResource<string>()
+            const numberSupplier = market.offer("number").asResource<number>()
+            const objectSupplier = market.offer("object").asResource<{
                 name: string
             }>()
 
-            const stringResource = StringSupplier.pack("hello")
-            const numberResource = NumberSupplier.pack(42)
-            const objectResource = ObjectSupplier.pack({ name: "test" })
+            const stringResource = stringSupplier.pack("hello")
+            const numberResource = numberSupplier.pack(42)
+            const objectResource = objectSupplier.pack({ name: "test" })
 
             expect(stringResource.unpack()).toBe("hello")
             expect(numberResource.unpack()).toBe(42)
@@ -56,15 +56,15 @@ describe("supplier", () => {
     describe("Product Offer", () => {
         it("should offer a product with no suppliers", () => {
             const market = createMarket()
-            const ProductSupplier = market.offer("product").asProduct({
+            const productSupplier = market.offer("product").asProduct({
                 factory: () => "product"
             })
 
-            const product = ProductSupplier.assemble({})
+            const product = productSupplier.assemble({})
 
             expect(product.unpack()).toBe("product")
-            expect(ProductSupplier.name).toBe("product")
-            expect(ProductSupplier._product).toBe(true)
+            expect(productSupplier.name).toBe("product")
+            expect(productSupplier._product).toBe(true)
         })
 
         it("should offer a product with suppliers", () => {
@@ -77,17 +77,17 @@ describe("supplier", () => {
                 factory: () => "product2"
             })
 
-            const TestSupplier = market.offer("test").asProduct({
+            const testSupplier = market.offer("test").asProduct({
                 suppliers: [product1Supplier, product2Supplier],
                 factory: ($) => {
                     return {
-                        product1: $(product1Supplier.name),
-                        product2: $(product2Supplier.name)
+                        product1: $(product1Supplier),
+                        product2: $(product2Supplier)
                     }
                 }
             })
 
-            const testProduct = TestSupplier.assemble({})
+            const testProduct = testSupplier.assemble({})
 
             expect(testProduct.unpack()).toEqual({
                 product1: "product1",
@@ -107,17 +107,17 @@ describe("supplier", () => {
                 factory: () => "product2"
             })
 
-            const MainSupplier = market.offer("main").asProduct({
+            const mainSupplier = market.offer("main").asProduct({
                 suppliers: [product1Supplier, product2Supplier],
                 factory: ($) => {
                     return {
-                        product1: $(product1Supplier.name),
-                        product2: $(product2Supplier.name)
+                        product1: $(product1Supplier),
+                        product2: $(product2Supplier)
                     }
                 }
             })
 
-            const mainProduct = MainSupplier.assemble({})
+            const mainProduct = mainSupplier.assemble({})
 
             expect(mainProduct.unpack()).toEqual({
                 product1: "product1",
@@ -131,17 +131,17 @@ describe("supplier", () => {
                 factory: () => "product"
             })
 
-            const MainSupplier = market.offer("main").asProduct({
+            const mainSupplier = market.offer("main").asProduct({
                 suppliers: [productSupplier],
                 factory: ($) => {
-                    const product = $(productSupplier.name)
+                    const product = $(productSupplier)
                     return {
                         product
                     }
                 }
             })
 
-            const mainProduct = MainSupplier.assemble(
+            const mainProduct = mainSupplier.assemble(
                 index(productSupplier.pack("initial-product"))
             )
 
@@ -153,25 +153,25 @@ describe("supplier", () => {
 
         it("should support Product.pack(value) and $[Product.id].pack(value) for creating product instances", () => {
             const market = createMarket()
-            const ConfigSupplier = market.offer("config").asProduct({
+            const configSupplier = market.offer("config").asProduct({
                 factory: () => ({ env: "development", debug: true })
             })
 
-            const LoggerSupplier = market.offer("logger").asProduct({
+            const loggerSupplier = market.offer("logger").asProduct({
                 factory: () => ({ level: "info", prefix: "APP" })
             })
 
-            const MainSupplier = market.offer("main").asProduct({
-                suppliers: [ConfigSupplier, LoggerSupplier],
+            const mainSupplier = market.offer("main").asProduct({
+                suppliers: [configSupplier, loggerSupplier],
                 factory: ($) => {
                     // Test direct service.of() call
-                    const configProduct = ConfigSupplier.pack({
+                    const configProduct = configSupplier.pack({
                         env: "production",
                         debug: false
                     })
 
                     // Test accessing service through supplies and calling .pack()
-                    const loggerProduct = $[LoggerSupplier.name].pack({
+                    const loggerProduct = $[loggerSupplier.name].pack({
                         level: "debug",
                         prefix: "TEST"
                     })
@@ -180,13 +180,13 @@ describe("supplier", () => {
                         config: configProduct.unpack(),
                         logger: loggerProduct.unpack(),
                         // Also test accessing the supplied products
-                        suppliedConfig: $[ConfigSupplier.name].unpack(),
-                        suppliedLogger: $[LoggerSupplier.name].unpack()
+                        suppliedConfig: $[configSupplier.name].unpack(),
+                        suppliedLogger: $[loggerSupplier.name].unpack()
                     }
                 }
             })
 
-            const mainProduct = MainSupplier.assemble({})
+            const mainProduct = mainSupplier.assemble({})
 
             expect(mainProduct.unpack().config).toEqual({
                 env: "production",
@@ -207,53 +207,53 @@ describe("supplier", () => {
         })
         it("should enable context switching by calling reassemble on products", () => {
             const market = createMarket()
-            const ConfigSupplier = market.offer("config").asResource<string>()
-            const NameSupplier = market.offer("name").asResource<string>()
-            const CountSupplier = market.offer("count").asResource<number>()
+            const configSupplier = market.offer("config").asResource<string>()
+            const nameSupplier = market.offer("name").asResource<string>()
+            const countSupplier = market.offer("count").asResource<number>()
 
             // Create a configurable service that uses multiple supplies from its context
-            const TestSupplier = market.offer("test").asProduct({
-                suppliers: [ConfigSupplier, NameSupplier, CountSupplier],
+            const testSupplier = market.offer("test").asProduct({
+                suppliers: [configSupplier, nameSupplier, countSupplier],
                 factory: ($) => {
                     // This service uses multiple values from its supplies
                     return {
-                        config: $(ConfigSupplier.name),
-                        name: $(NameSupplier.name),
-                        count: $(CountSupplier.name)
+                        config: $(configSupplier),
+                        name: $(nameSupplier),
+                        count: $(countSupplier)
                     }
                 }
             })
 
             const initialSupplies = index(
-                ConfigSupplier.pack("initial-config"),
-                NameSupplier.pack("initial-name"),
-                CountSupplier.pack(1)
+                configSupplier.pack("initial-config"),
+                nameSupplier.pack("initial-name"),
+                countSupplier.pack(1)
             )
 
             // Create the initial service instance with base supplies
-            const testProduct = TestSupplier.assemble(initialSupplies)
+            const testProduct = testSupplier.assemble(initialSupplies)
 
             // Test that reassemble creates new product instance with updated supplies
             const newTestProduct1 = testProduct.reassemble(
                 index(
-                    ConfigSupplier.pack("new-config"),
-                    NameSupplier.pack("new-name"),
-                    CountSupplier.pack(42)
+                    configSupplier.pack("new-config"),
+                    nameSupplier.pack("new-name"),
+                    countSupplier.pack(42)
                 )
             )
 
             // Partial reassemble - only override config (other values come from cached supplies)
             const newTestProduct2 = testProduct.reassemble(
-                index(ConfigSupplier.pack("new-config"))
+                index(configSupplier.pack("new-config"))
             )
 
             const newTestProduct3 = testProduct.reassemble(
-                index(NameSupplier.pack("new-name"))
+                index(nameSupplier.pack("new-name"))
             )
 
             // Partial reassemble - override multiple values
             const newTestProduct4 = testProduct.reassemble(
-                index(ConfigSupplier.pack("new-config"), CountSupplier.pack(42))
+                index(configSupplier.pack("new-config"), countSupplier.pack(42))
             )
 
             expect(testProduct.unpack()).toEqual({
@@ -320,19 +320,19 @@ describe("supplier", () => {
                 factory: memo(factoryMock)
             })
 
-            const TestSupplier = market.offer("test").asProduct({
+            const testSupplier = market.offer("test").asProduct({
                 suppliers: [memoizedSupplier],
                 factory: ($) => {
                     // Access the TestService multiple times within the same assembly context
-                    $(memoizedSupplier.name)
-                    $(memoizedSupplier.name)
-                    $(memoizedSupplier.name)
+                    $(memoizedSupplier)
+                    $(memoizedSupplier)
+                    $(memoizedSupplier)
 
                     return "test"
                 }
             })
 
-            TestSupplier.assemble({}).unpack()
+            testSupplier.assemble({}).unpack()
             // Factory should only be called once due to memoization within the same assembly context
             expect(factoryMock).toHaveBeenCalledTimes(1)
         })
@@ -345,27 +345,25 @@ describe("supplier", () => {
                 factory: memo(factory1Mock)
             })
 
-            type t = ReturnType<typeof product1Supplier.try>
-
             const product2Supplier = market.offer("product2").asProduct({
                 suppliers: [product1Supplier],
                 factory: ($) => {
-                    $(product1Supplier.name)
+                    $(product1Supplier)
                     return "product2"
                 }
             })
 
-            const TestSupplier = market.offer("test").asProduct({
+            const testSupplier = market.offer("test").asProduct({
                 suppliers: [product1Supplier, product2Supplier],
                 factory: ($) => {
                     return {
-                        product1: $(product1Supplier.name),
-                        product2: $(product2Supplier.name)
+                        product1: $(product1Supplier),
+                        product2: $(product2Supplier)
                     }
                 }
             })
 
-            const testProduct = TestSupplier.assemble({})
+            const testProduct = testSupplier.assemble({})
 
             expect(testProduct.unpack()).toEqual({
                 product1: "product1",
@@ -410,10 +408,10 @@ describe("supplier", () => {
                 ],
                 factory: ($) => {
                     return {
-                        productA: $(productASupplier.name),
-                        productB: $(productBSupplier.name),
-                        productC: $(productCSupplier.name),
-                        productD: $(productDSupplier.name)
+                        productA: $(productASupplier),
+                        productB: $(productBSupplier),
+                        productC: $(productCSupplier),
+                        productD: $(productDSupplier)
                     }
                 }
             })
@@ -475,10 +473,10 @@ describe("supplier", () => {
                 ],
                 factory: ($) => {
                     return {
-                        productA: $(productASupplier.name),
-                        productB: $(productBSupplier.name),
-                        productC: $(productCSupplier.name),
-                        productD: $(productDSupplier.name)
+                        productA: $(productASupplier),
+                        productB: $(productBSupplier),
+                        productC: $(productCSupplier),
+                        productD: $(productDSupplier)
                     }
                 }
             })
@@ -516,7 +514,7 @@ describe("supplier", () => {
                 factory: () => "product"
             })
 
-            const TestProduct = market.offer("test-product").asProduct({
+            const testProduct = market.offer("test-product").asProduct({
                 suppliers: [resourceSupplier, productSupplier],
                 factory: ($) => {
                     return {
@@ -525,14 +523,14 @@ describe("supplier", () => {
                             product: $[productSupplier.name].unpack()
                         },
                         funcAccess: {
-                            resource: $(resourceSupplier.name),
-                            product: $(productSupplier.name)
+                            resource: $(resourceSupplier),
+                            product: $(productSupplier)
                         }
                     }
                 }
             })
 
-            const result = TestProduct.assemble(
+            const result = testProduct.assemble(
                 index(resourceSupplier.pack("resource"))
             )
 
@@ -553,34 +551,34 @@ describe("supplier", () => {
             const preloadFactoryMock = vi.fn().mockReturnValue("preloaded")
             const normalFactoryMock = vi.fn().mockReturnValue("normal")
 
-            const PreloadedSupplier = market.offer("preloaded").asProduct({
+            const preloadedSupplier = market.offer("preloaded").asProduct({
                 factory: preloadFactoryMock,
                 preload: true
             })
 
-            const NormalSupplier = market.offer("normal").asProduct({
+            const normalSupplier = market.offer("normal").asProduct({
                 factory: normalFactoryMock,
                 preload: false // explicit false
             })
 
-            const NoPreloadSupplier = market.offer("no-preload").asProduct({
+            const noPreloadSupplier = market.offer("no-preload").asProduct({
                 factory: vi.fn().mockReturnValue("no-preload")
                 // preload defaults to false
             })
 
-            const MainSupplier = market.offer("main").asProduct({
+            const mainSupplier = market.offer("main").asProduct({
                 suppliers: [
-                    PreloadedSupplier,
-                    NormalSupplier,
-                    NoPreloadSupplier
+                    preloadedSupplier,
+                    normalSupplier,
+                    noPreloadSupplier
                 ],
-                factory: ($) => {
+                factory: () => {
                     // Don't access any dependencies yet
                     return "main"
                 }
             })
 
-            const mainProduct = MainSupplier.assemble({})
+            const mainProduct = mainSupplier.assemble({})
 
             // Wait a bit for preloading to complete
             await sleep(10)
@@ -600,13 +598,13 @@ describe("supplier", () => {
                 throw new Error()
             })
 
-            const ErrorSupplier = market.offer("error").asProduct({
+            const errorSupplier = market.offer("error").asProduct({
                 factory: errorFactoryMock,
                 preload: true
             })
 
-            const MainSupplier = market.offer("main").asProduct({
-                suppliers: [ErrorSupplier],
+            const mainSupplier = market.offer("main").asProduct({
+                suppliers: [errorSupplier],
                 factory: ($) => {
                     // Don't access ErrorService yet
                     return "main"
@@ -614,7 +612,7 @@ describe("supplier", () => {
             })
 
             // This should not throw even though ErrorService will fail during preload
-            const mainProduct = MainSupplier.assemble({})
+            const mainProduct = mainSupplier.assemble({})
 
             // Wait a bit for preloading to complete
             await sleep(10)
@@ -631,16 +629,16 @@ describe("supplier", () => {
                 throw new Error()
             })
 
-            const ErrorSupplier = market.offer("error").asProduct({
+            const errorSupplier = market.offer("error").asProduct({
                 factory: errorFactoryMock,
                 preload: true
             })
 
-            const MainSupplier = market.offer("main").asProduct({
-                suppliers: [ErrorSupplier],
+            const mainSupplier = market.offer("main").asProduct({
+                suppliers: [errorSupplier],
                 factory: ($) => {
                     // Try to access the failed service
-                    return $(ErrorSupplier.name)
+                    return $(errorSupplier)
                 }
             })
 
@@ -648,7 +646,7 @@ describe("supplier", () => {
             await sleep(10)
 
             // Accessing the service should still throw the error
-            expect(() => MainSupplier.assemble({}).unpack()).toThrow()
+            expect(() => mainSupplier.assemble({}).unpack()).toThrow()
         })
 
         it("should work with complex dependency chains and selective preloading", async () => {
@@ -671,7 +669,7 @@ describe("supplier", () => {
                 factory: product3Mock
             })
 
-            const MainSupplier = market.offer("main").asProduct({
+            const mainSupplier = market.offer("main").asProduct({
                 suppliers: [
                     product1Supplier,
                     product2Supplier,
@@ -682,7 +680,7 @@ describe("supplier", () => {
                 }
             })
 
-            const mainProduct = MainSupplier.assemble({})
+            const mainProduct = mainSupplier.assemble({})
 
             // Wait a bit for preloading to complete
             await sleep(10)
@@ -696,430 +694,14 @@ describe("supplier", () => {
         })
     })
 
-    describe("Assembler Feature", () => {
-        it("should pass assemblers to factory but not auto-assemble them", () => {
-            const market = createMarket()
-            const assemblerMock = vi.fn().mockReturnValue("assembled-value")
-
-            const AssemblerSupplier = market.offer("assembler").asProduct({
-                factory: assemblerMock
-            })
-
-            const MainSupplier = market.offer("main").asProduct({
-                assemblers: [AssemblerSupplier],
-                factory: ($, $$) => {
-                    // Assemblers are passed but not auto-assembled
-                    expect($$[AssemblerSupplier.name]).toBe(AssemblerSupplier)
-                    expect(assemblerMock).not.toHaveBeenCalled()
-
-                    return "main-result"
-                }
-            })
-
-            const result = MainSupplier.assemble({})
-            expect(result.unpack()).toBe("main-result")
-            expect(assemblerMock).not.toHaveBeenCalled()
-        })
-
-        it("should allow manual assembly of assemblers within factory", () => {
-            const market = createMarket()
-            const assemblerFactoryMock = vi
-                .fn()
-                .mockReturnValue("assembled-value")
-
-            const AssemblerSupplier = market.offer("assembler").asProduct({
-                factory: assemblerFactoryMock
-            })
-
-            const MainSupplier = market.offer("main").asProduct({
-                assemblers: [AssemblerSupplier],
-                factory: ($, $$) => {
-                    // Manually assemble the assembler
-                    const assembledProduct = $$[
-                        AssemblerSupplier.name
-                    ].assemble({})
-                    const value = assembledProduct.unpack()
-
-                    expect(assemblerFactoryMock).toHaveBeenCalledTimes(1)
-                    expect(value).toBe("assembled-value")
-
-                    return {
-                        main: "main-result",
-                        assembled: value
-                    }
-                }
-            })
-
-            const result = MainSupplier.assemble({})
-            expect(result.unpack()).toEqual({
-                main: "main-result",
-                assembled: "assembled-value"
-            })
-        })
-
-        it("should support conditional assembly based on context (session admin example)", () => {
-            const market = createMarket()
-
-            // Session resource
-            const SessionSupplier = market.offer("session").asResource<{
-                userId: string
-                role: string
-            }>()
-
-            // Admin-only assembler
-            const AdminServiceSupplier = market
-                .offer("adminService")
-                .asProduct({
-                    factory: () => ({
-                        adminData: "sensitive-admin-data",
-                        permissions: ["read", "write", "delete"]
-                    })
-                })
-
-            // Regular user assembler
-            const UserServiceSupplier = market.offer("userService").asProduct({
-                factory: () => ({
-                    userData: "regular-user-data",
-                    permissions: ["read"]
-                })
-            })
-
-            // Main service that conditionally assembles based on session
-            const MainServiceSupplier = market.offer("mainService").asProduct({
-                suppliers: [SessionSupplier],
-                assemblers: [AdminServiceSupplier, UserServiceSupplier],
-                factory: ($, $$) => {
-                    const session = $(SessionSupplier.name)
-
-                    if (session.role === "admin") {
-                        // Only assemble admin service for admins
-                        const adminService = $$[
-                            AdminServiceSupplier.name
-                        ].assemble({})
-                        return {
-                            user: session.userId,
-                            service: adminService.unpack()
-                        }
-                    } else {
-                        // Assemble user service for regular users
-                        const userService = $$[
-                            UserServiceSupplier.name
-                        ].assemble({})
-                        return {
-                            user: session.userId,
-                            service: userService.unpack()
-                        }
-                    }
-                }
-            })
-
-            // Test admin session
-            const adminSession = SessionSupplier.pack({
-                userId: "admin123",
-                role: "admin"
-            })
-            const adminResult = MainServiceSupplier.assemble(
-                index(adminSession)
-            )
-
-            expect(adminResult.unpack()).toEqual({
-                user: "admin123",
-                service: {
-                    adminData: "sensitive-admin-data",
-                    permissions: ["read", "write", "delete"]
-                }
-            })
-
-            // Test regular user session
-            const userSession = SessionSupplier.pack({
-                userId: "user456",
-                role: "user"
-            })
-            const userResult = MainServiceSupplier.assemble(index(userSession))
-
-            expect(userResult.unpack()).toEqual({
-                user: "user456",
-                service: {
-                    userData: "regular-user-data",
-                    permissions: ["read"]
-                }
-            })
-        })
-
-        it("should support assemblers with their own dependencies", () => {
-            const market = createMarket()
-
-            // Resource for assembler
-            const ConfigSupplier = market.offer("config").asResource<{
-                apiKey: string
-                environment: string
-            }>()
-
-            // Assembler with dependencies
-            const ApiServiceSupplier = market.offer("apiService").asProduct({
-                suppliers: [ConfigSupplier],
-                factory: ($) => {
-                    const config = $(ConfigSupplier.name)
-                    return {
-                        baseUrl: `https://api.${config.environment}.com`,
-                        apiKey: config.apiKey
-                    }
-                }
-            })
-
-            // Main service
-            const MainServiceSupplier = market.offer("mainService").asProduct({
-                assemblers: [ApiServiceSupplier],
-                factory: ($, $$) => {
-                    // Assemble the API service with its dependencies
-                    const apiService = $$[ApiServiceSupplier.name].assemble(
-                        index(
-                            ConfigSupplier.pack({
-                                apiKey: "secret-key",
-                                environment: "production"
-                            })
-                        )
-                    )
-
-                    return {
-                        message: "Service ready",
-                        api: apiService.unpack()
-                    }
-                }
-            })
-
-            const result = MainServiceSupplier.assemble({})
-            expect(result.unpack()).toEqual({
-                message: "Service ready",
-                api: {
-                    baseUrl: "https://api.production.com",
-                    apiKey: "secret-key"
-                }
-            })
-        })
-
-        it("should support multiple assemblers and selective assembly", () => {
-            const market = createMarket()
-
-            const ServiceASupplier = market.offer("serviceA").asProduct({
-                factory: () => "Service A"
-            })
-
-            const ServiceBSupplier = market.offer("serviceB").asProduct({
-                factory: () => "Service B"
-            })
-
-            const ServiceCSupplier = market.offer("serviceC").asProduct({
-                factory: () => "Service C"
-            })
-
-            const MainServiceSupplier = market.offer("mainService").asProduct({
-                assemblers: [
-                    ServiceASupplier,
-                    ServiceBSupplier,
-                    ServiceCSupplier
-                ],
-                factory: ($, $$) => {
-                    // Only assemble some services based on some condition
-                    const serviceA = $$[ServiceASupplier.name].assemble({})
-                    const serviceC = $$[ServiceCSupplier.name].assemble({})
-
-                    return {
-                        services: [serviceA.unpack(), serviceC.unpack()]
-                    }
-                }
-            })
-
-            const result = MainServiceSupplier.assemble({})
-            expect(result.unpack()).toEqual({
-                services: ["Service A", "Service C"]
-            })
-        })
-
-        it("should handle assembler errors gracefully", () => {
-            const market = createMarket()
-
-            const FailingSupplier = market.offer("failing").asProduct({
-                factory: () => {
-                    throw new Error("Assembler failed")
-                    return
-                }
-            })
-
-            const MainServiceSupplier = market.offer("mainService").asProduct({
-                assemblers: [FailingSupplier],
-                factory: ($, $$) => {
-                    // Try to assemble the failing assembler
-                    expect(() => {
-                        $$[FailingSupplier.name].assemble({}).unpack()
-                    }).toThrow("Assembler failed")
-
-                    return "main-service"
-                }
-            })
-
-            const result = MainServiceSupplier.assemble({})
-            expect(result.unpack()).toBe("main-service")
-        })
-
-        it("should support assemblers in try() method", () => {
-            const market = createMarket()
-
-            const AssemblerSupplier = {
-                ...market.offer("assembler").asProduct({
-                    factory: () => "assembled-value"
-                }),
-                _isPrototype: true as const
-            }
-
-            const MainSupplier = market.offer("main").asProduct({
-                factory: () => "main-value"
-            })
-
-            const TriedSupplier = MainSupplier.try({
-                suppliers: [],
-                assemblers: [AssemblerSupplier]
-            })
-
-            expect(TriedSupplier.assemblers).toHaveLength(1)
-        })
-
-        it("should support assemblers in prototype() method", () => {
-            const market = createMarket()
-
-            const AssemblerSupplier = market.offer("assembler").asProduct({
-                factory: () => "assembled-value"
-            })
-
-            const MainSupplier = market.offer("main").asProduct({
-                factory: (supplies) => "main-value"
-            })
-
-            const PrototypeSupplier = MainSupplier.prototype({
-                factory: (supplies, assemblers) => {
-                    expect(assemblers).toHaveLength(1)
-                    return "prototype-value"
-                },
-                assemblers: [AssemblerSupplier],
-                preload: false
-            })
-
-            expect(PrototypeSupplier.assemblers).toHaveLength(1)
-        })
-
-        it("should support complex assembler dependency chains", () => {
-            const market = createMarket()
-
-            // Base resource
-            const DatabaseSupplier = market.offer("database").asResource<{
-                connectionString: string
-            }>()
-
-            // Assembler that depends on database
-            const RepositorySupplier = market.offer("repository").asProduct({
-                suppliers: [DatabaseSupplier],
-                factory: ($) => {
-                    const db = $(DatabaseSupplier.name)
-                    return {
-                        connection: db.connectionString,
-                        operations: ["create", "read", "update", "delete"]
-                    }
-                }
-            })
-
-            // Another assembler that depends on repository
-            const ServiceSupplier = market.offer("service").asProduct({
-                suppliers: [RepositorySupplier],
-                factory: ($) => {
-                    const repo = $(RepositorySupplier.name)
-                    return {
-                        name: "BusinessService",
-                        repository: repo
-                    }
-                }
-            })
-
-            // Main service that assembles the chain
-            const MainServiceSupplier = market.offer("mainService").asProduct({
-                assemblers: [ServiceSupplier],
-                factory: ($, $$) => {
-                    // Assemble the service with its full dependency chain
-                    const service = $$[ServiceSupplier.name].assemble(
-                        index(
-                            DatabaseSupplier.pack({
-                                connectionString:
-                                    "postgresql://localhost:5432/mydb"
-                            })
-                        )
-                    )
-
-                    return {
-                        status: "ready",
-                        service: service.unpack()
-                    }
-                }
-            })
-
-            const result = MainServiceSupplier.assemble({})
-            expect(result.unpack()).toEqual({
-                status: "ready",
-                service: {
-                    name: "BusinessService",
-                    repository: {
-                        connection: "postgresql://localhost:5432/mydb",
-                        operations: ["create", "read", "update", "delete"]
-                    }
-                }
-            })
-        })
-
-        it("should handle assembler reassembly correctly", () => {
-            const market = createMarket()
-
-            const ConfigSupplier = market.offer("config").asResource<{
-                value: number
-            }>()
-
-            const AssemblerSupplier = market.offer("assembler").asProduct({
-                suppliers: [ConfigSupplier],
-                factory: ($) => {
-                    const config = $(ConfigSupplier.name)
-                    return {
-                        computed: config.value * 2
-                    }
-                }
-            })
-
-            const MainSupplier = market.offer("main").asProduct({
-                suppliers: [ConfigSupplier],
-                assemblers: [AssemblerSupplier],
-                factory: ($, $$) => {
-                    const assembled = $$[AssemblerSupplier.name].assemble($)
-                    return assembled.unpack()
-                }
-            })
-
-            const product = MainSupplier.assemble(
-                index(ConfigSupplier.pack({ value: 5 }))
-            )
-            expect(product.unpack()).toEqual({ computed: 10 })
-
-            // Reassemble with different config
-            const reassembled = product.reassemble(
-                index(ConfigSupplier.pack({ value: 10 }))
-            )
-            expect(reassembled.unpack()).toEqual({ computed: 20 })
-        })
-    })
-
     describe("Type Safety and Edge Cases", () => {
         it("should handle empty suppliers correctly", () => {
             const market = createMarket()
-            const EmptySupplier = market.offer("empty").asProduct({
+            const emptySupplier = market.offer("empty").asProduct({
                 factory: () => "empty"
             })
 
-            const emptyProduct = EmptySupplier.assemble({})
+            const emptyProduct = emptySupplier.assemble({})
             expect(emptyProduct.unpack()).toBe("empty")
         })
     })

@@ -73,27 +73,28 @@ export const createMarket = () => {
                         any,
                         IS_PROTOTYPE extends false ? false : boolean
                     >[] = [],
-                    ASSEMBLERS extends ProductSupplier<
+                    JUSTINTIME extends Supplier<
                         string,
                         any,
                         any,
                         any,
                         any,
-                        any
+                        any,
+                        IS_PROTOTYPE extends false ? false : boolean
                     >[] = [],
                     IS_PROTOTYPE extends boolean = false
                 >({
                     suppliers = [] as unknown as SUPPLIERS,
-                    assemblers = [] as unknown as ASSEMBLERS,
+                    justInTime = [] as unknown as JUSTINTIME,
                     factory,
                     preload = false,
                     isPrototype = false as IS_PROTOTYPE
                 }: {
                     suppliers?: [...SUPPLIERS]
-                    assemblers?: [...ASSEMBLERS]
+                    justInTime?: [...JUSTINTIME]
                     factory: (
                         supplies: $<SUPPLIERS>,
-                        assemblers: MapFromList<[...ASSEMBLERS]>
+                        justInTime: MapFromList<[...JUSTINTIME]>
                     ) => VALUE
                     preload?: boolean
                     isPrototype?: IS_PROTOTYPE
@@ -114,7 +115,7 @@ export const createMarket = () => {
                             NAME,
                             VALUE,
                             Supplier<string, any, any, any, any, any, any>[],
-                            any,
+                            Supplier<string, any, any, any, any, any, any>[],
                             any,
                             any,
                             any
@@ -141,7 +142,7 @@ export const createMarket = () => {
                         const unpack = () =>
                             this.factory(
                                 fullSupplies,
-                                index(...assemblers)
+                                index(...this.justInTime)
                             ) as ReturnType<THIS["factory"]>
 
                         const product = {
@@ -247,14 +248,82 @@ export const createMarket = () => {
                         }
                     }
 
+                    function prototype<
+                        THIS extends ProductSupplier<
+                            NAME,
+                            VALUE,
+                            SUPPLIERS,
+                            JUSTINTIME,
+                            $<SUPPLIERS>,
+                            MapFromList<[...JUSTINTIME]>,
+                            IS_PROTOTYPE
+                        >,
+                        NEW_VALUE extends VALUE,
+                        SUPPLIERS_OF_PROTOTYPE extends Supplier<
+                            string,
+                            any,
+                            any,
+                            any,
+                            any,
+                            any,
+                            false
+                        >[] = [],
+                        ASSEMBLERS_OF_PROTOTYPE extends Supplier<
+                            string,
+                            any,
+                            any,
+                            any,
+                            any,
+                            any,
+                            false
+                        >[] = []
+                    >(
+                        this: THIS,
+                        {
+                            factory,
+                            suppliers = [] as unknown as SUPPLIERS_OF_PROTOTYPE,
+                            justInTime = [] as unknown as ASSEMBLERS_OF_PROTOTYPE,
+                            preload = false as boolean
+                        }: {
+                            factory: (
+                                supplies: $<SUPPLIERS_OF_PROTOTYPE>,
+                                justInTime: MapFromList<
+                                    [...ASSEMBLERS_OF_PROTOTYPE]
+                                >
+                            ) => NEW_VALUE
+                            suppliers?: [...SUPPLIERS_OF_PROTOTYPE]
+                            justInTime?: [...ASSEMBLERS_OF_PROTOTYPE]
+                            preload?: boolean
+                        }
+                    ) {
+                        const supplier = {
+                            name: this.name,
+                            suppliers,
+                            justInTime,
+                            factory,
+                            preload,
+                            pack,
+                            assemble,
+                            prototype: this.prototype,
+                            try: this.try,
+                            _isPrototype: true as const,
+                            _product: true as const
+                        }
+                        return supplier as HasCircularDependency<
+                            typeof supplier
+                        > extends true
+                            ? unknown
+                            : typeof supplier
+                    }
+
                     function _try<
                         THIS extends ProductSupplier<
                             NAME,
                             VALUE,
                             SUPPLIERS,
-                            ASSEMBLERS,
+                            JUSTINTIME,
                             $<SUPPLIERS>,
-                            MapFromList<[...ASSEMBLERS]>,
+                            MapFromList<[...JUSTINTIME]>,
                             IS_PROTOTYPE
                         >,
                         TRIED_SUPPLIERS extends ProductSupplier<
@@ -265,34 +334,16 @@ export const createMarket = () => {
                             any,
                             any,
                             true
-                        >[],
-                        TRIED_ASSEMBLERS extends ProductSupplier<
-                            string,
-                            any,
-                            any,
-                            any,
-                            any,
-                            any,
-                            true
-                        >[] = []
-                    >(
-                        this: THIS,
-                        {
-                            suppliers,
-                            assemblers = [] as unknown as [...TRIED_ASSEMBLERS]
-                        }: {
-                            suppliers: [...TRIED_SUPPLIERS]
-                            assemblers?: [...TRIED_ASSEMBLERS]
-                        }
-                    ) {
+                        >[]
+                    >(this: THIS, ...suppliers: [...TRIED_SUPPLIERS]) {
                         type MERGED_SUPPLIERS = MergeSuppliers<
                             THIS["suppliers"],
                             TRIED_SUPPLIERS
                         >
 
-                        type MERGED_ASSEMBLERS = MergeSuppliers<
-                            THIS["assemblers"],
-                            TRIED_ASSEMBLERS
+                        type MERGED_JUST_IN_TIME_SUPPLIERS = MergeSuppliers<
+                            THIS["justInTime"],
+                            TRIED_SUPPLIERS
                         >
 
                         const supplier = {
@@ -308,20 +359,22 @@ export const createMarket = () => {
                                         )
                                 )
                             ] as unknown as MERGED_SUPPLIERS,
-                            assemblers: [
-                                ...assemblers,
-                                ...this.assemblers.filter(
+                            justInTime: [
+                                ...suppliers,
+                                ...this.justInTime.filter(
                                     (oldSupplier) =>
-                                        !assemblers.some(
+                                        !suppliers.some(
                                             (newSupplier) =>
                                                 newSupplier.name ===
                                                 oldSupplier.name
                                         )
                                 )
-                            ] as unknown as MERGED_ASSEMBLERS,
+                            ] as unknown as MERGED_JUST_IN_TIME_SUPPLIERS,
                             factory: this.factory as unknown as (
                                 supplies: $<MERGED_SUPPLIERS>,
-                                assemblers: MapFromList<[...MERGED_ASSEMBLERS]>
+                                justInTime: MapFromList<
+                                    [...MERGED_JUST_IN_TIME_SUPPLIERS]
+                                >
                             ) => VALUE,
                             preload: this.preload,
                             pack,
@@ -339,78 +392,10 @@ export const createMarket = () => {
                             : typeof supplier
                     }
 
-                    function prototype<
-                        THIS extends ProductSupplier<
-                            NAME,
-                            VALUE,
-                            SUPPLIERS,
-                            ASSEMBLERS,
-                            $<SUPPLIERS>,
-                            MapFromList<[...ASSEMBLERS]>,
-                            IS_PROTOTYPE
-                        >,
-                        NEW_VALUE extends VALUE,
-                        SUPPLIERS_OF_PROTOTYPE extends Supplier<
-                            string,
-                            any,
-                            any,
-                            any,
-                            any,
-                            any,
-                            false
-                        >[] = [],
-                        ASSEMBLERS_OF_PROTOTYPE extends ProductSupplier<
-                            string,
-                            any,
-                            any,
-                            any,
-                            any,
-                            any,
-                            false
-                        >[] = []
-                    >(
-                        this: THIS,
-                        {
-                            factory,
-                            suppliers = [] as unknown as SUPPLIERS_OF_PROTOTYPE,
-                            assemblers = [] as unknown as ASSEMBLERS_OF_PROTOTYPE,
-                            preload
-                        }: {
-                            factory: (
-                                supplies: $<SUPPLIERS_OF_PROTOTYPE>,
-                                assemblers: MapFromList<
-                                    [...ASSEMBLERS_OF_PROTOTYPE]
-                                >
-                            ) => NEW_VALUE
-                            suppliers?: [...SUPPLIERS_OF_PROTOTYPE]
-                            assemblers?: [...ASSEMBLERS_OF_PROTOTYPE]
-                            preload: boolean
-                        }
-                    ) {
-                        const supplier = {
-                            name: this.name,
-                            suppliers,
-                            assemblers,
-                            factory,
-                            preload,
-                            pack,
-                            assemble,
-                            prototype: this.prototype,
-                            try: this.try,
-                            _isPrototype: true as const,
-                            _product: true as const
-                        }
-                        return supplier as HasCircularDependency<
-                            typeof supplier
-                        > extends true
-                            ? unknown
-                            : typeof supplier
-                    }
-
                     const productSupplier = {
                         name,
                         suppliers,
-                        assemblers,
+                        justInTime,
                         factory,
                         preload,
                         pack,

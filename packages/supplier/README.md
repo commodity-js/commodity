@@ -10,7 +10,7 @@ details summary {
 
 Let the market and the supply chain deliver the resources and services ("products") you need, where you need them.
 
-Supplier is a small TypeScript library that helps you build a Dependency Injection Supply Chain (DISC) for your app: a new construct that provides full Dependency Injection and Context Propagation capabilities without statefulness. Think of it as Containerless DI.
+Supplier is a small TypeScript library that helps you build a Dependency Injection Supply Chain (DISC) for your app: a new construct that provides fully type-safe and type-inferred Dependency Injection and Context Propagation capabilities without statefulness. Think of it as Typed Containerless DI.
 
 # The Problem
 
@@ -25,7 +25,7 @@ DISCs can do everything containers do, but in a more elegant, simpler, and easie
 <details>
 <summary>A framework-agnostic React Context, usable for both Client and Server Components (Advanced)</summary>
 
-Supplier also solves the problem of Context Propagation, so it can be used in React applications as an alternative to React Context, given a little initial refactoring. Notably, it can be used in both Client and Server components to avoid prop-drilling through multiple layers of nested components. Parallels can be drawn between React Context's API and Supplier's API. createContext() is handled by asResource() and asProduct() registration methods in Supplier. Context providers are modeled by the assemble()/reassemble() methods, and finally useContext() is analogous to the $() function. The only difference between the two is that $() is passed via the factory function's arguments, whereas useContext() is imported from the global scope. This means React Context implements the Service Locator pattern, whereas Supplier implements full DI. This enables the statelessness of Supplier: React Context must read its data as state stored somewhere in the global scope, whereas Supplier's products simply receive their dependencies in their function arguments.
+Supplier also solves the problem of Context Propagation, so it can be used in React applications as an alternative to React Context, given a little initial refactoring. Notably, it can be used in both Client and Server components to avoid prop-drilling. Parallels can be drawn between React Context's API and Supplier's API. createContext() is handled by asResource() and asProduct() registration methods in Supplier. Context providers are modeled by the assemble()/reassemble() methods, and finally useContext() is analogous to the $() function. The only difference between the two is that $() is passed via the factory function's arguments, whereas useContext() is imported from the global scope. This means React Context implements the Service Locator pattern, whereas Supplier implements full DI. This enables the statelessness of Supplier: React Context must read its data as state stored somewhere in the global scope, whereas Supplier's products simply receive their dependencies in their function arguments.
 
 </details>
 
@@ -39,7 +39,7 @@ Supplier also solves the problem of Context Propagation, so it can be used in Re
 
 🔧 Dependency Injection
 
--   Functions only - No OOP, classes, decorators, anntations, or compiler magic.
+-   Functions only - No OOP, classes, decorators, annotations, or compiler magic.
 -   Declarative, immutable, functionally pure.
 -   Stateless - Dependencies are resolved via closures, not state. Some memoized state is kept for validation and optimization purposes only.
 -   Auto-wired - All products are built by the Supply Chain and resolve their dependencies automatically.
@@ -51,7 +51,8 @@ Supplier also solves the problem of Context Propagation, so it can be used in Re
 
 -   Shared context - Assemble the context once at the entry point, access everywhere without prop-drilling.
 -   Smart memoization - Dependencies injected once per assemble() context for optimal performance.
--   Context switching - Add or override context anywhere in the call stack using reassemble().
+-   Context switching - Override context anywhere in the call stack using reassemble().
+-   Context addition - Add new context and products depending on that new context deep in the call stack by using just-in-time suppliers.
 
 ⚡ Waterfall Management
 
@@ -65,9 +66,9 @@ Supplier also solves the problem of Context Propagation, so it can be used in Re
 
 🚀 Prototyping and A/B testing
 
--   Use `prototype()` to create alternative implementations of a product, that may depend on different suppliers than the original.
+-   Use `prototype()` to create alternative implementations of a product, that may depend on different suppliers or just-in-time suppliers than the original.
 -   Prototypes' factories must return values of the same type than the original product's factory.
--   Define prototypes to `try()` at the entry-point of your app
+-   Define prototype suppliers or just-in-time suppliers to `try()` at the entry-point of your app
 -   For example, you can easily try different versions of a UI component for A/B testing.
 
 ## Installation
@@ -97,30 +98,30 @@ Resources represent the data and context your application needs, like configurat
 
 ```tsx
 // Define a supplier for the session
-const SessionSupplier = market.offer("session").asResource<{
+const sessionSupplier = market.offer("session").asResource<{
     userId: string
 }>()
 
-const SessionResource = SessionSupplier.pack({
+const sessionResource = sessionSupplier.pack({
     userId: "some-user-id"
 })
 
-const session = SessionResource.unpack()
+const session = sessionResource.unpack()
 ```
 
 ### 3. Define Products
 
 Products are your application's services, components or features. They are factory functions that can depend on other products or resources. Dependencies are accessed via the `$` object passed to the `factory` as argument. $ is a shorthand for `supplies`, but it is just a suggestion, you can name the factory arg however you want. I like $ because it is short and will be used a lot throughout the application.
 
-Use `$[name]` to access the resource or product stored in supplies, and `$(name)` as a shorthand to access the unpacked value of the product or resource directly. As a mnemonic, `$[]` looks like a box, so it accesses the packed, the "boxed", resource or product.
+Use `$[supplier.name]` to access the resource or product stored in supplies, and `$(supplier)` as a shorthand to access the unpacked value of the product or resource directly. As a mnemonic, `$[]` looks like a box, so it accesses the packed, the "boxed", resource or product.
 
 ```tsx
-const UserSupplier = market.offer("user").asProduct({
-    suppliers: [SessionSupplier, DbSupplier], // Depends on session and db resources.
+const userSupplier = market.offer("user").asProduct({
+    suppliers: [sessionSupplier, dbSupplier], // Depends on session and db resources.
     factory: ($) => {
-        const session = $[SessionSupplier.name].unpack() //Access the session value
-        const session = $(SessionSupplier.name) // Shorthand for the above.
-        const db = $(DbSupplier.name)
+        const session = $[sessionSupplier.name].unpack() //Access the session value
+        const session = $(sessionSupplier) // Shorthand for the above.
+        const db = $(dbSupplier)
         return db.getUser(session.userId) // query the db to retrieve the user.
     }
 })
@@ -131,12 +132,12 @@ const UserSupplier = market.offer("user").asProduct({
 Your Application is just a `product` like the other ones. It's the main product at the top of the supply chain.
 
 ```tsx
-const AppSupplier = market.offer("app").asProduct({
-    suppliers: [UserSupplier], // Depends on User product
+const appSupplier = market.offer("app").asProduct({
+    suppliers: [userSupplier], // Depends on User product
     factory: ($) => {
-        // Access the user value. Its type will be automatically inferred from UserSupplier's factory's
-        // inferred return type.
-        const user = $(UserSupplier.name)
+        // Access the user value. Its type will be automatically inferred from userSupplier's
+        // factory's inferred return type.
+        const user = $(userSupplier)
         return <h1>Hello, {user.name}! </h1>
     }
 })
@@ -151,14 +152,15 @@ const db = //...Get your db connection
 const req = //...Get the current http request
 
 // Assemble the App, providing the Session and Db resources.
-const AppProduct = AppSupplier.assemble({
-    [SessionSupplier.name]: SessionSupplier.pack({
+// Bad syntax for demonstration purposes only. See index() below for syntactic suger.
+const appProduct = appSupplier.assemble({
+    [sessionSupplier.name]: sessionSupplier.pack({
             userId: req.userId
     }),
-    [DbSupplier.name]: DbSupplier.pack(db)
+    [dbSupplier.name]: dbSupplier.pack(db)
 })
 
-const res = AppProduct.unpack()
+const res = appProduct.unpack()
 // Return or render res...
 ```
 
@@ -171,200 +173,162 @@ To simplify the assemble() call, you should use the index() utility, which trans
 ```tsx
 import { index } from "supplier"
 
-const AppProduct = AppSupplier.assemble(
+const appProduct = appSupplier.assemble(
     index(
-        SessionSupplier.pack({
+        sessionSupplier.pack({
             userId: req.userId
         }),
-        DbSupplier.pack(db)
+        dbSupplier.pack(db)
     )
 )
 ```
 
-## Advanced API
+### 6. Context Switching with `reassemble()`
 
-The `narrow()` function allows you to create variants of resources with a narrower type.
+Any product can be `reassembled` with new resources deeper in the call stack. This is useful for changing the context, like impersonating a different user. You don't need to provide all resources needed, just the ones you want to overwrite. The original resources from the `assemble()` call will be reused if not overwritten.
+
+```tsx
+const sendMoneySupplier = market.offer("send-money").asProduct({
+    suppliers: [addWalletEntrySupplier, sessionSupplier],
+    factory: ($) => {
+        return (toUserId: string, amount: number) => {
+            const addWalletEntry = $(addWalletEntrySupplier)
+
+            addWalletEntry(-amount) // Runs in the current session's account
+
+            const addTargetWalletEntry = $[addWalletEntrySupplier.name]
+                .reassemble(index(sessionSupplier.pack({ userId: toUserId })))
+                .unpack()
+
+            addTargetWalletEntry(amount) // Runs in the receiver's account.
+        }
+    }
+})
+```
+
+### 7. Adding new or conditional context using just-in-time suppliers
+
+Most of the time, all context is not known at the entry point of the app. A product supplier might read user input, or a condition might narrow a resource's type. In these cases, you need just-in-time suppliers. Best example is an admin dashboard reserved to admin sessions:
 
 ```tsx
 type Session = { user: User; now: Date }
 
 // Session resource can hold any object of type Session
-const SessionSupplier = market.offer("session").asResource<Session>()
-const AdminSessionSupplier = SessionSupplier.narrow<{
-    user: { role: "admin" }
-}>()
+const sessionSupplier = market.offer("session").asResource<Session>()
+const adminSessionSupplier = market
+    .offer("admin-session")
+    .asResource<Session & { user: User & { role: "admin" } }>()
 
-// But admin dashboard requires admin session
-const AdminDashboardSupplier = market.offer("admin-dashboard").asProduct({
-    suppliers: [AdminSessionSupplier],
-    // The factory automatically gets the narrowed type
+const adminDashboardSupplier = market.offer("admin-dashboard").asProduct({
+    suppliers: [adminSessionSupplier],
     factory: ($) => {
         // No runtime check needed - TypeScript ensures session.user.role === "admin"
-        const session = $(AdminSessionSupplier.name)
-        return <h1>Admin Dashboard</h1>
+        const session = $(adminSessionSupplier)
+        return <h1>Admin Dashboard - {session.user.name}</h1>
     }
 })
 
-const AppSupplier = market.offer("admin-dashboard").asProduct({
-    suppliers: [SessionSupplier, AdminDashboardSupplier],
-    // The factory automatically gets the narrowed type
-    factory: ($) => {
-        // No runtime check needed - TypeScript ensures session.user.role === "admin"
-        const session = $(AdminSessionSupplier.name)
-        return <h1>Admin Dashboard</h1>
+const AppSupplier = market.offer("app").asProduct({
+    suppliers: [sessionSupplier],
+    // New context computed in this factory ++ all dependent products should be in justInTime[]
+    justInTime: [adminSessionSupplier, adminDashboardSupplier]
+    // Factories receive just-in-time suppliers as 2nd argument
+    factory: ($, $$) => {
+        const role = $(sessionSupplier).user.role
+        if (role === "admin") {
+            //Just-in-time suppliers are not yet assmbled, you need to assemble them with the new context.
+            return $$[adminDashboardSupplier].assemble(
+                {
+                    ...$, // Keep all previous supplies
+                    ...index(
+                        $$[adminSessionSupplier.name].pack({
+                            ...session,
+                            user: {
+                                ...session.user,
+                                role
+                            }
+                        })
+                    )
+                }
+            )
+        }
+
+        return <h1>User Dashboard - {session.user.name}</h1>
     }
 })
 
-// This will create a type error
-const adminDashboard = AdminDashboardSupplier.assemble(
+const session = ...//read session
+const res = appSupplier.assemble(index(sessionSupplier.pack(session))).unpack()
+```
+
+## Mocking, testing and prototyping
+
+### 1. Mocking in tests with `.pack()`
+
+You usually use `pack()` to provide resources to `assemble()`, but you can also use `pack()` on products. This allows to provide a value for that product directly, bypassing its factory. Perfect to override a product's implementation with a mock for testing.
+
+```tsx
+const profileSupplier = market.offer("profile").asProduct({
+    suppliers: [userSupplier],
+    factory: () => {
+        return <h1>Profile of {$(userSupplier).name}</h1>
+    }
+})
+
+const userSupplier = market.offer("user").asProduct({
+    suppliers: [dbSupplier, sessionSupplier],
+    factory: () => {
+        return $(dbSupplier).findUserById($(sessionSupplier).userId)
+    }
+})
+
+//Test the profile
+const profile = profileSupplier.assemble(
     index(
-        SessionSupplier.pack({
-            user: { id: "user123", role: "user" }, // TypeScript error: role "user" not assignable to role "admin"
-            now: new Date()
-        })
+        //userSupplier's factory will not be called, but...
+        userSupplier.pack({ name: "John Doe" })
+         //assemble still requires a valid value for db and session when using pack(), since userSupplier is
+         // in the supply chain...
+        dbSupplier.pack(undefined),
+        // if you can't pass undefined, or some mock for them, prefer using `.prototype()` and `.try()` instead.
+        sessionSupplier.pack(undefined),
     )
 )
 
-//This will succeed
-const adminDashboard = AdminDashboardSupplier.assemble(
-    index(
-        SessionSupplier.pack({
-            user: { id: "admin456", role: "admin" }, // ✅ Compiles successfully
-            now: new Date()
-        })
-    )
-)
+profile === <h1>Profile of John Doe</h1>
 ```
 
-### Context Switching with `reassemble()`
+### 2. `.prototype()` and `.try()` alternative implementations
 
-Any product can be `reassembled` with new resources deeper in the call stack. This is useful for changing the context, like impersonating a different user. You don't need to provide all resources needed, just the ones you want to add/overwrite. The original resources from the `assemble()` call will be reused if not overwritten.
+For more complete alternative implementations, with complex dependency and context needs, you can use `.prototype()` and `.try()` instead of `.pack()` to access the whole power of your supply chain. The same example as above could be:
 
 ```tsx
-const SendMoneySupplier = market.offer("send-money").asProduct({
-    suppliers: [WalletEntrySupplier, SessionSupplier],
-    factory: ($) => {
-        return (toUserId: string, amount: number) => {
-            const walletEntry = $(WalletEntrySupplier.name)
-
-            walletEntry(-amount) // Runs in the current session's account
-
-            const targetWalletEntry = $[WalletEntrySupplier].reassemble(
-                index(SessionSupplier.pack({ userId: toUserId }))
-            ).unpack()
-
-            targetWalletEntry(amount) // Runs in the receiver's account.
-
-            // With such a context swithing capability, it is possible to write a much simpler and safer
-            // ReceiveMoneySupplier implementation, that just needs to check that the current session running the
-            // function owns the account it is adding an entry to..
-        }
+const profileSupplier = market.offer("profile").asProduct({
+    suppliers: [userSupplier],
+    factory: () => {
+        return <h1>Profile of {$(userSupplier).name}</h1>
     }
 })
-```
 
-## Experimentation: Prototypes and Feature Flags
-
-This is where `supplier` evolves beyond traditional DI. You can create variations of your products (`prototypes`) and swap them in at runtime (`try`), making it easy to implement feature flags, A/B tests, and other experiments.
-
-### 1. Create a Variant with `.prototype()`
-
-A `.prototype()` is a new, isolated implementation of a product. It's a safe way to build a new version of a feature without affecting the original.
-
-```tsx
-const Greeter = market.offer("greeter").asProduct({
-    factory: () => ({ greet: (name: string) => `Hello, ${name}!` })
-})
-
-// Create an "enthusiastic" version of the greeter
-const EnthusiasticGreeter = Greeter.prototype({
-    factory: () => ({ greet: (name: string) => `Hello, ${name}!!! 🎉` }),
-    suppliers: [],
-    preload: false
-})
-```
-
-### 2. Swap Implementations with `.try()` for Feature Flags
-
-Use `.try()` on a product to create a variant of it that uses different underlying dependencies. This is your feature flag/A-B lever at the composition level.
-
-```tsx
-const Notifier = market.offer("notifier").asProduct({
-    suppliers: [Greeter], // Depends on the base Greeter
-    factory: ($) => ({
-        sendGreeting: (name: string) => {
-            const greeter = $(Greeter.name)
-            console.log("Sending greeting...")
-            console.log(greeter.greet(name))
-        }
-    })
-})
-
-// In your application, check a feature flag to decide which notifier to use
-const useEnthusiasticGreeting = true // This could come from your config
-
-const NotifierToUse = useEnthusiasticGreeting
-    ? Notifier.try(EnthusiasticGreeter) // This version of Notifier will use the prototype
-    : Notifier
-
-// The assembly is the same, regardless of which version is used
-const notifier = NotifierToUse.assemble({})
-notifier.unpack().sendGreeting("world")
-
-// If the flag is true, it logs:
-// Sending greeting...
-// Hello, world!!! 🎉
-```
-
-## Advanced Patterns
-
-### Type Narrowing with `.narrow()`
-
-For greater type safety, you can use `.narrow()` on a `ResourceSupplier` to require a more specific version of that resource.
-
-```tsx
-const Session = market
-    .offer("session")
-    .asResource<{ user: { role: "user" | "admin" } }>()
-
-// Create a narrowed supplier that requires an admin
-const AdminSession = Session.narrow<{ user: { role: "admin" } }>()
-
-const AdminDashboard = market.offer("admin-dashboard").asProduct({
-    suppliers: [AdminSession], // Now requires the admin session
-    factory: ($) => {
-        const session = $(AdminSession.name)
-        // TypeScript knows session.user.role is "admin"
-        return `Welcome, admin!`
+const userSupplier = market.offer("user").asProduct({
+    suppliers: [dbSupplier, sessionSupplier],
+    factory: () => {
+        return $(dbSupplier).findUserById($(sessionSupplier).userId)
     }
 })
-```
 
-### Mocking in Tests with `.pack()`
-
-While `.prototype()` and `.try()` are great for complex test scenarios, the simplest way to mock a dependency is to use `.pack()` during assembly. This bypasses the factory function entirely and provides a direct value.
-
-```tsx
-// In your vitest test file:
-it("should use the mock api client", async () => {
-    const mockApiClient = {
-        get: async (path: string) => ({ mocked: true, path })
-    }
-
-    // Assemble the feature with a mocked ApiClient
-    const featureProduct = Feature.assemble(
-        index(ApiClient.pack(mockApiClient))
-    )
-
-    const result = await featureProduct.unpack().fetchData()
-    // expect(result).toEqual({ mocked: true, path: "/data" });
+const userPrototype = userSupplier.prototype({
+    suppliers: []
+    factory: ()=>"John Doe"
 })
+
+//You no longer need to pass some value for db and session, ince userPrototype removes them from the supply chain.
+const profile = profileSupplier.try(userPrototype).assemble()
+
+profile === <h1>Profile of John Doe</h1>
 ```
 
-## API Reference
-
-The full API reference can be found in the original `README.md`. The core concepts are explained above.
-_The user can refer to the detailed API documentation that was previously generated if needed._
+`.prototype()` and `.try()` can be used for testing, but also to swap implementations for sandboxing or A/B testing.
 
 ## License
 
