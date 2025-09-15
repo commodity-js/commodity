@@ -184,8 +184,7 @@ describe("JustInTime Feature", () => {
             factory: () => {
                 return "prototype-value"
             },
-            justInTime: [justInTimeSupplier],
-            preload: false
+            justInTime: [justInTimeSupplier]
         })
 
         expect(prototypeSupplier.justInTime).toHaveLength(1)
@@ -310,8 +309,7 @@ describe("JustInTime Feature", () => {
 
                 return `base-value-${value}`
             },
-            justInTime: [justInTimeSupplier],
-            preload: false
+            justInTime: [justInTimeSupplier]
         })
 
         const result = prototypeSupplier.assemble({})
@@ -343,8 +341,7 @@ describe("JustInTime Feature", () => {
 
                 return `base-value-${jit1.unpack()}-${jit2.unpack()}`
             },
-            justInTime: [justInTime1Supplier, justInTime2Supplier],
-            preload: false
+            justInTime: [justInTime1Supplier, justInTime2Supplier]
         })
 
         const result = prototypeSupplier.assemble({})
@@ -374,7 +371,9 @@ describe("JustInTime Feature", () => {
             }
         })
 
-        const triedSupplier = baseSupplier.try(triedJustInTimeSupplier)
+        const triedSupplier = baseSupplier
+            .jitOnly()
+            .try(triedJustInTimeSupplier)
 
         const result = triedSupplier.assemble({}).unpack()
 
@@ -628,10 +627,9 @@ describe("JustInTime Feature", () => {
             }
         })
 
-        const triedSupplier = baseSupplier.try(
-            overrideSupplier,
-            overrideSupplier2
-        )
+        const triedSupplier = baseSupplier
+            .jitOnly()
+            .try(overrideSupplier, overrideSupplier2)
 
         const result = triedSupplier.assemble({})
         expect(result.unpack()).toBe("override2")

@@ -546,19 +546,18 @@ describe("supplier", () => {
     })
 
     describe("Preload Feature", () => {
-        it("should preload services with preload: true", async () => {
+        it("should preload services by default", async () => {
             const market = createMarket()
             const preloadFactoryMock = vi.fn().mockReturnValue("preloaded")
             const normalFactoryMock = vi.fn().mockReturnValue("normal")
 
             const preloadedSupplier = market.offer("preloaded").asProduct({
-                factory: preloadFactoryMock,
-                preload: true
+                factory: preloadFactoryMock
             })
 
             const normalSupplier = market.offer("normal").asProduct({
                 factory: normalFactoryMock,
-                preload: false // explicit false
+                preload: false
             })
 
             const noPreloadSupplier = market.offer("no-preload").asProduct({
@@ -599,8 +598,7 @@ describe("supplier", () => {
             })
 
             const errorSupplier = market.offer("error").asProduct({
-                factory: errorFactoryMock,
-                preload: true
+                factory: errorFactoryMock
             })
 
             const mainSupplier = market.offer("main").asProduct({
@@ -630,8 +628,7 @@ describe("supplier", () => {
             })
 
             const errorSupplier = market.offer("error").asProduct({
-                factory: errorFactoryMock,
-                preload: true
+                factory: errorFactoryMock
             })
 
             const mainSupplier = market.offer("main").asProduct({
@@ -656,8 +653,7 @@ describe("supplier", () => {
             const product3Mock = vi.fn().mockReturnValue("product3")
 
             const product1Supplier = market.offer("product1").asProduct({
-                factory: product1Mock,
-                preload: true // This will be preloaded
+                factory: product1Mock
             })
 
             const product2Supplier = market.offer("product2").asProduct({
@@ -666,7 +662,8 @@ describe("supplier", () => {
             })
 
             const product3Supplier = market.offer("product3").asProduct({
-                factory: product3Mock
+                factory: product3Mock,
+                preload: false
             })
 
             const mainSupplier = market.offer("main").asProduct({

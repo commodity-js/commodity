@@ -1,35 +1,90 @@
-<style>
-details summary {
-    font-size: 1.2em;
-    font-weight: bold;
-    cursor: pointer;
-}
-</style>
-
 # supplier
 
-Let the market and the supply chain deliver the resources and services ("products") you need, where you need them.
+Functional, <u>fully type-safe</u> and <u>stateless</u> dependency and Context injector for TypeScript. Enter the containerless DI revolution! No OOP, reflect-metadata, decorators, annotations or compiler magic, just functions and closures!
 
-Supplier is a small TypeScript library that helps you build a Dependency Injection Supply Chain (DISC) for your app: a new construct that provides fully type-safe and type-inferred Dependency Injection and Context Propagation capabilities without statefulness. Think of it as Typed Containerless DI.
+## Why Supplier?
 
-# The Problem
+✅ **Fully type-safe** - Compile-time dependency validation and circular dependency detection  
+✅ **No magic** - Just functions and closures, no OOP, reflect-metadata, decorators, annotations or compiler magic.
+✅ **Framework agnostic** - Works everywhere TypeScript works  
+✅ **Testing friendly** - Easy mocking and dependency swapping  
+✅ **Performance focused** - Smart memoization, lazy loading, tree-shakeable  
+✅ **Stateless** - Dependencies resolved via closures, not global state
 
-DI containers have always felt abstract, technical, almost magical in how they work. Like a black box, you often have to dig into the source code of a third-party library to understand how data flows in your own application. It feels like you lose control of your own data when you use one, and your entire app becomes dependent on the container to even work. Supplier aims to make DI cool again! The pattern has real power, even if current implementations on the open-source market hide that power under a lot of complexity.
+## Installation
 
-DI was complex to achieve in OOP world because of the absence of first-class functions in OOP languages. But in modern functional languages, DI should be easier, since DI itself is a functional concept. However, TypeScript DI frameworks currently available seem to have been built by imitating how they were built in OOP languages...
+```bash
+npm install supplier
+```
 
-The problem DI was solving in OOP world still exists in the functional world. In OOP world, DI helped inject data and services freely within deeply nested class hierarchies and architectures. In the functional world, DI achieves the same: inject data and services freely in deeply nested function calls. Deeply nested function calls naturally emerge when trying to decouple and implement SOLID principles in medium to highly complex applications. Without DI, you cannot achieve maximal decoupling. Even if in principle you can reuse a function elsewhere, the function is still bound in some way to the particular call stack in which it finds itself, simply by the fact that it can only be called from a parent function that has access to all the data and dependencies it needs.
+## When to Use Supplier
 
-DISCs can do everything containers do, but in a more elegant, simpler, and easier-to-reason-about manner.
+-   **Complex TypeScript applications** with deep function call hierarchies
+-   **Avoiding prop-drilling** in React (works in both Client and Server Components)
+-   **Microservices** that need shared context propagation
+-   **Testing scenarios** requiring easy mocking and dependency swapping
+-   **A/B testing**, feature flagging and prototyping.
+-   **Any project** wanting DI without the complexity of traditional containers
 
-<details>
-<summary>A framework-agnostic React Context, usable for both Client and Server Components (Advanced)</summary>
+## Performance
 
-Supplier also solves the problem of Context Propagation, so it can be used in React applications as an alternative to React Context, given a little initial refactoring. Notably, it can be used in both Client and Server components to avoid prop-drilling. Parallels can be drawn between React Context's API and Supplier's API. createContext() is handled by asResource() and asProduct() registration methods in Supplier. Context providers are modeled by the assemble()/reassemble() methods, and finally useContext() is analogous to the $() function. The only difference between the two is that $() is passed via the factory function's arguments, whereas useContext() is imported from the global scope. This means React Context implements the Service Locator pattern, whereas Supplier implements full DI. This enables the statelessness of Supplier: React Context must read its data as state stored somewhere in the global scope, whereas Supplier's products simply receive their dependencies in their function arguments.
+-   **Bundle size**: ~15KB minified, tree-shakeable
+-   **Tree-shakable and code-splittable**: Helps you create hyper-specialized suppliers: One function or piece of data per supplier
+-   **Memory usage**: Smart memoization prevents duplicate dependency resolution
+-   **Optimal waterfalls**: Preloads as much as it can to prevent waterfalls (customizable with `preload: false`)
 
-</details>
+## Quick Example
 
-# Features
+```ts
+import { createMarket, index } from "supplier"
+
+// 1. Create a market
+const market = createMarket()
+
+// 2. Define data (resources) and services (products)
+const sessionSupplier = market.offer("session").asResource<{ userId: string }>()
+const todosDbSupplier = market.offer("todosDb").asProduct({
+    suppliers: [],
+    factory: () => new Map<string, string[]>() // Simple in-memory DB
+})
+const addTodoSupplier = market.offer("addTodo").asProduct({
+    suppliers: [sessionSupplier, todosDbSupplier],
+    factory: ($) => (todo: string) => {
+        const session = $(sessionSupplier)
+        const db = $(todosDbSupplier)
+        const userTodos = db.get(session.userId) || []
+        db.set(session.userId, [...userTodos, todo])
+        return db.get(session.userId)
+    }
+})
+
+const session = { userId: "user123" }
+
+// 3. Assemble and use
+const addTodo = addTodoSupplier
+    .assemble(index(sessionSupplier.pack(session)))
+    .unpack()
+
+console.log(addTodo("Learn Supplier")) // ["Learn Supplier"]
+console.log(addTodo("Build app")) // ["Learn Supplier", "Build app"]
+```
+
+## Intuitive, opinionated terminology
+
+The ideas of DI make more sense to me when tied to the mental model of a supply chain. You split your code into fully-decoupled hyper-specialized suppliers, that exchange their resources and products in a free-market like fashion to assemble new products with ever-growing complexity.
+
+Here's an equivalence table to more classical, technical terms
+
+| Term                        | Classical DI equivalent |
+| --------------------------- | ----------------------- |
+| **createMarket()**          | createContainer()       |
+| **Resource**                | Value service           |
+| **Product**                 | Factory service         |
+| **Supplier**                | Resolver                |
+| **assemble()**              | resolve()               |
+| **supplies (abbrev. to $)** | app/container           |
+
+## Full features list
 
 ☀️ General
 
@@ -43,20 +98,18 @@ Supplier also solves the problem of Context Propagation, so it can be used in Re
 -   Declarative, immutable, functionally pure.
 -   Stateless - Dependencies are resolved via closures, not state. Some memoized state is kept for validation and optimization purposes only.
 -   Auto-wired - All products are built by the Supply Chain and resolve their dependencies automatically.
--   Maximal colocation - All product dependencies (suppliers) are registered right next to the function that uses them, not at the entry point.
--   Runtime overrides - Use pack() to mock dependencies for testing.
--   Feature swapping - Use try() to "swap" a product with another of the same type, but requiring different supplies. Perfect for prototyping, feature flagging, A/B testing, etc.
+-   Maximal colocation - All product suppliers are registered right next to the function that uses them, not at the entry point.
 
 📦 Context Propagation
 
 -   Shared context - Assemble the context once at the entry point, access everywhere without prop-drilling.
 -   Smart memoization - Dependencies injected once per assemble() context for optimal performance.
 -   Context switching - Override context anywhere in the call stack using reassemble().
--   Context addition - Add new context and products depending on that new context deep in the call stack by using just-in-time suppliers.
+-   Context enrichment - Add new context and products depending on new context deep in the call stack by using just-in-time suppliers.
 
 ⚡ Waterfall Management
 
--   Eager loading - Use preload: true for immediate initialization of a product on entry point's assemble() call.
+-   Eager loading - Use preload: true for immediate initialization of a product on entry point's assemble() call (default).
 -   Lazy loading - Use preload: false for on-demand initialization of a product when its value is first accessed.
 
 🧪 Testing and Mocking
@@ -66,27 +119,19 @@ Supplier also solves the problem of Context Propagation, so it can be used in Re
 
 🚀 Prototyping and A/B testing
 
--   Use `prototype()` to create alternative implementations of a product, that may depend on different suppliers or just-in-time suppliers than the original.
+-   Use `prototype()` to create alternative implementations of a product, that may depend on different suppliers than the original.
 -   Prototypes' factories must return values of the same type than the original product's factory.
 -   Define prototype suppliers or just-in-time suppliers to `try()` at the entry-point of your app
 -   For example, you can easily try different versions of a UI component for A/B testing.
 
-## Installation
-
-```bash
-npm install supplier
-```
-
-## Basic usage
-
-`supplier` provides a functional take on Dependency Injection. You define your application's dependencies as `resources` (data) and `products` (services), and then `assemble` them at your application's entry point.
+## Basic Usage
 
 ### 1. Create a Market
 
 All suppliers are created from a `market`, which creates a scope shared by Resource and Product Suppliers.
 You'll usually create one market per application. Markets register the names of the resources and products it `offers` so that no name conflicts occur. The name registry is the only state the market manages.
 
-```tsx
+```ts
 import { createMarket } from "supplier"
 
 const market = createMarket()
@@ -109,9 +154,9 @@ const sessionResource = sessionSupplier.pack({
 const session = sessionResource.unpack()
 ```
 
-### 3. Define Products
+### 3. Define Products (Services)
 
-Products are your application's services, components or features. They are factory functions that can depend on other products or resources. Dependencies are accessed via the `$` object passed to the `factory` as argument. $ is a shorthand for `supplies`, but it is just a suggestion, you can name the factory arg however you want. I like $ because it is short and will be used a lot throughout the application.
+Products are your application's services, components or features. They are factory functions that can depend on other products or resources. Dependencies are accessed via the `$` object passed to the `factory` as argument. `$` is a shorthand for `supplies`, but it is just a suggestion, you can name the factory arg however you want. I like `$` because it is short and will be used a lot throughout the application.
 
 Use `$[supplier.name]` to access the resource or product stored in supplies, and `$(supplier)` as a shorthand to access the unpacked value of the product or resource directly. As a mnemonic, `$[]` looks like a box, so it accesses the packed, the "boxed", resource or product.
 
@@ -127,9 +172,9 @@ const userSupplier = market.offer("user").asProduct({
 })
 ```
 
-### 4. Define your Application
+### 4. Define Your Application
 
-Your Application is just a `product` like the other ones. It's the main product at the top of the supply chain.
+Your Application is just a `product` like the other ones. It's the main, most complex product at the top of the supply chain.
 
 ```tsx
 const appSupplier = market.offer("app").asProduct({
@@ -143,7 +188,7 @@ const appSupplier = market.offer("app").asProduct({
 })
 ```
 
-### 5. Assemble at the Entry Point
+### 5. Assemble at Entry Point
 
 At your application's entry point, you `assemble` your main AppProduct, providing just the resources (not the products) requested recursively by the AppProduct's suppliers chain. Typescript will tell you if any resource is missing.
 
@@ -183,85 +228,7 @@ const appProduct = appSupplier.assemble(
 )
 ```
 
-### 6. Context Switching with `reassemble()`
-
-Any product can be `reassembled` with new resources deeper in the call stack. This is useful for changing the context, like impersonating a different user. You don't need to provide all resources needed, just the ones you want to overwrite. The original resources from the `assemble()` call will be reused if not overwritten.
-
-```tsx
-const sendMoneySupplier = market.offer("send-money").asProduct({
-    suppliers: [addWalletEntrySupplier, sessionSupplier],
-    factory: ($) => {
-        return (toUserId: string, amount: number) => {
-            const addWalletEntry = $(addWalletEntrySupplier)
-
-            addWalletEntry(-amount) // Runs in the current session's account
-
-            const addTargetWalletEntry = $[addWalletEntrySupplier.name]
-                .reassemble(index(sessionSupplier.pack({ userId: toUserId })))
-                .unpack()
-
-            addTargetWalletEntry(amount) // Runs in the receiver's account.
-        }
-    }
-})
-```
-
-### 7. Adding new or conditional context using just-in-time suppliers
-
-Most of the time, all context is not known at the entry point of the app. A product supplier might read user input, or a condition might narrow a resource's type. In these cases, you need just-in-time suppliers. Best example is an admin dashboard reserved to admin sessions:
-
-```tsx
-type Session = { user: User; now: Date }
-
-// Session resource can hold any object of type Session
-const sessionSupplier = market.offer("session").asResource<Session>()
-const adminSessionSupplier = market
-    .offer("admin-session")
-    .asResource<Session & { user: User & { role: "admin" } }>()
-
-const adminDashboardSupplier = market.offer("admin-dashboard").asProduct({
-    suppliers: [adminSessionSupplier],
-    factory: ($) => {
-        // No runtime check needed - TypeScript ensures session.user.role === "admin"
-        const session = $(adminSessionSupplier)
-        return <h1>Admin Dashboard - {session.user.name}</h1>
-    }
-})
-
-const AppSupplier = market.offer("app").asProduct({
-    suppliers: [sessionSupplier],
-    // New context computed in this factory ++ all dependent products should be in justInTime[]
-    justInTime: [adminSessionSupplier, adminDashboardSupplier]
-    // Factories receive just-in-time suppliers as 2nd argument
-    factory: ($, $$) => {
-        const role = $(sessionSupplier).user.role
-        if (role === "admin") {
-            //Just-in-time suppliers are not yet assmbled, you need to assemble them with the new context.
-            return $$[adminDashboardSupplier].assemble(
-                {
-                    ...$, // Keep all previous supplies
-                    ...index(
-                        $$[adminSessionSupplier.name].pack({
-                            ...session,
-                            user: {
-                                ...session.user,
-                                role
-                            }
-                        })
-                    )
-                }
-            )
-        }
-
-        return <h1>User Dashboard - {session.user.name}</h1>
-    }
-})
-
-const session = ...//read session
-const res = appSupplier.assemble(index(sessionSupplier.pack(session))).unpack()
-```
-
-## Mocking, testing and prototyping
+## Testing and Mocking
 
 ### 1. Mocking in tests with `.pack()`
 
@@ -322,7 +289,7 @@ const userPrototype = userSupplier.prototype({
     factory: ()=>"John Doe"
 })
 
-//You no longer need to pass some value for db and session, ince userPrototype removes them from the supply chain.
+//You no longer need to pass some value for db and session, since userPrototype removes them from the supply chain.
 const profile = profileSupplier.try(userPrototype).assemble()
 
 profile === <h1>Profile of John Doe</h1>
@@ -330,6 +297,235 @@ profile === <h1>Profile of John Doe</h1>
 
 `.prototype()` and `.try()` can be used for testing, but also to swap implementations for sandboxing or A/B testing.
 
+## Context overrides and enrichment
+
+### 1. Override context with `reassemble()`
+
+Any product can be `reassembled` with new resources deeper in the call stack. This is useful for changing the context, like impersonating a different user. You don't need to provide all resources needed, just the ones you want to overwrite. The original resources from the `assemble()` call will be reused if not overwritten.
+
+```tsx
+const sendMoneySupplier = market.offer("send-money").asProduct({
+    suppliers: [addWalletEntrySupplier, sessionSupplier],
+    factory: ($) => {
+        return (toUserId: string, amount: number) => {
+            const addWalletEntry = $(addWalletEntrySupplier)
+
+            addWalletEntry(-amount) // Runs in the current session's account
+
+            const addTargetWalletEntry = $[addWalletEntrySupplier.name]
+                .reassemble(index(sessionSupplier.pack({ userId: toUserId })))
+                .unpack()
+
+            addTargetWalletEntry(amount) // Runs in the receiver's account.
+        }
+    }
+})
+```
+
+### 2. Enriching context using just-in-time suppliers
+
+Most of the time, all context is not known at the entry point of the app. A product supplier might read user input, or a condition might narrow a resource's type. In these cases, you need just-in-time suppliers. Best example is an admin dashboard reserved to admin sessions:
+
+```tsx
+type Session = { user: User; now: Date }
+
+// Session resource can hold any object of type Session
+const sessionSupplier = market.offer("session").asResource<Session>()
+const adminSessionSupplier = market
+    .offer("admin-session")
+    .asResource<Session & { user: User & { role: "admin" } }>()
+
+const adminDashboardSupplier = market.offer("admin-dashboard").asProduct({
+    suppliers: [adminSessionSupplier],
+    factory: ($) => {
+        // No runtime check needed - TypeScript ensures session.user.role === "admin"
+        const session = $(adminSessionSupplier)
+        return <h1>Admin Dashboard - {session.user.name}</h1>
+    }
+})
+
+const AppSupplier = market.offer("app").asProduct({
+    suppliers: [sessionSupplier],
+    // New context computed in this factory ++ all products dependent on that new context
+    //  should be in justInTime[]
+    justInTime: [adminSessionSupplier, adminDashboardSupplier]
+    // Factories receive just-in-time suppliers as 2nd argument
+    factory: ($, $$) => {
+        const role = $(sessionSupplier).user.role
+        if (role === "admin") {
+            //Just-in-time suppliers are not yet assmbled, you need to assemble them with the new context.
+            return $$[adminDashboardSupplier].assemble(
+                {
+                    ...$, // Keep all previous supplies
+                    ...index(
+                        $$[adminSessionSupplier.name].pack({
+                            ...session,
+                            user: {
+                                ...session.user,
+                                role
+                            }
+                        })
+                    )
+                }
+            )
+        }
+
+        return <h1>User Dashboard - {session.user.name}</h1>
+    }
+})
+
+const session = ...//read session
+const res = appSupplier.assemble(index(sessionSupplier.pack(session))).unpack()
+```
+
+### Lazy vs Eager Loading
+
+By default, all products are preloaded on `assemble()` call immediately in the background and in parallel, no matter how deep in the supply chain. This means no waterfalls happen. You can disable preloading of a product with `preload: false`.
+
+```ts
+// Eager loading - initialized immediately when assemble() is called
+const eagerServiceSupplier = market.offer("eagerService").asProduct({
+    suppliers: [dbSupplier],
+    factory: ($) => new ExpensiveService($(dbSupplier))
+})
+
+// Lazy loading - initialized only when accessed
+const lazyServiceSupplier = market.offer("lazyService").asProduct({
+    suppliers: [dbSupplier],
+    factory: ($) => new ExpensiveService($(dbSupplier)),
+    preload: false // Loaded when first accessed via $()
+})
+```
+
+## Design Philosophy: The Problem with Traditional DI
+
+DI containers have always felt abstract, technical, almost magical in how they work. Like a black box, you often have to dig into the source code of a third-party library to understand how data flows in your own application. It feels like you lose control of your own data when you use one, and your entire app becomes dependent on the container to even work. Supplier aims to make DI cool again! The pattern has real power, even if current implementations on the open-source market hide that power under a lot of complexity.
+
+DI was complex to achieve in OOP world because of the absence of first-class functions in OOP languages. But in modern functional languages, DI should be easier, since DI itself is a functional concept. However, TypeScript DI frameworks currently available seem to have been built by imitating how they were built in OOP languages...
+
+The problem DI was solving in OOP world still exists in the functional world. In OOP world, DI helped inject data and services freely within deeply nested class hierarchies and architectures. In the functional world, DI achieves the same: inject data and services freely in deeply nested function calls. Deeply nested function calls naturally emerge when trying to decouple and implement SOLID principles in medium to highly complex applications. Without DI, you cannot achieve maximal decoupling. Even if in principle you can reuse a function elsewhere, the function is still bound in some way to the particular call stack in which it finds itself, simply by the fact that it can only be called from a parent function that has access to all the data and dependencies it needs.
+
+Supplier's "Dependency Injection Supply Chain" (DISC) model can do everything containers do, but in a more elegant, simpler, and easier-to-reason-about manner.
+
+## Under the hood
+
+Injection happens statelessly via a memoized recursive self-referential lazy object. Here is a simplified example:
+
+```ts
+const $ = {
+    resourceA,
+    resourceB,
+    //Wrapped in a getter in the code to provide direct $[productA.name] access
+    productA: once(() => productA.assemble($)),
+    productB: once(() => productA.assemble($))
+    //...
+}
+```
+
+## API Reference
+
+### `createMarket()`
+
+Creates a new dependency injection scope.
+
+```ts
+const market = createMarket()
+```
+
+### `market.offer(name)`
+
+Creates a new supplier with the given name.
+
+```ts
+const supplier = market.offer("serviceName")
+```
+
+### `.asResource<T>()`
+
+Creates a resource supplier for data/configuration.
+
+```ts
+const resourceSupplier = market.offer("config").asResource<Config>()
+```
+
+### `.asProduct(options)`
+
+Creates a product supplier for services.
+
+```ts
+const productSupplier = market.offer("service").asProduct({
+    suppliers: [dep1, dep2], // Dependencies
+    justInTime: [jit1, jit2], // Just-in-time suppliers
+    preload: boolean, // Eager (true) or lazy (false) loading
+    factory: ($, $$?) => {
+        // Factory function
+        // $ = regular supplies
+        // $$ = just-in-time supplies (if any)
+        return serviceImplementation
+    }
+})
+```
+
+### `.pack(value)`
+
+Provides a concrete value for a supplier.
+
+```ts
+const resource = resourceSupplier.pack(actualValue)
+const product = productSupplier.pack(mockValue) // For testing
+```
+
+### `.assemble(supplies)`
+
+Resolves all dependencies and creates the product.
+
+```ts
+const product = productSupplier.assemble(suppliesObject)
+const value = product.unpack()
+```
+
+### `.reassemble(newSupplies)`
+
+Creates a new context with different supplies.
+
+```ts
+const newProduct = existingProduct.reassemble(newSuppliesObject)
+```
+
+### `.prototype(options)`
+
+Creates an alternative implementation.
+
+```ts
+const alternativeSupplier = originalSupplier.prototype({
+    suppliers: [differentDeps],
+    factory: ($) => alternativeImplementation
+})
+```
+
+### `.try(prototype)`
+
+Swaps a supplier with its prototype.
+
+```ts
+const modifiedSupplier = originalSupplier.try(prototypeSupplier)
+```
+
+### `index(...supplies)`
+
+Utility to convert supply array to indexed object.
+
+```ts
+const suppliesObject = index(supply1, supply2, supply3)
+// Equivalent to: { [supply1.name]: supply1, [supply2.name]: supply2, ... }
+```
+
+## Contributing
+
+We welcome contributions! Please feel free to submit issues and pull requests.
+
 ## License
 
 MIT
+
+---

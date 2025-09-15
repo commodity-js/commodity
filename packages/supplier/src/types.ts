@@ -46,6 +46,7 @@ export type ProductSupplier<
     try: (
         ...suppliers: ProductSupplier<string, any, any, any, any, any, true>[]
     ) => ProductSupplier<NAME, VALUE, any, any, any, any, true>
+    jitOnly: () => ProductSupplier<NAME, VALUE, any, any, any, any, true>
     prototype: ({
         factory,
         suppliers,

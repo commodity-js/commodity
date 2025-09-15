@@ -87,7 +87,7 @@ export const createMarket = () => {
                     suppliers = [] as unknown as SUPPLIERS,
                     justInTime = [] as unknown as JUSTINTIME,
                     factory,
-                    preload = false,
+                    preload = true,
                     isPrototype = false as IS_PROTOTYPE
                 }: {
                     suppliers?: [...SUPPLIERS]
@@ -283,7 +283,7 @@ export const createMarket = () => {
                             factory,
                             suppliers = [] as unknown as SUPPLIERS_OF_PROTOTYPE,
                             justInTime = [] as unknown as ASSEMBLERS_OF_PROTOTYPE,
-                            preload = false as boolean
+                            preload = true as boolean
                         }: {
                             factory: (
                                 supplies: $<SUPPLIERS_OF_PROTOTYPE>,
@@ -306,6 +306,7 @@ export const createMarket = () => {
                             assemble,
                             prototype: this.prototype,
                             try: this.try,
+                            jitOnly,
                             _isPrototype: true as const,
                             _product: true as const
                         }
@@ -325,7 +326,7 @@ export const createMarket = () => {
                             $<SUPPLIERS>,
                             MapFromList<[...JUSTINTIME]>,
                             IS_PROTOTYPE
-                        >,
+                        > & { _jitOnly?: boolean },
                         TRIED_SUPPLIERS extends ProductSupplier<
                             string,
                             any,
@@ -348,17 +349,19 @@ export const createMarket = () => {
 
                         const supplier = {
                             name: this.name,
-                            suppliers: [
-                                ...suppliers,
-                                ...this.suppliers.filter(
-                                    (oldSupplier) =>
-                                        !suppliers.some(
-                                            (newSupplier) =>
-                                                newSupplier.name ===
-                                                oldSupplier.name
-                                        )
-                                )
-                            ] as unknown as MERGED_SUPPLIERS,
+                            suppliers: this._jitOnly
+                                ? this.suppliers
+                                : ([
+                                      ...suppliers,
+                                      ...this.suppliers.filter(
+                                          (oldSupplier) =>
+                                              !suppliers.some(
+                                                  (newSupplier) =>
+                                                      newSupplier.name ===
+                                                      oldSupplier.name
+                                              )
+                                      )
+                                  ] as unknown as MERGED_SUPPLIERS),
                             justInTime: [
                                 ...suppliers,
                                 ...this.justInTime.filter(
@@ -381,6 +384,7 @@ export const createMarket = () => {
                             assemble,
                             prototype: this.prototype,
                             try: this.try,
+                            jitOnly,
                             _isPrototype: true as const,
                             _product: true as const
                         }
@@ -392,6 +396,14 @@ export const createMarket = () => {
                             : typeof supplier
                     }
 
+                    function jitOnly<THIS>(this: THIS) {
+                        // Set the flag and return this for chaining
+                        return {
+                            ...this,
+                            _jitOnly: true
+                        }
+                    }
+
                     const productSupplier = {
                         name,
                         suppliers,
@@ -401,6 +413,7 @@ export const createMarket = () => {
                         pack,
                         assemble,
                         try: _try,
+                        jitOnly,
                         prototype,
                         _isPrototype: isPrototype,
                         _product: true as const
