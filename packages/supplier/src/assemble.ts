@@ -1,8 +1,30 @@
 import { ProductSupplier } from "#types"
 import { once } from "#utils"
 
+/**
+ * Hires a team of product suppliers and provides an assembly function.
+ * This function creates a dependency resolution system that can assemble products
+ * by resolving their dependencies in the correct order.
+ * @param suppliers - Array of product suppliers to hire
+ * @returns An object with an assemble method for dependency resolution
+ * @internal
+ * @example
+ * ```typescript
+ * const team = hire([userService, logger, config])
+ * const assembled = team.assemble({ config: packedConfig })
+ * const userService = assembled.userService
+ * ```
+ */
 export function hire(suppliers: ProductSupplier<string, any, any, any>[]) {
     return {
+        /**
+         * Assembles all suppliers by resolving their dependencies.
+         * Creates a supply map where each supplier can access its dependencies.
+         * @param supplied - Pre-supplied dependencies (optional)
+         * @returns A supply map with all resolved dependencies
+         * @throws Error if any required dependency cannot be resolved
+         */
+
         assemble: (supplied: Record<string, any>) => {
             const $: any = (supplier: { name: string }) => {
                 const supply = $[supplier.name]

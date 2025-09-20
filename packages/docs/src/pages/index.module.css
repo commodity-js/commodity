@@ -1,0 +1,555 @@
+/* Hero Section */
+.hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+}
+
+.heroBackground {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+}
+
+.heroGradient {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at top, rgba(255, 119, 48, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at bottom right, rgba(255, 119, 48, 0.1) 0%, transparent 50%);
+}
+
+.heroPattern {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.15) 1px, transparent 0);
+    background-size: 50px 50px;
+    opacity: 0.1;
+}
+
+.heroContent {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    align-items: center;
+}
+
+.heroText {
+    color: white;
+}
+
+.heroLogo {
+    margin-bottom: 1.5rem;
+}
+
+.heroLogo img {
+    width: 64px;
+    height: 64px;
+    filter: drop-shadow(0 0 20px rgba(255, 119, 48, 0.5));
+}
+
+.heroTitle {
+    font-size: 4.5rem;
+    font-weight: 800;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(135deg, #ffffff 0%, #ff7730 50%, #ffffff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+}
+
+.heroSubtitle {
+    font-size: 1.25rem;
+    line-height: 1.6;
+    margin-bottom: 2.5rem;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.highlight {
+    color: #ff7730;
+    font-weight: 600;
+}
+
+.heroButtons {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 3rem;
+    flex-wrap: wrap;
+}
+
+.primaryButton {
+    background: linear-gradient(135deg, #ff7730 0%, #ff5722 100%);
+    color: white;
+    border: none;
+    padding: 0.875rem 2rem;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 20px rgba(255, 119, 48, 0.3);
+}
+
+.primaryButton:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(255, 119, 48, 0.4);
+    color: white;
+}
+
+.secondaryButton {
+    background: transparent;
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    padding: 0.875rem 2rem;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.secondaryButton:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 119, 48, 0.5);
+    transform: translateY(-2px);
+    color: white;
+}
+
+.heroStats {
+    display: flex;
+    gap: 2rem;
+}
+
+.stat {
+    text-align: left;
+}
+
+.statNumber {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #ff7730;
+}
+
+.statLabel {
+    display: block;
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-top: 0.25rem;
+}
+
+.heroCode {
+    position: relative;
+}
+
+.codeWindow {
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 16px;
+    overflow: hidden;
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.codeHeader {
+    display: flex;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.codeDots {
+    display: flex;
+    gap: 0.5rem;
+    margin-right: 1rem;
+}
+
+.codeDots span {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.codeDots span:nth-child(1) { background: #ff5f57; }
+.codeDots span:nth-child(2) { background: #ffbd2e; }
+.codeDots span:nth-child(3) { background: #28ca42; }
+
+.codeTitle {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.codeBlock {
+    margin: 0;
+    background: transparent !important;
+}
+
+/* Why Section */
+.whySection {
+    padding: 6rem 0;
+    background: #1a1a2e;
+}
+
+.sectionHeader {
+    text-align: center;
+    margin-bottom: 4rem;
+}
+
+.sectionHeader h2 {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: white;
+}
+
+.sectionHeader p {
+    font-size: 1.125rem;
+    color: rgba(255, 255, 255, 0.8);
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.whyGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+}
+
+.whyCard {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2rem;
+    border-radius: 16px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.whyCard:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.whyIcon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    display: block;
+    filter: drop-shadow(0 2px 8px rgba(255, 119, 48, 0.3));
+}
+
+.whyCard h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: white;
+}
+
+.whyCard p {
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* Feature Sections */
+.featureSection {
+    padding: 6rem 0;
+}
+
+.feature--default {
+    background: #16213e;
+}
+
+.feature--alt {
+    background: #0f0f23;
+}
+
+.featureContent {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    align-items: center;
+}
+
+.featureReverse {
+    direction: rtl;
+}
+
+.featureReverse > * {
+    direction: ltr;
+}
+
+.featureText h2 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    color: white;
+}
+
+.featureText p {
+    font-size: 1.125rem;
+    line-height: 1.7;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.featureCode {
+    position: relative;
+}
+
+/* Use Cases Section */
+.useCasesSection {
+    padding: 6rem 0;
+    background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%);
+    color: white;
+}
+
+.useCasesSection .sectionHeader h2 {
+    color: white;
+}
+
+.useCasesSection .sectionHeader p {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.useCasesGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+}
+
+.useCaseCard {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2rem;
+    border-radius: 16px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.useCaseCard:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-4px);
+}
+
+.useCaseIcon {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    display: block;
+}
+
+.useCaseCard h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: white;
+}
+
+.useCaseCard p {
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+.useCaseTags {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.useCaseTags span {
+    background: rgba(255, 119, 48, 0.2);
+    color: #ff7730;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+/* CTA Section */
+.ctaSection {
+    padding: 6rem 0;
+    background: linear-gradient(135deg, #ff7730 0%, #ff5722 100%);
+    color: white;
+    text-align: center;
+}
+
+.ctaContent h2 {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.ctaContent > p {
+    font-size: 1.25rem;
+    margin-bottom: 2.5rem;
+    opacity: 0.9;
+}
+
+.ctaButtons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.ctaSection .primaryButton {
+    background: white;
+    color: #ff5722;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.ctaSection .primaryButton:hover {
+    color: #ff5722;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+.ctaSection .secondaryButton {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.3);
+    color: white;
+}
+
+.ctaSection .secondaryButton:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.ctaNote {
+    opacity: 0.8;
+}
+
+.ctaNote code {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+/* Responsive Design */
+@media (max-width: 996px) {
+    .heroContent {
+        grid-template-columns: 1fr;
+        gap: 3rem;
+    }
+    
+    .heroTitle {
+        font-size: 3rem;
+    }
+    
+    .heroStats {
+        justify-content: center;
+    }
+    
+    .featureContent {
+        grid-template-columns: 1fr;
+        gap: 3rem;
+    }
+    
+    .featureReverse {
+        direction: ltr;
+    }
+    
+    .whyGrid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .useCasesGrid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .heroButtons {
+        justify-content: center;
+    }
+    
+    .ctaButtons {
+        flex-direction: column;
+        align-items: center;
+    }
+}
+
+@media (max-width: 768px) {
+    .heroTitle {
+        font-size: 2.5rem;
+    }
+    
+    .sectionHeader h2 {
+        font-size: 2.5rem;
+    }
+    
+    .featureText h2 {
+        font-size: 2rem;
+    }
+    
+    .ctaContent h2 {
+        font-size: 2.5rem;
+    }
+    
+    .hero {
+        padding: 2rem 0;
+        min-height: 80vh;
+    }
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.heroText,
+.heroCode,
+.whyCard,
+.featureText,
+.featureCode,
+.useCaseCard {
+    animation: fadeInUp 0.6s ease forwards;
+}
+
+.whyCard:nth-child(2) { animation-delay: 0.1s; }
+.whyCard:nth-child(3) { animation-delay: 0.2s; }
+.whyCard:nth-child(4) { animation-delay: 0.3s; }
+.whyCard:nth-child(5) { animation-delay: 0.4s; }
+.whyCard:nth-child(6) { animation-delay: 0.5s; }
+
+/* Smooth scrolling */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Code syntax highlighting improvements */
+.codeBlock .token.keyword {
+    color: #ff7aa2;
+}
+
+.codeBlock .token.string {
+    color: #a3d977;
+}
+
+.codeBlock .token.function {
+    color: #82aaff;
+}
+
+.codeBlock .token.comment {
+    color: #676e95;
+}

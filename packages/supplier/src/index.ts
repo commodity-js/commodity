@@ -15,27 +15,61 @@ import {
 
 import { hire } from "#assemble"
 import { index } from "#utils"
-export * from "#utils"
 
+/**
+ * Type guard to check if a supply is a Product.
+ * @param supply - The supply to check
+ * @returns True if the supply is a Product, false otherwise
+ * @internal
+ */
 function isProduct(
     supply: SupplyMap[keyof SupplyMap]
 ): supply is Product<string, any> {
     return "_product" in supply
 }
 
+/**
+ * Creates a new market instance for managing suppliers and products.
+ * A market provides a namespace for creating and managing suppliers without name conflicts.
+ * @returns A market object with methods to create suppliers and products
+ * @beta
+ * @example
+ * ```typescript
+ * const market = createMarket()
+ * const userService = market.offer("userService").asProduct({
+ *   factory: () => new UserService(),
+ *   suppliers: []
+ * })
+ * ```
+ */
 export const createMarket = () => {
     const names = new Set<string>()
     const market = {
+        /**
+         * Offers a new supplier or product with the given name.
+         * @param name - The unique name for this supplier/product
+         * @returns An offer object with methods to define the supplier type
+         * @throws Error if the name already exists in this market
+         */
         offer<NAME extends string>(name: NAME) {
             if (names.has(name)) {
                 throw new Error(`Name ${name} already exists`)
             }
             names.add(name)
             const offer = {
+                /**
+                 * Creates a resource supplier that can provide values of a specific constraint type.
+                 * Resources are simple value containers that can be packed and unpacked.
+                 * @returns A resource supplier configuration object
+                 * @example
+                 * ```typescript
+                 * const config = market.offer("config").asResource<Config>()
+                 * const packedConfig = config.pack({ apiUrl: "https://api.example.com" })
+                 * ```
+                 */
                 asResource: <CONSTRAINT>() => {
-                    const resourceSupplier = {
+                    return {
                         name,
-                        _resource: true as const,
                         pack<
                             THIS extends ResourceSupplier<NAME, CONSTRAINT>,
                             NEW_VALUE extends CONSTRAINT
@@ -57,11 +91,23 @@ export const createMarket = () => {
                                 unpack: () => value
                             }
                         },
-                        _constraint: null as unknown as CONSTRAINT
+                        _constraint: null as unknown as CONSTRAINT,
+                        _resource: true as const
                     }
-
-                    return resourceSupplier
                 },
+                /**
+                 * Creates a product supplier that can assemble complex objects from dependencies.
+                 * Products can depend on other suppliers and have factory functions for creation.
+                 * @param config - Configuration object for the product
+                 * @returns A product supplier configuration object
+                 * @example
+                 * ```typescript
+                 * const userService = market.offer("userService").asProduct({
+                 *   suppliers: [userRepository, logger],
+                 *   factory: (deps) => new UserService(deps.userRepository, deps.logger)
+                 * })
+                 * ```
+                 */
                 asProduct: <
                     VALUE,
                     SUPPLIERS extends Supplier<
@@ -73,7 +119,7 @@ export const createMarket = () => {
                         any,
                         IS_PROTOTYPE extends false ? false : boolean
                     >[] = [],
-                    JUSTINTIME extends Supplier<
+                    JUST_IN_TIME extends Supplier<
                         string,
                         any,
                         any,
@@ -85,31 +131,42 @@ export const createMarket = () => {
                     IS_PROTOTYPE extends boolean = false
                 >({
                     suppliers = [] as unknown as SUPPLIERS,
-                    justInTime = [] as unknown as JUSTINTIME,
+                    justInTime = [] as unknown as JUST_IN_TIME,
                     factory,
                     preload = true,
                     isPrototype = false as IS_PROTOTYPE
                 }: {
                     suppliers?: [...SUPPLIERS]
-                    justInTime?: [...JUSTINTIME]
+                    justInTime?: [...JUST_IN_TIME]
                     factory: (
                         supplies: $<SUPPLIERS>,
-                        justInTime: MapFromList<[...JUSTINTIME]>
+                        justInTime: MapFromList<[...JUST_IN_TIME]>
                     ) => VALUE
                     preload?: boolean
                     isPrototype?: IS_PROTOTYPE
                 }) => {
-                    // Check for duplicate names in suppliers
-                    const supplierNames = new Set<string>()
-                    for (const supplier of suppliers) {
-                        if (supplierNames.has(supplier.name)) {
-                            throw new Error(
-                                `Duplicate supplier name: ${supplier.name}`
-                            )
-                        }
-                        supplierNames.add(supplier.name)
+                    const productSupplier = {
+                        name,
+                        suppliers,
+                        justInTime,
+                        factory,
+                        preload,
+                        pack,
+                        assemble,
+                        try: _try,
+                        jitOnly,
+                        prototype,
+                        _isPrototype: isPrototype,
+                        _product: true as const
                     }
 
+                    /**
+                     * Assembles the product by resolving all dependencies and creating the final instance.
+                     * This method orchestrates the dependency resolution and calls the factory function.
+                     * @param toSupply - Map of supplies to use for dependency resolution
+                     * @returns A product instance with the resolved dependencies
+                     * @throws Error if any required dependency cannot be resolved
+                     */
                     function assemble<
                         THIS extends ProductSupplier<
                             NAME,
@@ -128,7 +185,7 @@ export const createMarket = () => {
                             THIS["suppliers"],
                             ResourceSupplier<string, any>
                         >
-                        /**
+                        /*
                          * A type assertion that tells TypeScript to trust us that the resulting
                          * supplies is compatible with the generic type `SUPPLIES`. This is a necessary
                          * type hole because TypeScript's static analysis can't remember that when you Omit properties
@@ -145,7 +202,7 @@ export const createMarket = () => {
                                 index(...this.justInTime)
                             ) as ReturnType<THIS["factory"]>
 
-                        const product = {
+                        return {
                             name: this.name,
                             pack: productPack,
                             _dependsOnOneOf: (overrides: SupplyMap) => {
@@ -199,10 +256,14 @@ export const createMarket = () => {
                             },
                             _product: true as const
                         }
-
-                        return product
                     }
 
+                    /**
+                     * Packs a new value into an existing product, creating a new product instance.
+                     * This is used internally by the pack method to create packed products.
+                     * @param value - The new value to pack into the product
+                     * @returns A new product instance with the packed value
+                     */
                     function productPack<
                         THIS extends Product<NAME, VALUE>,
                         NEW_VALUE extends VALUE
@@ -221,6 +282,17 @@ export const createMarket = () => {
                         }
                     }
 
+                    /**
+                     * Packs a value into this product supplier, creating a product with the given value.
+                     * Packed products do not depend on any suppliers and always return the packed value.
+                     * @param value - The value to pack into the product
+                     * @returns A product instance containing the packed value
+                     * @example
+                     * ```typescript
+                     * const userService = market.offer("userService").asProduct({...})
+                     * const packedService = userService.pack(new UserService())
+                     * ```
+                     */
                     function pack<
                         THIS extends ProductSupplier<
                             NAME,
@@ -248,14 +320,32 @@ export const createMarket = () => {
                         }
                     }
 
+                    /**
+                     * Creates a prototype version of this product supplier with different dependencies.
+                     * Prototypes are used for creating variations of a product with different implementations.
+                     * @param config - Configuration for the prototype
+                     * @param config.factory - Factory function for the prototype
+                     * @param config.suppliers - Dependencies for the prototype
+                     * @param config.justInTime - Just-in-time dependencies for the prototype
+                     * @param config.preload - Whether to preload the prototype
+                     * @returns A prototype product supplier
+                     * @example
+                     * ```typescript
+                     * const userService = market.offer("userService").asProduct({...})
+                     * const mockUserService = userService.prototype({
+                     *   factory: () => new MockUserService(),
+                     *   suppliers: []
+                     * })
+                     * ```
+                     */
                     function prototype<
                         THIS extends ProductSupplier<
                             NAME,
                             VALUE,
                             SUPPLIERS,
-                            JUSTINTIME,
+                            JUST_IN_TIME,
                             $<SUPPLIERS>,
-                            MapFromList<[...JUSTINTIME]>,
+                            MapFromList<[...JUST_IN_TIME]>,
                             IS_PROTOTYPE
                         >,
                         NEW_VALUE extends VALUE,
@@ -268,7 +358,7 @@ export const createMarket = () => {
                             any,
                             false
                         >[] = [],
-                        ASSEMBLERS_OF_PROTOTYPE extends Supplier<
+                        JUST_IN_TIME_OF_PROTOTYPE extends Supplier<
                             string,
                             any,
                             any,
@@ -282,17 +372,17 @@ export const createMarket = () => {
                         {
                             factory,
                             suppliers = [] as unknown as SUPPLIERS_OF_PROTOTYPE,
-                            justInTime = [] as unknown as ASSEMBLERS_OF_PROTOTYPE,
+                            justInTime = [] as unknown as JUST_IN_TIME_OF_PROTOTYPE,
                             preload = true as boolean
                         }: {
                             factory: (
                                 supplies: $<SUPPLIERS_OF_PROTOTYPE>,
                                 justInTime: MapFromList<
-                                    [...ASSEMBLERS_OF_PROTOTYPE]
+                                    [...JUST_IN_TIME_OF_PROTOTYPE]
                                 >
                             ) => NEW_VALUE
                             suppliers?: [...SUPPLIERS_OF_PROTOTYPE]
-                            justInTime?: [...ASSEMBLERS_OF_PROTOTYPE]
+                            justInTime?: [...JUST_IN_TIME_OF_PROTOTYPE]
                             preload?: boolean
                         }
                     ) {
@@ -317,14 +407,25 @@ export const createMarket = () => {
                             : typeof supplier
                     }
 
+                    /**
+                     * Tries alternative suppliers for this product, merging them with existing dependencies.
+                     * This allows for fallback or alternative implementations of dependencies.
+                     * @param suppliers - Alternative suppliers to try
+                     * @returns A new product supplier with merged dependencies
+                     * @example
+                     * ```typescript
+                     * const userService = market.offer("userService").asProduct({...})
+                     * const fallbackUserService = userService.try(mockUserRepository, testLogger)
+                     * ```
+                     */
                     function _try<
                         THIS extends ProductSupplier<
                             NAME,
                             VALUE,
                             SUPPLIERS,
-                            JUSTINTIME,
+                            JUST_IN_TIME,
                             $<SUPPLIERS>,
-                            MapFromList<[...JUSTINTIME]>,
+                            MapFromList<[...JUST_IN_TIME]>,
                             IS_PROTOTYPE
                         > & { _jitOnly?: boolean },
                         TRIED_SUPPLIERS extends ProductSupplier<
@@ -396,27 +497,21 @@ export const createMarket = () => {
                             : typeof supplier
                     }
 
+                    /**
+                     * Marks this product as just-in-time only, meaning it will only be resolved when needed.
+                     * This is useful for lazy loading or optional dependencies.
+                     * @returns A product supplier marked as just-in-time only
+                     * @example
+                     * ```typescript
+                     * const optionalService = market.offer("optionalService").asProduct({...}).jitOnly()
+                     * ```
+                     */
                     function jitOnly<THIS>(this: THIS) {
                         // Set the flag and return this for chaining
                         return {
                             ...this,
                             _jitOnly: true
                         }
-                    }
-
-                    const productSupplier = {
-                        name,
-                        suppliers,
-                        justInTime,
-                        factory,
-                        preload,
-                        pack,
-                        assemble,
-                        try: _try,
-                        jitOnly,
-                        prototype,
-                        _isPrototype: isPrototype,
-                        _product: true as const
                     }
 
                     return productSupplier as HasCircularDependency<
@@ -433,3 +528,6 @@ export const createMarket = () => {
 
     return market
 }
+
+export { index } from "#utils"
+export * from "#types"

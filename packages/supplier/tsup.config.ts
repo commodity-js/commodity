@@ -9,9 +9,10 @@ export default defineConfig([
         treeshake: true,
         sourcemap: true,
         splitting: false,
-        external: ["memoize"],
         // Additional optimizations
         target: "es2020",
-        bundle: true
+        bundle: true,
+        minifyWhitespace: true,
+        minifySyntax: true
     }
 ])
