@@ -45,19 +45,22 @@ export type ResourceSupplier<NAME extends string, CONSTRAINT> = {
  * Products can depend on other suppliers and support reassembly with overrides.
  * @beta
  */
-export type Product<NAME extends string, VALUE> = {
+export type Product<NAME extends string, VALUE, SUPPLIES extends SupplyMap> = {
     /** The name/identifier of this product */
     name: NAME
+    supplies: SUPPLIES
     /** Unpacks and returns the current value of this product */
     unpack: () => VALUE
     /** Packs a new value into this product, returning a new product instance */
-    pack: (value: VALUE) => Product<NAME, VALUE>
+    pack: (value: VALUE) => Product<NAME, VALUE, SUPPLIES>
     /** Reassembles this product with new dependency overrides */
-    reassemble: (overrides: SupplyMap) => Product<NAME, VALUE>
+    reassemble: (overrides: SupplyMap) => Product<NAME, VALUE, SUPPLIES>
     /** Checks if this product depends on any of the given overrides */
     _dependsOnOneOf: (overrides: SupplyMap) => boolean
     /** Type marker indicating this is a product */
     _product: true
+    /** The supplier that created this product */
+    _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>
 }
 /**
  * Represents a product supplier - a factory for creating products with dependencies.
@@ -79,12 +82,15 @@ export type ProductSupplier<
     suppliers: SUPPLIERS
     justInTime: JUST_IN_TIME
     factory: (supplies: SUPPLIES, justInTime: JUST_IN_TIME_MAP) => VALUE
-    assemble: (toSupply: ToSupply<SUPPLIERS>) => Product<NAME, VALUE>
-    pack: (value: VALUE) => Product<NAME, VALUE>
+    assemble: (toSupply: ToSupply<SUPPLIERS>) => Product<NAME, VALUE, SUPPLIES>
+    pack: (value: VALUE) => Product<NAME, VALUE, Record<never, never>>
     try: (
         ...suppliers: ProductSupplier<string, any, any, any, any, any, true>[]
     ) => ProductSupplier<NAME, VALUE, any, any, any, any, true>
-    jitOnly: () => ProductSupplier<NAME, VALUE, any, any, any, any, true>
+    with: (
+        ...suppliers: ProductSupplier<string, any, any, any, any, any, false>[]
+    ) => ProductSupplier<NAME, VALUE, any, any, any, any, true>
+    jitOnly: () => ProductSupplier<NAME, VALUE, any, any, any, any, false>
     prototype: ({
         factory,
         suppliers,
@@ -162,7 +168,7 @@ export type MapFromList<LIST extends { name: string }[]> = LIST extends []
  */
 export type SupplyMap = Record<
     string,
-    Product<string, any> | Resource<string, any>
+    Product<string, any, any> | Resource<string, any>
 >
 
 /**
@@ -176,11 +182,11 @@ export type SupplyMapFromSuppliers<
         infer VALUE,
         any,
         any,
-        any,
+        infer SUPPLIES,
         any,
         any
     >
-        ? Product<NAME, VALUE>
+        ? Product<NAME, VALUE, SUPPLIES>
         : SUPPLIER extends ResourceSupplier<infer NAME, infer VALUE>
         ? Resource<NAME, VALUE>
         : never
@@ -270,21 +276,37 @@ export type ToSupply<
 /**
  * @beta
  */
-export type MergeSuppliers<
+export type TrySuppliers<
     OLD extends Supplier<string, any, any, any, any, any, any>[],
-    NEW extends ProductSupplier<string, any, any, any, any, any, true>[]
+    NEW extends ProductSupplier<string, any, any, any, any, any, any>[]
 > = OLD extends [infer Head, ...infer Tail]
     ? Tail extends Supplier<string, any, any, any, any, any, any>[]
         ? Head extends { name: NEW[number]["name"] }
             ? // Head matches a NEW supplier, use the NEW one
               [
                   Extract<NEW[number], { name: Head["name"] }>,
-                  ...MergeSuppliers<Tail, NEW>
+                  ...TrySuppliers<Tail, NEW>
               ]
             : // Head doesn't match, keep the original
-              [Head, ...MergeSuppliers<Tail, NEW>]
+              [Head, ...TrySuppliers<Tail, NEW>]
         : Head extends { name: NEW[number]["name"] }
         ? [Extract<NEW[number], { name: Head["name"] }>]
+        : [Head]
+    : []
+
+/**
+ * @beta
+ */
+export type FilterSuppliers<
+    OLD extends Supplier<string, any, any, any, any, any, any>[],
+    NEW extends ProductSupplier<string, any, any, any, any, any, any>[]
+> = OLD extends [infer Head, ...infer Tail]
+    ? Tail extends Supplier<string, any, any, any, any, any, any>[]
+        ? Head extends { name: NEW[number]["name"] }
+            ? FilterSuppliers<Tail, NEW>
+            : [Head, ...FilterSuppliers<Tail, NEW>]
+        : Head extends { name: NEW[number]["name"] }
+        ? []
         : [Head]
     : []
 

@@ -638,3 +638,306 @@ describe("JustInTime Feature", () => {
         expect(overrideMock2).toHaveBeenCalledTimes(1)
     })
 })
+
+describe("with() method", () => {
+    it("should allow assembling multiple suppliers together", () => {
+        const market = createMarket()
+
+        const configSupplier = market.offer("config").asResource<{
+            apiUrl: string
+        }>()
+
+        const userServiceSupplier = market.offer("userService").asProduct({
+            suppliers: [configSupplier],
+            factory: ($) => {
+                const config = $(configSupplier)
+                return { service: "user", url: config.apiUrl }
+            }
+        })
+
+        const orderServiceSupplier = market.offer("orderService").asProduct({
+            suppliers: [configSupplier],
+            factory: ($) => {
+                const config = $(configSupplier)
+                return { service: "order", url: config.apiUrl }
+            }
+        })
+
+        const combinedSupplier = userServiceSupplier.with(orderServiceSupplier)
+        const config = configSupplier.pack({
+            apiUrl: "https://api.example.com"
+        })
+        const result = combinedSupplier.assemble(index(config))
+
+        expect(result.unpack()).toEqual({
+            service: "user",
+            url: "https://api.example.com"
+        })
+
+        // Access the other supplier's result
+        const orderResult = result.supplies(orderServiceSupplier)
+        expect(orderResult).toEqual({
+            service: "order",
+            url: "https://api.example.com"
+        })
+    })
+
+    it("should type check that all required resources are provided", () => {
+        const market = createMarket()
+
+        const dbSupplier = market
+            .offer("db")
+            .asResource<{ connectionString: string }>()
+        const cacheSupplier = market
+            .offer("cache")
+            .asResource<{ host: string }>()
+
+        const userServiceSupplier = market.offer("userService").asProduct({
+            suppliers: [dbSupplier],
+            factory: ($) => {
+                const db = $(dbSupplier)
+                return { service: "user", db: db.connectionString }
+            }
+        })
+
+        const sessionServiceSupplier = market
+            .offer("sessionService")
+            .asProduct({
+                suppliers: [cacheSupplier],
+                factory: ($) => {
+                    const cache = $(cacheSupplier)
+                    return { service: "session", cache: cache.host }
+                }
+            })
+
+        const combinedSupplier = userServiceSupplier.with(
+            sessionServiceSupplier
+        )
+
+        // Should require both db and cache resources
+        const db = dbSupplier.pack({
+            connectionString: "postgresql://localhost:5432/db"
+        })
+        const cache = cacheSupplier.pack({ host: "redis://localhost:6379" })
+
+        // @ts-expect-error - cache is missing
+        const fail = combinedSupplier.assemble(index(db))
+
+        const result = combinedSupplier.assemble(index(db, cache))
+
+        expect(result.unpack()).toEqual({
+            service: "user",
+            db: "postgresql://localhost:5432/db"
+        })
+
+        const sessionResult = result.supplies(sessionServiceSupplier)
+        expect(sessionResult).toEqual({
+            service: "session",
+            cache: "redis://localhost:6379"
+        })
+    })
+
+    it("should work with suppliers that have overlapping dependencies", () => {
+        const market = createMarket()
+
+        const sharedSupplier = market
+            .offer("shared")
+            .asResource<{ value: string }>()
+        const uniqueSupplier = market
+            .offer("unique")
+            .asResource<{ id: number }>()
+
+        const serviceASupplier = market.offer("serviceA").asProduct({
+            suppliers: [sharedSupplier],
+            factory: ($) => {
+                const shared = $(sharedSupplier)
+                return { name: "ServiceA", shared: shared.value }
+            }
+        })
+
+        const serviceBSupplier = market.offer("serviceB").asProduct({
+            suppliers: [sharedSupplier, uniqueSupplier],
+            factory: ($) => {
+                const shared = $(sharedSupplier)
+                const unique = $(uniqueSupplier)
+                return {
+                    name: "ServiceB",
+                    shared: shared.value,
+                    id: unique.id
+                }
+            }
+        })
+
+        const combinedSupplier = serviceASupplier.with(serviceBSupplier)
+
+        const shared = sharedSupplier.pack({ value: "shared-data" })
+        const unique = uniqueSupplier.pack({ id: 123 })
+
+        const result = combinedSupplier.assemble(index(shared, unique))
+
+        expect(result.unpack()).toEqual({
+            name: "ServiceA",
+            shared: "shared-data"
+        })
+
+        const serviceBResult = result.supplies(serviceBSupplier)
+        expect(serviceBResult).toEqual({
+            name: "ServiceB",
+            shared: "shared-data",
+            id: 123
+        })
+    })
+
+    it("should support chaining multiple with() calls", () => {
+        const market = createMarket()
+
+        const configSupplier = market
+            .offer("config")
+            .asResource<{ env: string }>()
+
+        const serviceASupplier = market.offer("serviceA").asProduct({
+            suppliers: [configSupplier],
+            factory: ($) => ({ name: "A", env: $(configSupplier).env })
+        })
+
+        const serviceBSupplier = market.offer("serviceB").asProduct({
+            suppliers: [configSupplier],
+            factory: ($) => ({ name: "B", env: $(configSupplier).env })
+        })
+
+        const serviceCSupplier = market.offer("serviceC").asProduct({
+            suppliers: [configSupplier],
+            factory: ($) => ({ name: "C", env: $(configSupplier).env })
+        })
+
+        const combinedSupplier = serviceASupplier
+            .with(serviceBSupplier)
+            .with(serviceCSupplier)
+
+        const config = configSupplier.pack({ env: "test" })
+        const result = combinedSupplier.assemble(index(config))
+
+        expect(result.unpack()).toEqual({ name: "A", env: "test" })
+        expect(result.supplies(serviceBSupplier)).toEqual({
+            name: "B",
+            env: "test"
+        })
+        expect(result.supplies(serviceCSupplier)).toEqual({
+            name: "C",
+            env: "test"
+        })
+    })
+
+    it("should work with prototypes in with() method", () => {
+        const market = createMarket()
+
+        const configSupplier = market
+            .offer("config")
+            .asResource<{ mode: string }>()
+
+        const baseServiceSupplier = market.offer("baseService").asProduct({
+            suppliers: [configSupplier],
+            factory: ($) => ({
+                service: "base",
+                mode: $(configSupplier).mode
+            })
+        })
+
+        const mockServiceSupplier = baseServiceSupplier.prototype({
+            factory: () => ({ service: "mock", mode: "test" })
+        })
+
+        const otherServiceSupplier = market.offer("otherService").asProduct({
+            suppliers: [configSupplier],
+            factory: ($) => ({
+                service: "other",
+                mode: $(configSupplier).mode
+            })
+        })
+
+        const combinedSupplier = mockServiceSupplier.with(otherServiceSupplier)
+
+        const combinedSupplier2 = otherServiceSupplier.with(mockServiceSupplier)
+        const config = configSupplier.pack({ mode: "production" })
+        const result = combinedSupplier.assemble(index(config))
+        const result2 = combinedSupplier2.assemble(index(config))
+
+        expect(result.unpack()).toEqual({ service: "mock", mode: "test" })
+        expect(result.supplies(otherServiceSupplier)).toEqual({
+            service: "other",
+            mode: "production"
+        })
+        expect(result2.unpack()).toEqual({
+            service: "other",
+            mode: "production"
+        })
+        expect(result2.supplies(mockServiceSupplier)).toEqual({
+            service: "mock",
+            mode: "test"
+        })
+    })
+
+    it("should handle reassembly correctly with with() method", () => {
+        const market = createMarket()
+
+        const numberSupplier = market.offer("number").asResource<number>()
+
+        const doublerSupplier = market.offer("doubler").asProduct({
+            suppliers: [numberSupplier],
+            factory: ($) => $(numberSupplier) * 2
+        })
+
+        const triplerSupplier = market.offer("tripler").asProduct({
+            suppliers: [numberSupplier],
+            factory: ($) => $(numberSupplier) * 3
+        })
+
+        const combinedSupplier = doublerSupplier.with(triplerSupplier)
+        const result = combinedSupplier.assemble(index(numberSupplier.pack(5)))
+
+        expect(result.unpack()).toBe(10) // 5 * 2
+        expect(result.supplies(triplerSupplier)).toBe(15) // 5 * 3
+
+        // Test reassembly
+        const reassembled = result.reassemble(index(numberSupplier.pack(10)))
+        expect(reassembled.unpack()).toBe(20) // 10 * 2
+        expect(reassembled.supplies(triplerSupplier)).toBe(30) // 10 * 3
+    })
+
+    it("should support empty suppliers list in with() method", () => {
+        const market = createMarket()
+
+        const simpleSupplier = market.offer("simple").asProduct({
+            factory: () => "simple-value"
+        })
+
+        const combinedSupplier = simpleSupplier.with()
+        const result = combinedSupplier.assemble({})
+
+        expect(result.unpack()).toBe("simple-value")
+    })
+
+    it("should handle errors in with() method gracefully", () => {
+        const market = createMarket()
+
+        const workingSupplier = market.offer("working").asProduct({
+            factory: () => "working-value"
+        })
+
+        const failingSupplier = market.offer("failing").asProduct({
+            factory: () => {
+                throw new Error("Supplier failed")
+                return
+            }
+        })
+
+        const combinedSupplier = workingSupplier.with(failingSupplier)
+        const result = combinedSupplier.assemble({})
+
+        expect(result.unpack()).toBe("working-value")
+
+        expect(() => {
+            result.supplies(failingSupplier)
+        }).toThrow("Supplier failed")
+    })
+})

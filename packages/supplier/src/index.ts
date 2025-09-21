@@ -7,10 +7,11 @@ import {
     type ResourceSupplier,
     type $,
     type ToSupply,
-    type MergeSuppliers,
     type HasCircularDependency,
     type ExcludeSuppliersType,
-    type MapFromList
+    type MapFromList,
+    type TrySuppliers,
+    type FilterSuppliers
 } from "#types"
 
 import { hire } from "#assemble"
@@ -24,7 +25,7 @@ import { index } from "#utils"
  */
 function isProduct(
     supply: SupplyMap[keyof SupplyMap]
-): supply is Product<string, any> {
+): supply is Product<string, any, any> {
     return "_product" in supply
 }
 
@@ -154,6 +155,7 @@ export const createMarket = () => {
                         pack,
                         assemble,
                         try: _try,
+                        with: _with,
                         jitOnly,
                         prototype,
                         _isPrototype: isPrototype,
@@ -171,12 +173,21 @@ export const createMarket = () => {
                         THIS extends ProductSupplier<
                             NAME,
                             VALUE,
-                            Supplier<string, any, any, any, any, any, any>[],
+                            SUPPLIERS,
                             Supplier<string, any, any, any, any, any, any>[],
                             any,
                             any,
                             any
-                        >
+                        >,
+                        SUPPLIERS extends Supplier<
+                            string,
+                            any,
+                            any,
+                            any,
+                            any,
+                            any,
+                            any
+                        >[]
                     >(this: THIS, toSupply: ToSupply<THIS["suppliers"]>) {
                         const team = this.suppliers.filter(
                             (supplier) =>
@@ -192,52 +203,38 @@ export const createMarket = () => {
                          * and put them back, you end up with the original type. Here toSupply is type guarded to be $<DEPS> - Services<team>,
                          * and hire merges toSupply and team products together, so the result must extend $<DEPS>. But TS cannot guarantee it.
                          */
-                        const fullSupplies = hire(team).assemble(
-                            toSupply
-                        ) as unknown as $<THIS["suppliers"]>
+                        const assemble = (toSupply: SupplyMap) =>
+                            hire(team).assemble(toSupply) as unknown as $<
+                                THIS["suppliers"]
+                            >
 
-                        const unpack = () =>
-                            this.factory(
-                                fullSupplies,
-                                index(...this.justInTime)
-                            ) as ReturnType<THIS["factory"]>
+                        const buildUnpack =
+                            (supplies: $<THIS["suppliers"]>) => () =>
+                                this.factory(
+                                    supplies,
+                                    index(...this.justInTime)
+                                ) as ReturnType<THIS["factory"]>
+
+                        const supplies = assemble(toSupply)
 
                         return {
                             name: this.name,
+                            supplies,
                             pack: productPack,
-                            _dependsOnOneOf: (overrides: SupplyMap) => {
-                                // Check if any dependencies need resupplying
-                                for (const supplier of this.suppliers) {
-                                    // Check if this dependency is directly overridden
-                                    if (supplier.name in overrides) {
-                                        return true
-                                    }
-
-                                    const supply = (fullSupplies as any)[
-                                        supplier.name
-                                    ]
-
-                                    if (
-                                        supply &&
-                                        "_dependsOnOneOf" in supply &&
-                                        supply._dependsOnOneOf(overrides)
-                                    ) {
-                                        return true
-                                    }
-                                }
-                                return false
-                            },
-                            unpack,
-                            reassemble: (overrides: SupplyMap) => {
+                            unpack: buildUnpack(supplies),
+                            reassemble<THIS extends Product<NAME, VALUE, any>>(
+                                this: THIS,
+                                overrides: SupplyMap
+                            ) {
                                 // Create a mutable copy of overrides with flexible typing
-                                const newSupplies: SupplyMap = {}
+                                const unassembled: SupplyMap = {}
 
                                 // Loop over all supplies and check if they need resupplying
                                 for (const [name, supply] of Object.entries<
                                     SupplyMap[keyof SupplyMap]
-                                >(fullSupplies)) {
+                                >(this.supplies)) {
                                     if (name in overrides && overrides[name]) {
-                                        newSupplies[name] = overrides[name]
+                                        unassembled[name] = overrides[name]
                                         continue
                                     }
                                     // If the supply is a resource, or doesn't depend on one of the overrides,
@@ -246,15 +243,46 @@ export const createMarket = () => {
                                         !isProduct(supply) ||
                                         !supply._dependsOnOneOf(overrides)
                                     ) {
-                                        newSupplies[name] = supply
+                                        unassembled[name] = supply
                                     }
                                 }
 
-                                return this.assemble(
-                                    newSupplies as typeof toSupply
-                                )
+                                const newSupplies = assemble(unassembled)
+
+                                return {
+                                    ...this,
+                                    supplies: newSupplies,
+                                    unpack: buildUnpack(newSupplies)
+                                }
                             },
-                            _product: true as const
+                            _dependsOnOneOf(
+                                this: Product<any, any, any>,
+                                overrides: SupplyMap
+                            ) {
+                                // Check if any dependencies need resupplying
+                                for (const supplier of this._supplier
+                                    .suppliers) {
+                                    // Check if this dependency is directly overridden
+                                    if (supplier.name in overrides) {
+                                        return true
+                                    }
+
+                                    const supply =
+                                        this.supplies[
+                                            supplier.name as keyof $<SUPPLIERS>
+                                        ]
+
+                                    if (
+                                        supply &&
+                                        supply._dependsOnOneOf(overrides)
+                                    ) {
+                                        return true
+                                    }
+                                }
+                                return false
+                            },
+                            _product: true as const,
+                            _supplier: this
                         }
                     }
 
@@ -265,20 +293,26 @@ export const createMarket = () => {
                      * @returns A new product instance with the packed value
                      */
                     function productPack<
-                        THIS extends Product<NAME, VALUE>,
+                        THIS extends Product<NAME, VALUE, $<SUPPLIERS>>,
                         NEW_VALUE extends VALUE
                     >(this: THIS, value: NEW_VALUE) {
                         return {
                             name: this.name,
+                            supplies: {},
                             pack: this.pack,
                             unpack: () => value,
-                            reassemble<THIS extends Product<NAME, NEW_VALUE>>(
-                                this: THIS
-                            ) {
+                            reassemble<
+                                THIS extends Product<
+                                    NAME,
+                                    NEW_VALUE,
+                                    $<SUPPLIERS>
+                                >
+                            >(this: THIS) {
                                 return this
                             },
                             _dependsOnOneOf: this._dependsOnOneOf,
-                            _product: this._product
+                            _product: this._product,
+                            _supplier: this._supplier
                         }
                     }
 
@@ -307,16 +341,23 @@ export const createMarket = () => {
                     >(this: THIS, value: NEW_VALUE) {
                         return {
                             name: this.name,
+                            supplies: {},
                             pack: productPack,
                             // Packed value does not depend on anything.
                             _dependsOnOneOf: () => false,
                             unpack: () => value,
-                            reassemble<THIS extends Product<NAME, NEW_VALUE>>(
-                                this: THIS
-                            ) {
+                            reassemble<
+                                THIS extends Product<
+                                    NAME,
+                                    NEW_VALUE,
+                                    $<SUPPLIERS>
+                                >
+                            >(this: THIS) {
                                 return this
                             },
-                            _product: true as const
+
+                            _product: true as const,
+                            _supplier: this
                         }
                     }
 
@@ -342,11 +383,11 @@ export const createMarket = () => {
                         THIS extends ProductSupplier<
                             NAME,
                             VALUE,
-                            SUPPLIERS,
-                            JUST_IN_TIME,
-                            $<SUPPLIERS>,
-                            MapFromList<[...JUST_IN_TIME]>,
-                            IS_PROTOTYPE
+                            any,
+                            any,
+                            any,
+                            any,
+                            any
                         >,
                         NEW_VALUE extends VALUE,
                         SUPPLIERS_OF_PROTOTYPE extends Supplier<
@@ -394,8 +435,9 @@ export const createMarket = () => {
                             preload,
                             pack,
                             assemble,
-                            prototype: this.prototype,
-                            try: this.try,
+                            prototype,
+                            try: _try,
+                            with: _with,
                             jitOnly,
                             _isPrototype: true as const,
                             _product: true as const
@@ -424,10 +466,30 @@ export const createMarket = () => {
                             VALUE,
                             SUPPLIERS,
                             JUST_IN_TIME,
-                            $<SUPPLIERS>,
-                            MapFromList<[...JUST_IN_TIME]>,
-                            IS_PROTOTYPE
-                        > & { _jitOnly?: boolean },
+                            any,
+                            any,
+                            any
+                        > & {
+                            _jitOnly?: true
+                        },
+                        SUPPLIERS extends ProductSupplier<
+                            string,
+                            any,
+                            any,
+                            any,
+                            any,
+                            any,
+                            any
+                        >[],
+                        JUST_IN_TIME extends ProductSupplier<
+                            string,
+                            any,
+                            any,
+                            any,
+                            any,
+                            any,
+                            any
+                        >[],
                         TRIED_SUPPLIERS extends ProductSupplier<
                             string,
                             any,
@@ -438,17 +500,17 @@ export const createMarket = () => {
                             true
                         >[]
                     >(this: THIS, ...suppliers: [...TRIED_SUPPLIERS]) {
-                        type MERGED_SUPPLIERS = MergeSuppliers<
+                        type MERGED_SUPPLIERS = TrySuppliers<
                             THIS["suppliers"],
                             TRIED_SUPPLIERS
                         >
 
-                        type MERGED_JUST_IN_TIME_SUPPLIERS = MergeSuppliers<
+                        type MERGED_JUST_IN_TIME_SUPPLIERS = TrySuppliers<
                             THIS["justInTime"],
                             TRIED_SUPPLIERS
                         >
 
-                        const supplier = {
+                        const newSupplier = {
                             name: this.name,
                             suppliers: this._jitOnly
                                 ? this.suppliers
@@ -474,27 +536,93 @@ export const createMarket = () => {
                                         )
                                 )
                             ] as unknown as MERGED_JUST_IN_TIME_SUPPLIERS,
-                            factory: this.factory as unknown as (
-                                supplies: $<MERGED_SUPPLIERS>,
-                                justInTime: MapFromList<
-                                    [...MERGED_JUST_IN_TIME_SUPPLIERS]
-                                >
-                            ) => VALUE,
+                            factory: this.factory,
                             preload: this.preload,
                             pack,
                             assemble,
-                            prototype: this.prototype,
-                            try: this.try,
+                            prototype,
+                            try: _try,
+                            with: _with,
                             jitOnly,
                             _isPrototype: true as const,
                             _product: true as const
                         }
 
-                        return supplier as HasCircularDependency<
-                            typeof supplier
+                        return newSupplier as HasCircularDependency<
+                            typeof newSupplier
                         > extends true
                             ? unknown
-                            : typeof supplier
+                            : typeof newSupplier
+                    }
+
+                    function _with<
+                        THIS extends ProductSupplier<
+                            NAME,
+                            VALUE,
+                            SUPPLIERS,
+                            any,
+                            any,
+                            any,
+                            any
+                        >,
+                        SUPPLIERS extends Supplier<
+                            string,
+                            any,
+                            any,
+                            any,
+                            any,
+                            any,
+                            any
+                        >[],
+                        WITH_SUPPLIERS extends ProductSupplier<
+                            string,
+                            any,
+                            any,
+                            any,
+                            any,
+                            any,
+                            any
+                        >[]
+                    >(this: THIS, ...suppliers: [...WITH_SUPPLIERS]) {
+                        type FILTERED_SUPPLIERS = FilterSuppliers<
+                            THIS["suppliers"],
+                            WITH_SUPPLIERS
+                        >
+
+                        const oldSuppliers = this.suppliers.filter(
+                            (supplier) =>
+                                !suppliers.some(
+                                    (newSupplier) =>
+                                        newSupplier.name === supplier.name
+                                )
+                        )
+                        const newSupplier = {
+                            name: this.name,
+                            suppliers: [
+                                ...oldSuppliers,
+                                ...suppliers
+                            ] as unknown as [
+                                ...FILTERED_SUPPLIERS,
+                                ...WITH_SUPPLIERS
+                            ],
+                            justInTime: this.justInTime,
+                            factory: this.factory,
+                            preload: this.preload,
+                            pack,
+                            assemble,
+                            prototype,
+                            try: _try,
+                            with: _with,
+                            jitOnly,
+                            _isPrototype: true as const,
+                            _product: true as const
+                        }
+
+                        return newSupplier as HasCircularDependency<
+                            typeof newSupplier
+                        > extends true
+                            ? unknown
+                            : typeof newSupplier
                     }
 
                     /**
@@ -510,7 +638,7 @@ export const createMarket = () => {
                         // Set the flag and return this for chaining
                         return {
                             ...this,
-                            _jitOnly: true
+                            _jitOnly: true as const
                         }
                     }
 
