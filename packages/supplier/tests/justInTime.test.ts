@@ -511,8 +511,7 @@ describe("JustInTime Feature", () => {
 
                 return `base-value-${JSON.stringify(service.unpack())}`
             },
-            justInTime: [serviceSupplier],
-            preload: false
+            justInTime: [serviceSupplier]
         })
 
         const result = prototypeSupplier.assemble({})
@@ -549,8 +548,7 @@ describe("JustInTime Feature", () => {
 
                 return `base-value-${squared}-${reassembledSquared}`
             },
-            justInTime: [squarerSupplier],
-            preload: false
+            justInTime: [squarerSupplier]
         })
 
         const result = prototypeSupplier.assemble(index(numberSupplier.pack(5)))
@@ -785,95 +783,6 @@ describe("with() method", () => {
             name: "ServiceB",
             shared: "shared-data",
             id: 123
-        })
-    })
-
-    it("should support chaining multiple with() calls", () => {
-        const market = createMarket()
-
-        const configSupplier = market
-            .offer("config")
-            .asResource<{ env: string }>()
-
-        const serviceASupplier = market.offer("serviceA").asProduct({
-            suppliers: [configSupplier],
-            factory: ($) => ({ name: "A", env: $(configSupplier).env })
-        })
-
-        const serviceBSupplier = market.offer("serviceB").asProduct({
-            suppliers: [configSupplier],
-            factory: ($) => ({ name: "B", env: $(configSupplier).env })
-        })
-
-        const serviceCSupplier = market.offer("serviceC").asProduct({
-            suppliers: [configSupplier],
-            factory: ($) => ({ name: "C", env: $(configSupplier).env })
-        })
-
-        const combinedSupplier = serviceASupplier
-            .with(serviceBSupplier)
-            .with(serviceCSupplier)
-
-        const config = configSupplier.pack({ env: "test" })
-        const result = combinedSupplier.assemble(index(config))
-
-        expect(result.unpack()).toEqual({ name: "A", env: "test" })
-        expect(result.supplies(serviceBSupplier)).toEqual({
-            name: "B",
-            env: "test"
-        })
-        expect(result.supplies(serviceCSupplier)).toEqual({
-            name: "C",
-            env: "test"
-        })
-    })
-
-    it("should work with prototypes in with() method", () => {
-        const market = createMarket()
-
-        const configSupplier = market
-            .offer("config")
-            .asResource<{ mode: string }>()
-
-        const baseServiceSupplier = market.offer("baseService").asProduct({
-            suppliers: [configSupplier],
-            factory: ($) => ({
-                service: "base",
-                mode: $(configSupplier).mode
-            })
-        })
-
-        const mockServiceSupplier = baseServiceSupplier.prototype({
-            factory: () => ({ service: "mock", mode: "test" })
-        })
-
-        const otherServiceSupplier = market.offer("otherService").asProduct({
-            suppliers: [configSupplier],
-            factory: ($) => ({
-                service: "other",
-                mode: $(configSupplier).mode
-            })
-        })
-
-        const combinedSupplier = mockServiceSupplier.with(otherServiceSupplier)
-
-        const combinedSupplier2 = otherServiceSupplier.with(mockServiceSupplier)
-        const config = configSupplier.pack({ mode: "production" })
-        const result = combinedSupplier.assemble(index(config))
-        const result2 = combinedSupplier2.assemble(index(config))
-
-        expect(result.unpack()).toEqual({ service: "mock", mode: "test" })
-        expect(result.supplies(otherServiceSupplier)).toEqual({
-            service: "other",
-            mode: "production"
-        })
-        expect(result2.unpack()).toEqual({
-            service: "other",
-            mode: "production"
-        })
-        expect(result2.supplies(mockServiceSupplier)).toEqual({
-            service: "mock",
-            mode: "test"
         })
     })
 

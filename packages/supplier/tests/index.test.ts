@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { createMarket } from "#index"
-import { index, sleep } from "#utils"
-import memo from "memoize"
+import { index, once, sleep } from "#utils"
 
 describe("supplier", () => {
     beforeEach(() => {
@@ -289,44 +288,84 @@ describe("supplier", () => {
         })
     })
 
-    describe("Referential integrity and Lazy Evaluation", () => {
+    describe("Callable Object API", () => {
+        it("should support both property access and function calls for dependencies", () => {
+            const market = createMarket()
+            const resourceSupplier = market
+                .offer("resource")
+                .asResource<string>()
+            const productSupplier = market.offer("product").asProduct({
+                factory: () => "product"
+            })
+
+            const testProduct = market.offer("test-product").asProduct({
+                suppliers: [resourceSupplier, productSupplier],
+                factory: ($) => {
+                    return {
+                        propAccess: {
+                            resource: $[resourceSupplier.name].unpack(),
+                            product: $[productSupplier.name].unpack()
+                        },
+                        funcAccess: {
+                            resource: $(resourceSupplier),
+                            product: $(productSupplier)
+                        }
+                    }
+                }
+            })
+
+            const result = testProduct.assemble(
+                index(resourceSupplier.pack("resource"))
+            )
+
+            expect(result.unpack().propAccess).toEqual({
+                resource: "resource",
+                product: "product"
+            })
+            expect(result.unpack().funcAccess).toEqual({
+                resource: "resource",
+                product: "product"
+            })
+        })
+    })
+
+    describe("Factory memoization", () => {
         it("should create separate memoization contexts for different assembly calls", () => {
-            const factoryMock = vi.fn().mockReturnValue("product")
+            const factorySpy = vi.fn().mockReturnValue("product")
 
             const market = createMarket()
             const productSupplier = market.offer("product").asProduct({
-                factory: memo(factoryMock)
+                factory: factorySpy
             })
 
             const product = productSupplier.assemble({})
 
             // First access should call the factory
             expect(product.unpack()).toBe("product")
-            expect(factoryMock).toHaveBeenCalledTimes(1)
+            expect(factorySpy).toHaveBeenCalledTimes(1)
 
             // The memoization works within the same assembly context
             // Each call to assemble() creates a new context, so the factory is called again
             const secondAccess = productSupplier.assemble({})
             expect(secondAccess.unpack()).toBe("product")
             // Factory is called again for the new assembly context
-            expect(factoryMock).toHaveBeenCalledTimes(2)
+            expect(factorySpy).toHaveBeenCalledTimes(2)
         })
 
-        it("should respect memoized calls when accessed multiple times within the same assembly context", () => {
-            const factoryMock = vi.fn().mockReturnValue("memoized")
+        it("should memoize factory calls when accessed multiple times within the same assembly context", () => {
+            const factorySpy = vi.fn().mockReturnValue("memoized")
 
             const market = createMarket()
-            const memoizedSupplier = market.offer("memoized").asProduct({
-                factory: memo(factoryMock)
+            const spySupplier = market.offer("spy").asProduct({
+                factory: factorySpy
             })
 
             const testSupplier = market.offer("test").asProduct({
-                suppliers: [memoizedSupplier],
+                suppliers: [spySupplier],
                 factory: ($) => {
                     // Access the TestService multiple times within the same assembly context
-                    $(memoizedSupplier)
-                    $(memoizedSupplier)
-                    $(memoizedSupplier)
+                    $(spySupplier)
+                    $(spySupplier)
 
                     return "test"
                 }
@@ -334,15 +373,15 @@ describe("supplier", () => {
 
             testSupplier.assemble({}).unpack()
             // Factory should only be called once due to memoization within the same assembly context
-            expect(factoryMock).toHaveBeenCalledTimes(1)
+            expect(factorySpy).toHaveBeenCalledTimes(1)
         })
 
         it("should keep memoization even if multiple dependents are nested", () => {
-            const factory1Mock = vi.fn().mockReturnValue("product1")
+            const factory1Spy = vi.fn().mockReturnValue("product1")
 
             const market = createMarket()
             const product1Supplier = market.offer("product1").asProduct({
-                factory: memo(factory1Mock)
+                factory: factory1Spy
             })
 
             const product2Supplier = market.offer("product2").asProduct({
@@ -371,31 +410,31 @@ describe("supplier", () => {
             })
 
             // factory1  should only be called once due to memoization within the same context
-            expect(factory1Mock).toHaveBeenCalledTimes(1)
+            expect(factory1Spy).toHaveBeenCalledTimes(1)
         })
 
         it("should reassemble product if dependent suppliers reassembles", async () => {
             const market = createMarket()
             // productA will be reassembled
             const productASupplier = market.offer("productA").asProduct({
-                factory: memo(() => Date.now())
+                factory: () => Date.now()
             })
 
             // productB will be reassembled when productA reassembles
             const productBSupplier = market.offer("productB").asProduct({
                 suppliers: [productASupplier],
-                factory: memo(() => Date.now())
+                factory: () => Date.now()
             })
 
             // productC - doesn't depend on anything, so it will not be reassembled
             const productCSupplier = market.offer("productC").asProduct({
-                factory: memo(() => Date.now())
+                factory: () => Date.now()
             })
 
             // productD will be reassembled when productB reassembles
             const productDSupplier = market.offer("productD").asProduct({
                 suppliers: [productBSupplier],
-                factory: memo(() => Date.now())
+                factory: () => Date.now()
             })
 
             // Create a main product that includes all products in its team for testing
@@ -445,22 +484,22 @@ describe("supplier", () => {
         it("should handle recursive dependency chains correctly", async () => {
             const market = createMarket()
             const productASupplier = market.offer("productA").asProduct({
-                factory: memo(() => Date.now())
+                factory: () => Date.now()
             })
 
             const productBSupplier = market.offer("productB").asProduct({
                 suppliers: [productASupplier],
-                factory: memo(() => Date.now())
+                factory: () => Date.now()
             })
 
             const productCSupplier = market.offer("productC").asProduct({
                 suppliers: [productBSupplier],
-                factory: memo(() => Date.now())
+                factory: () => Date.now()
             })
 
             const productDSupplier = market.offer("productD").asProduct({
                 suppliers: [productCSupplier],
-                factory: memo(() => Date.now())
+                factory: () => Date.now()
             })
 
             // Create a main service that includes all services for testing
@@ -504,73 +543,32 @@ describe("supplier", () => {
         })
     })
 
-    describe("Callable Object API", () => {
-        it("should support both property access and function calls for dependencies", () => {
-            const market = createMarket()
-            const resourceSupplier = market
-                .offer("resource")
-                .asResource<string>()
-            const productSupplier = market.offer("product").asProduct({
-                factory: () => "product"
-            })
-
-            const testProduct = market.offer("test-product").asProduct({
-                suppliers: [resourceSupplier, productSupplier],
-                factory: ($) => {
-                    return {
-                        propAccess: {
-                            resource: $[resourceSupplier.name].unpack(),
-                            product: $[productSupplier.name].unpack()
-                        },
-                        funcAccess: {
-                            resource: $(resourceSupplier),
-                            product: $(productSupplier)
-                        }
-                    }
-                }
-            })
-
-            const result = testProduct.assemble(
-                index(resourceSupplier.pack("resource"))
-            )
-
-            expect(result.unpack().propAccess).toEqual({
-                resource: "resource",
-                product: "product"
-            })
-            expect(result.unpack().funcAccess).toEqual({
-                resource: "resource",
-                product: "product"
-            })
-        })
-    })
-
     describe("Preload Feature", () => {
-        it("should preload services by default", async () => {
+        it("should init eager services, not lazy ones ", async () => {
             const market = createMarket()
-            const preloadFactoryMock = vi.fn().mockReturnValue("preloaded")
-            const normalFactoryMock = vi.fn().mockReturnValue("normal")
+            const initedValueSpy = vi
+                .fn<() => "inited">()
+                .mockReturnValue("inited")
+            const normalValueSpy = vi.fn().mockReturnValue("normal")
+            const lazyValueSpy = vi.fn().mockReturnValue("lazy")
 
-            const preloadedSupplier = market.offer("preloaded").asProduct({
-                factory: preloadFactoryMock
+            const initedSupplier = market.offer("inited").asProduct({
+                factory: () => initedValueSpy,
+                init: (value) => value()
             })
 
             const normalSupplier = market.offer("normal").asProduct({
-                factory: normalFactoryMock,
-                preload: false
+                factory: () => normalValueSpy
             })
 
-            const noPreloadSupplier = market.offer("no-preload").asProduct({
-                factory: vi.fn().mockReturnValue("no-preload")
-                // preload defaults to false
+            const lazySupplier = market.offer("lazy").asProduct({
+                factory: () => lazyValueSpy,
+                init: (value) => value(),
+                lazy: true
             })
 
             const mainSupplier = market.offer("main").asProduct({
-                suppliers: [
-                    preloadedSupplier,
-                    normalSupplier,
-                    noPreloadSupplier
-                ],
+                suppliers: [initedSupplier, normalSupplier, lazySupplier],
                 factory: () => {
                     // Don't access any dependencies yet
                     return "main"
@@ -579,26 +577,29 @@ describe("supplier", () => {
 
             const mainProduct = mainSupplier.assemble({})
 
-            // Wait a bit for preloading to complete
+            // Wait a bit for initing to complete
             await sleep(10)
 
-            // PreloadService should have been called due to preload: true
-            expect(preloadFactoryMock).toHaveBeenCalledTimes(1)
+            // PreloadService should have been called due to init: true
+            expect(initedValueSpy).toHaveBeenCalledTimes(1)
 
             // NormalService and NoPreloadService should not have been called yet
-            expect(normalFactoryMock).toHaveBeenCalledTimes(0)
+            expect(normalValueSpy).toHaveBeenCalledTimes(0)
+
+            expect(lazyValueSpy).toHaveBeenCalledTimes(0)
 
             expect(mainProduct.unpack()).toBe("main")
         })
 
-        it("should handle preload errors gracefully without breaking the supply chain", async () => {
+        it("should handle init errors gracefully without breaking the supply chain", async () => {
             const market = createMarket()
-            const errorFactoryMock = vi.fn().mockImplementation(() => {
+            const errorValueSpy = vi.fn().mockImplementation(() => {
                 throw new Error()
             })
 
             const errorSupplier = market.offer("error").asProduct({
-                factory: errorFactoryMock
+                factory: () => once(errorValueSpy),
+                init: (value) => value()
             })
 
             const mainSupplier = market.offer("main").asProduct({
@@ -609,69 +610,60 @@ describe("supplier", () => {
                 }
             })
 
-            // This should not throw even though ErrorService will fail during preload
+            // This should not throw even though ErrorService will fail during init
             const mainProduct = mainSupplier.assemble({})
 
-            // Wait a bit for preloading to complete
+            // Wait a bit for initing to complete
             await sleep(10)
 
             expect(mainProduct.unpack()).toBe("main")
 
-            // ErrorService factory should have been called during preload
-            expect(errorFactoryMock).toHaveBeenCalledTimes(1)
+            // ErrorService factory should have been called during init
+            expect(errorValueSpy).toHaveBeenCalledTimes(1)
         })
 
-        it("should still throw error when accessing a failed preloaded service", async () => {
+        it("should still throw error when accessing a failed inited service", async () => {
             const market = createMarket()
-            const errorFactoryMock = vi.fn().mockImplementation(() => {
+            const errorValueSpy = vi.fn().mockImplementation(() => {
                 throw new Error()
             })
 
             const errorSupplier = market.offer("error").asProduct({
-                factory: errorFactoryMock
+                factory: () => once(errorValueSpy),
+                init: (value) => value()
             })
 
             const mainSupplier = market.offer("main").asProduct({
                 suppliers: [errorSupplier],
                 factory: ($) => {
                     // Try to access the failed service
-                    return $(errorSupplier)
+                    return $(errorSupplier)()
                 }
             })
 
-            // Wait a bit for preloading to complete
+            // Wait a bit for initing to complete
             await sleep(10)
 
             // Accessing the service should still throw the error
             expect(() => mainSupplier.assemble({}).unpack()).toThrow()
         })
 
-        it("should work with complex dependency chains and selective preloading", async () => {
+        it("should work with complex dependency chains and selective initing", async () => {
             const market = createMarket()
-            const product1Mock = vi.fn().mockReturnValue("product1")
-            const product2Mock = vi.fn().mockReturnValue("product2")
-            const product3Mock = vi.fn().mockReturnValue("product3")
+            const product1Spy = vi.fn().mockReturnValue("product1")
+            const product2Spy = vi.fn().mockReturnValue("product2")
 
             const product1Supplier = market.offer("product1").asProduct({
-                factory: product1Mock
+                factory: () => once(product1Spy),
+                init: (value) => value()
             })
 
             const product2Supplier = market.offer("product2").asProduct({
-                factory: product2Mock,
-                preload: false // This will not be preloaded
-            })
-
-            const product3Supplier = market.offer("product3").asProduct({
-                factory: product3Mock,
-                preload: false
+                factory: () => once(product2Spy)
             })
 
             const mainSupplier = market.offer("main").asProduct({
-                suppliers: [
-                    product1Supplier,
-                    product2Supplier,
-                    product3Supplier
-                ],
+                suppliers: [product1Supplier, product2Supplier],
                 factory: () => {
                     return "main"
                 }
@@ -679,13 +671,264 @@ describe("supplier", () => {
 
             const mainProduct = mainSupplier.assemble({})
 
-            // Wait a bit for preloading to complete
+            // Wait a bit for initing to complete
             await sleep(10)
 
-            // Only product1Supplier should have been preloaded
-            expect(product1Mock).toHaveBeenCalledTimes(1)
-            expect(product2Mock).toHaveBeenCalledTimes(0)
-            expect(product3Mock).toHaveBeenCalledTimes(0)
+            // Only product1Supplier should have been inited
+            expect(product1Spy).toHaveBeenCalledTimes(1)
+            expect(product2Spy).toHaveBeenCalledTimes(0)
+
+            expect(mainProduct.unpack()).toBe("main")
+        })
+    })
+
+    describe("Lazy Feature", () => {
+        it("should run factory for non-lazy suppliers during assemble", () => {
+            const factorySpy = vi.fn().mockReturnValue("eager-value")
+
+            const market = createMarket()
+            const eagerSupplier = market.offer("eager").asProduct({
+                factory: factorySpy,
+                lazy: false // explicitly non-lazy
+            })
+
+            const mainSupplier = market.offer("main").asProduct({
+                suppliers: [eagerSupplier],
+                factory: () => "main"
+            })
+
+            // Factory should be called during assemble, even though we don't access it
+            mainSupplier.assemble({})
+
+            expect(factorySpy).toHaveBeenCalledTimes(1)
+        })
+
+        it("should NOT run factory for lazy suppliers during assemble", () => {
+            const factorySpy = vi.fn().mockReturnValue("lazy-value")
+
+            const market = createMarket()
+            const lazySupplier = market.offer("lazy").asProduct({
+                factory: factorySpy,
+                lazy: true
+            })
+
+            const mainSupplier = market.offer("main").asProduct({
+                suppliers: [lazySupplier],
+                factory: () => "main"
+            })
+
+            // Factory should NOT be called during assemble
+            mainSupplier.assemble({})
+
+            expect(factorySpy).toHaveBeenCalledTimes(0)
+        })
+
+        it("should run lazy supplier factory only when first accessed", () => {
+            const factorySpy = vi.fn().mockReturnValue("lazy-value")
+
+            const market = createMarket()
+            const lazySupplier = market.offer("lazy").asProduct({
+                factory: factorySpy,
+                lazy: true
+            })
+
+            const mainSupplier = market.offer("main").asProduct({
+                suppliers: [lazySupplier],
+                factory: ($) => {
+                    // Access the lazy supplier
+                    const lazyValue = $(lazySupplier)
+                    return { lazyValue }
+                }
+            })
+
+            const mainProduct = mainSupplier.assemble({})
+
+            // Factory should not be called during assemble
+            expect(factorySpy).toHaveBeenCalledTimes(0)
+
+            // Factory should be called when we access the lazy supplier
+            expect(mainProduct.unpack().lazyValue).toBe("lazy-value")
+            expect(factorySpy).toHaveBeenCalledTimes(1)
+        })
+
+        it("Lazy suppliers shield eager suppliers from being lazy loaded early when deeper in dependency chain", async () => {
+            const factory1Spy = vi.fn().mockReturnValue("service1")
+            const lazyFactorySpy = vi.fn().mockReturnValue("lazy-service")
+            const factory2Spy = vi.fn().mockReturnValue("service2")
+
+            const market = createMarket()
+            const service1Supplier = market.offer("service1").asProduct({
+                factory: factory1Spy
+            })
+
+            const lazySupplier = market.offer("lazy").asProduct({
+                suppliers: [service1Supplier],
+                factory: lazyFactorySpy,
+                lazy: true
+            })
+
+            const service2Supplier = market.offer("service2").asProduct({
+                suppliers: [lazySupplier],
+                factory: factory2Spy
+            })
+
+            const mainSupplier = market.offer("main").asProduct({
+                suppliers: [service2Supplier],
+                factory: ($) => {
+                    const main = $(service2Supplier)
+                    return { main }
+                }
+            })
+
+            const mainProduct = mainSupplier.assemble({})
+
+            await sleep(100)
+
+            // Eager service should be called during assemble
+            expect(factory2Spy).toHaveBeenCalledTimes(1)
+            // Lazy service should not be called during assemble
+            expect(lazyFactorySpy).toHaveBeenCalledTimes(0)
+            // Eager service should not be called during assemble since parent lazy service is lazy loaded
+            expect(factory1Spy).toHaveBeenCalledTimes(0)
+        })
+
+        it("should handle lazy suppliers with reassembly", () => {
+            const factorySpy = vi.fn().mockReturnValue("lazy-value")
+
+            const market = createMarket()
+            const lazySupplier = market.offer("lazy").asProduct({
+                factory: factorySpy,
+                lazy: true
+            })
+
+            const mainSupplier = market.offer("main").asProduct({
+                suppliers: [lazySupplier],
+                factory: ($) => {
+                    const lazyValue = $(lazySupplier)
+                    return { lazyValue }
+                }
+            })
+
+            const mainProduct = mainSupplier.assemble({})
+
+            // Access the lazy supplier
+            expect(mainProduct.unpack().lazyValue).toBe("lazy-value")
+            expect(factorySpy).toHaveBeenCalledTimes(1)
+
+            // Reassemble should not call the factory again for lazy suppliers
+            const newMainProduct = mainProduct.reassemble({})
+            expect(newMainProduct.unpack().lazyValue).toBe("lazy-value")
+            expect(factorySpy).toHaveBeenCalledTimes(1) // Still only called once
+        })
+
+        it("should handle lazy suppliers with prototypes", () => {
+            const originalFactorySpy = vi.fn().mockReturnValue("original")
+            const prototypeFactorySpy = vi.fn().mockReturnValue("prototype")
+
+            const market = createMarket()
+            const originalSupplier = market.offer("service").asProduct({
+                factory: originalFactorySpy,
+                lazy: true
+            })
+
+            const prototypeSupplier = originalSupplier.prototype({
+                factory: prototypeFactorySpy,
+                lazy: true
+            })
+
+            const mainSupplier = market.offer("main").asProduct({
+                suppliers: [originalSupplier],
+                factory: ($) => {
+                    const value = $(prototypeSupplier)
+                    return { value }
+                }
+            })
+
+            const mainProduct = mainSupplier.try(prototypeSupplier).assemble({})
+
+            // Neither factory should be called during assemble
+            expect(originalFactorySpy).toHaveBeenCalledTimes(0)
+            expect(prototypeFactorySpy).toHaveBeenCalledTimes(0)
+
+            // Only prototype factory should be called when accessed
+            expect(mainProduct.unpack().value).toBe("prototype")
+            expect(originalFactorySpy).toHaveBeenCalledTimes(0)
+            expect(prototypeFactorySpy).toHaveBeenCalledTimes(1)
+        })
+
+        it("should default to non-lazy behavior when lazy is not specified", () => {
+            const factorySpy = vi.fn().mockReturnValue("default-eager")
+
+            const market = createMarket()
+            const defaultSupplier = market.offer("default").asProduct({
+                factory: factorySpy
+                // lazy not specified, should default to false
+            })
+
+            const mainSupplier = market.offer("main").asProduct({
+                suppliers: [defaultSupplier],
+                factory: () => "main"
+            })
+
+            // Factory should be called during assemble (default behavior)
+            mainSupplier.assemble({})
+            expect(factorySpy).toHaveBeenCalledTimes(1)
+        })
+
+        it("should not init lazy suppliers even when init is specified", async () => {
+            const initSpy = vi.fn()
+            const factorySpy = vi.fn().mockReturnValue("lazy-with-init")
+
+            const market = createMarket()
+            const lazySupplier = market.offer("lazy").asProduct({
+                factory: factorySpy,
+                init: initSpy,
+                lazy: true
+            })
+
+            const mainSupplier = market.offer("main").asProduct({
+                suppliers: [lazySupplier],
+                factory: () => "main"
+            })
+
+            const mainProduct = mainSupplier.assemble({})
+
+            // Wait a bit for any initing to complete
+            await sleep(10)
+
+            // Lazy supplier should not be inited
+            expect(factorySpy).toHaveBeenCalledTimes(0)
+            expect(initSpy).toHaveBeenCalledTimes(0)
+
+            // Only when accessed should the factory run
+            expect(mainProduct.unpack()).toBe("main")
+            expect(factorySpy).toHaveBeenCalledTimes(0) // Still not called since we don't access the lazy supplier
+        })
+
+        it("should init non-lazy suppliers when init is specified", async () => {
+            const initSpy = vi.fn()
+            const factorySpy = vi.fn().mockReturnValue(() => "eager-with-init")
+
+            const market = createMarket()
+            const eagerSupplier = market.offer("eager").asProduct({
+                factory: factorySpy,
+                init: initSpy,
+                lazy: false
+            })
+
+            const mainSupplier = market.offer("main").asProduct({
+                suppliers: [eagerSupplier],
+                factory: () => "main"
+            })
+
+            const mainProduct = mainSupplier.assemble({})
+
+            // Wait a bit for initing to complete
+            await sleep(10)
+
+            // Eager supplier should be inited
+            expect(factorySpy).toHaveBeenCalledTimes(1)
+            expect(initSpy).toHaveBeenCalledTimes(1)
 
             expect(mainProduct.unpack()).toBe("main")
         })

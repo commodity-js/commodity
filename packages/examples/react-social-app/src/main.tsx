@@ -1,16 +1,20 @@
-import React from "react"
-import ReactDOM from "react-dom/client"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import App from "./App"
+import { StrictMode } from "react"
+import { createRoot } from "react-dom/client"
 import "./index.css"
+import { AppSupplier } from "@/components/app"
+import { QueryClientProvider } from "@tanstack/react-query"
+import { queryClient } from "@/query"
+import { postsQuerySupplier, usersQuerySupplier } from "@/api"
 
-// Create React Query client
-const queryClient = new QueryClient()
+queryClient.prefetchQuery(usersQuerySupplier.assemble({}).unpack())
+queryClient.prefetchQuery(postsQuerySupplier.assemble({}).unpack())
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-    <React.StrictMode>
+const root = createRoot(document.getElementById("root")!)
+const App = AppSupplier.assemble({}).unpack()
+root.render(
+    <StrictMode>
         <QueryClientProvider client={queryClient}>
-            <App />
+            <App defaultUserId="userA" />
         </QueryClientProvider>
-    </React.StrictMode>
+    </StrictMode>
 )

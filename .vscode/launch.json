@@ -13,6 +13,15 @@
             "showAsyncStacks": true,
             "sourceMaps": true,
             "smartStep": true
+        },
+        {
+            "name": "Debug React Social App",
+            "type": "chrome",
+            "request": "launch",
+            "url": "http://localhost:3000",
+            "sourceMaps": true,
+            "smartStep": true,
+            "webRoot": "${workspaceFolder}/packages/examples/react-social-app"
         }
     ]
 }

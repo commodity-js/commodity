@@ -84,18 +84,19 @@ export type ProductSupplier<
     factory: (supplies: SUPPLIES, justInTime: JUST_IN_TIME_MAP) => VALUE
     assemble: (toSupply: ToSupply<SUPPLIERS>) => Product<NAME, VALUE, SUPPLIES>
     pack: (value: VALUE) => Product<NAME, VALUE, Record<never, never>>
-    try: (
+    try?: (
         ...suppliers: ProductSupplier<string, any, any, any, any, any, true>[]
     ) => ProductSupplier<NAME, VALUE, any, any, any, any, true>
-    with: (
+    with?: (
         ...suppliers: ProductSupplier<string, any, any, any, any, any, false>[]
     ) => ProductSupplier<NAME, VALUE, any, any, any, any, true>
     jitOnly: () => ProductSupplier<NAME, VALUE, any, any, any, any, false>
-    prototype: ({
+    prototype?: ({
         factory,
         suppliers,
         justInTime,
-        preload
+        init,
+        lazy
     }: {
         factory: (
             supplies: $<Supplier<string, any, any, any, any, any, any>[]>,
@@ -105,7 +106,11 @@ export type ProductSupplier<
         ) => VALUE
         suppliers?: Supplier<string, any, any, any, any, any, any>[]
         justInTime?: Supplier<string, any, any, any, any, any, any>[]
-        preload: boolean
+        init?: (
+            value: VALUE,
+            supplies: $<Supplier<string, any, any, any, any, any, any>[]>
+        ) => void
+        lazy?: boolean
     }) => ProductSupplier<
         NAME,
         VALUE,
@@ -115,7 +120,8 @@ export type ProductSupplier<
         any,
         true
     >
-    preload: boolean
+    init?: (value: VALUE, supplies: SUPPLIES) => void
+    lazy?: boolean
     _isPrototype: IS_PROTOTYPE
     _product: true
 }

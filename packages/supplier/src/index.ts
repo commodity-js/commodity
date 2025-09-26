@@ -15,7 +15,7 @@ import {
 } from "#types"
 
 import { hire } from "#assemble"
-import { index } from "#utils"
+import { index, once } from "#utils"
 
 /**
  * Type guard to check if a supply is a Product.
@@ -134,7 +134,8 @@ export const createMarket = () => {
                     suppliers = [] as unknown as SUPPLIERS,
                     justInTime = [] as unknown as JUST_IN_TIME,
                     factory,
-                    preload = true,
+                    init,
+                    lazy = false,
                     isPrototype = false as IS_PROTOTYPE
                 }: {
                     suppliers?: [...SUPPLIERS]
@@ -143,7 +144,8 @@ export const createMarket = () => {
                         supplies: $<SUPPLIERS>,
                         justInTime: MapFromList<[...JUST_IN_TIME]>
                     ) => VALUE
-                    preload?: boolean
+                    init?: (value: VALUE, supplies: $<SUPPLIERS>) => void
+                    lazy?: boolean
                     isPrototype?: IS_PROTOTYPE
                 }) => {
                     const productSupplier = {
@@ -151,7 +153,8 @@ export const createMarket = () => {
                         suppliers,
                         justInTime,
                         factory,
-                        preload,
+                        lazy,
+                        init,
                         pack,
                         assemble,
                         try: _try,
@@ -173,21 +176,12 @@ export const createMarket = () => {
                         THIS extends ProductSupplier<
                             NAME,
                             VALUE,
-                            SUPPLIERS,
                             Supplier<string, any, any, any, any, any, any>[],
                             any,
                             any,
-                            any
-                        >,
-                        SUPPLIERS extends Supplier<
-                            string,
-                            any,
-                            any,
-                            any,
-                            any,
                             any,
                             any
-                        >[]
+                        >
                     >(this: THIS, toSupply: ToSupply<THIS["suppliers"]>) {
                         const team = this.suppliers.filter(
                             (supplier) =>
@@ -208,14 +202,22 @@ export const createMarket = () => {
                                 THIS["suppliers"]
                             >
 
-                        const buildUnpack =
-                            (supplies: $<THIS["suppliers"]>) => () =>
-                                this.factory(
+                        const supplies = assemble(toSupply)
+
+                        const buildUnpack = (
+                            supplies: $<THIS["suppliers"]>
+                        ) => {
+                            return once(() => {
+                                const value = this.factory(
                                     supplies,
                                     index(...this.justInTime)
                                 ) as ReturnType<THIS["factory"]>
-
-                        const supplies = assemble(toSupply)
+                                if (this.init) {
+                                    this.init(value, supplies)
+                                }
+                                return value
+                            })
+                        }
 
                         return {
                             name: this.name,
@@ -368,7 +370,7 @@ export const createMarket = () => {
                      * @param config.factory - Factory function for the prototype
                      * @param config.suppliers - Dependencies for the prototype
                      * @param config.justInTime - Just-in-time dependencies for the prototype
-                     * @param config.preload - Whether to preload the prototype
+                     * @param config.init - Whether to init the prototype
                      * @returns A prototype product supplier
                      * @example
                      * ```typescript
@@ -389,7 +391,6 @@ export const createMarket = () => {
                             any,
                             any
                         >,
-                        NEW_VALUE extends VALUE,
                         SUPPLIERS_OF_PROTOTYPE extends Supplier<
                             string,
                             any,
@@ -414,17 +415,22 @@ export const createMarket = () => {
                             factory,
                             suppliers = [] as unknown as SUPPLIERS_OF_PROTOTYPE,
                             justInTime = [] as unknown as JUST_IN_TIME_OF_PROTOTYPE,
-                            preload = true as boolean
+                            init,
+                            lazy = false
                         }: {
                             factory: (
                                 supplies: $<SUPPLIERS_OF_PROTOTYPE>,
                                 justInTime: MapFromList<
                                     [...JUST_IN_TIME_OF_PROTOTYPE]
                                 >
-                            ) => NEW_VALUE
+                            ) => VALUE
                             suppliers?: [...SUPPLIERS_OF_PROTOTYPE]
                             justInTime?: [...JUST_IN_TIME_OF_PROTOTYPE]
-                            preload?: boolean
+                            init?: (
+                                value: VALUE,
+                                supplies: $<SUPPLIERS_OF_PROTOTYPE>
+                            ) => void
+                            lazy?: boolean
                         }
                     ) {
                         const supplier = {
@@ -432,12 +438,10 @@ export const createMarket = () => {
                             suppliers,
                             justInTime,
                             factory,
-                            preload,
+                            init,
+                            lazy,
                             pack,
                             assemble,
-                            prototype,
-                            try: _try,
-                            with: _with,
                             jitOnly,
                             _isPrototype: true as const,
                             _product: true as const
@@ -537,12 +541,10 @@ export const createMarket = () => {
                                 )
                             ] as unknown as MERGED_JUST_IN_TIME_SUPPLIERS,
                             factory: this.factory,
-                            preload: this.preload,
+                            init: this.init,
+                            lazy: this.lazy,
                             pack,
                             assemble,
-                            prototype,
-                            try: _try,
-                            with: _with,
                             jitOnly,
                             _isPrototype: true as const,
                             _product: true as const
@@ -607,12 +609,10 @@ export const createMarket = () => {
                             ],
                             justInTime: this.justInTime,
                             factory: this.factory,
-                            preload: this.preload,
+                            init: this.init,
+                            lazy: this.lazy,
                             pack,
                             assemble,
-                            prototype,
-                            try: _try,
-                            with: _with,
                             jitOnly,
                             _isPrototype: true as const,
                             _product: true as const

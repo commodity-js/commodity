@@ -20,11 +20,20 @@ import { type MapFromList } from "#types"
 export function once<T extends () => any>(func: T) {
     let called = false
     let result: ReturnType<T>
+    let error: Error | undefined
 
     return function () {
         if (!called) {
             called = true
-            result = func()
+            try {
+                result = func()
+            } catch (e) {
+                error = e as Error
+                throw e
+            }
+        }
+        if (error) {
+            throw error
         }
         return result
     }
