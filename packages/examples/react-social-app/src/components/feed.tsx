@@ -2,7 +2,7 @@ import { postsQuerySupplier } from "@/api"
 import { market } from "@/market"
 import { PostSupplier } from "@/components/post"
 import { ctx } from "@/context"
-import { index } from "supplier"
+import { index } from "commodity"
 import { useQuery } from "@tanstack/react-query"
 
 export const FeedSupplier = market.offer("Feed").asProduct({

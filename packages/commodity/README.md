@@ -1,8 +1,8 @@
-# supplier
+# commodity
 
 Functional, <u>fully type-safe</u> and <u>stateless</u> dependency and Context injector for TypeScript. Enter the containerless DI revolution! No OOP, reflect-metadata, decorators, annotations or compiler magic, just functions and closures!
 
-## Why Supplier?
+## Why Commodity?
 
 ✅ **Fully type-safe** - Compile-time dependency validation and circular dependency detection  
 ✅ **No magic** - Just functions and closures, no OOP, reflect-metadata, decorators, annotations or compiler magic.
@@ -14,10 +14,10 @@ Functional, <u>fully type-safe</u> and <u>stateless</u> dependency and Context i
 ## Installation
 
 ```bash
-npm install supplier
+npm install commodity
 ```
 
-## When to Use Supplier
+## When to Use Commodity
 
 -   **Complex TypeScript applications** with deep function call hierarchies
 -   **Avoiding prop-drilling** in React (works in both Client and Server Components)
@@ -36,7 +36,7 @@ npm install supplier
 ## Quick Example
 
 ```ts
-import { createMarket, index } from "supplier"
+import { createMarket, index } from "commodity"
 
 // 1. Create a market
 const market = createMarket()
@@ -65,7 +65,7 @@ const addTodo = addTodoSupplier
     .assemble(index(sessionSupplier.pack(session)))
     .unpack()
 
-console.log(addTodo("Learn Supplier")) // ["Learn Supplier"]
+console.log(addTodo("Learn Commodity")) // ["Learn Commodity"]
 console.log(addTodo("Build app")) // ["Learn Supplier", "Build app"]
 ```
 
@@ -132,7 +132,7 @@ All suppliers are created from a `market`, which creates a scope shared by Resou
 You'll usually create one market per application. Markets register the names of the resources and products it `offers` so that no name conflicts occur. The name registry is the only state the market manages.
 
 ```ts
-import { createMarket } from "supplier"
+import { createMarket } from "commodity"
 
 const market = createMarket()
 ```
@@ -216,7 +216,7 @@ To simplify the assemble() call, you should use the index() utility, which trans
 `{[resource1.name]: resource1, [resource2.name]:resource2}`. I unfortunately did not find a way to merge index() with assemble() without losing assemble's type-safety, because typescript doesn't have an unordered tuple type.
 
 ```tsx
-import { index } from "supplier"
+import { index } from "commodity"
 
 const appProduct = appSupplier.assemble(
     index(

@@ -3,7 +3,7 @@ import { market } from "@/market"
 import type { Comment } from "@/api"
 import { useState } from "react"
 import { CommentSupplier } from "@/components/comment"
-import { index } from "supplier"
+import { index } from "commodity"
 import { ctx } from "@/context"
 import { useQuery } from "@tanstack/react-query"
 export const PostSupplier = market.offer("Post").asProduct({

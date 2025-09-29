@@ -144,7 +144,7 @@ export default function Home() {
                                 Basic Usage
                             </h3>
                             <CodeExample
-                                code={`import { register, parcel } from "supplier";
+                                code={`import { register, parcel } from "commodity";
 
 // Create a resource
 const ConfigResource = register("config")

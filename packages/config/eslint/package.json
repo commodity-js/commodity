@@ -1,5 +1,5 @@
 {
-    "name": "@config.supplier/eslint",
+    "name": "@config.commodity/eslint",
     "version": "0.1.0",
     "type": "module",
     "exports": {

@@ -3,7 +3,7 @@
 This page shows a complete, runnable example of a simple todo application built with Supplier.
 
 ```typescript
-import { createMarket, index } from "supplier"
+import { createMarket, index } from "commodity"
 
 // 1. Create a market
 const market = createMarket()

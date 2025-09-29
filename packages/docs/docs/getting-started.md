@@ -37,7 +37,7 @@ Get up and running with Supplier in just a few minutes.
 A `market` is a namespace where your suppliers are defined. You'll usually create one per application.
 
 ```typescript
-import { createMarket } from "supplier"
+import { createMarket } from "commodity"
 
 const market = createMarket()
 ```
@@ -68,7 +68,7 @@ const userServiceSupplier = market.offer("userService").asProduct({
 At your application's entry point, `assemble` your main product, providing any required resources. The `index()` utility simplifies this process.
 
 ```typescript
-import { index } from "supplier"
+import { index } from "commodity"
 
 const session = { userId: "user-123" }
 

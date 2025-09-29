@@ -2,7 +2,7 @@ import { Level3Supplier } from "#components/level-3.tsx"
 import { ConfigRendererSupplier } from "#components/config-renderer.tsx"
 import { ConfigSupplier } from "#lib/config.ts"
 import { market } from "#lib/market.ts"
-import { index } from "supplier"
+import { index } from "commodity"
 
 // Level 2 component - displays config and resupplies different config to Level 3+4
 export const Level2Supplier = market.offer("level-2").asProduct({

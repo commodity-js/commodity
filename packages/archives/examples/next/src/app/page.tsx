@@ -1,6 +1,6 @@
 import { Level1Supplier } from "#components/level-1.tsx"
 import { ConfigSupplier, defaultConfig } from "#lib/config.ts"
-import { index } from "supplier"
+import { index } from "commodity"
 
 export default function Home() {
     // Supply the config at the entrypoint and render the nested components

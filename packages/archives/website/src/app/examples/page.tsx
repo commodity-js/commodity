@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { ArrowLeft, ExternalLink } from "lucide-react"
 import CodeExample from "#components/CodeExample.tsx"
-import Example from "@supplier/examples-next/app/page.tsx"
+import Example from "@commodity/examples-next/app/page.tsx"
 
 export default function ExamplesPage() {
     return (

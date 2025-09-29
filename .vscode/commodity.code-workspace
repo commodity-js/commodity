@@ -1,0 +1,41 @@
+{
+    "folders": [
+        {
+            "path": ".."
+        }
+    ],
+    "settings": {
+        "terminal.integrated.confirmOnExit": "hasChildProcesses",
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.tabSize": 4,
+        "workbench.activityBar.location": "default",
+        "workbench.secondarySideBar.showLabels": true,
+        "files.associations": { "*.json": "jsonc" }
+    },
+    "tasks": {
+        "version": "2.0.0",
+        "tasks": [
+            {
+                "label": "Start Commodity Watch Mode",
+                "type": "shell",
+                "command": "pnpm",
+                "args": ["run", "dev"],
+                "group": "build",
+                "presentation": {
+                    "echo": true,
+                    "reveal": "always",
+                    "focus": false,
+                    "panel": "shared",
+                    "showReuseMessage": true,
+                    "clear": false
+                },
+                "runOptions": {
+                    "runOn": "folderOpen"
+                },
+                "isBackground": true,
+                "problemMatcher": []
+            }
+        ]
+    }
+}

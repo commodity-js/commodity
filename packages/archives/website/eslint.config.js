@@ -1,3 +1,3 @@
-import nextConfig from "@config.supplier/eslint/next"
+import nextConfig from "@config.commodity/eslint/next"
 
 export default nextConfig

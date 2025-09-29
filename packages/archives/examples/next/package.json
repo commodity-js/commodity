@@ -1,5 +1,5 @@
 {
-    "name": "@supplier/examples-next",
+    "name": "@commodity/examples-next",
     "version": "0.1.0",
     "private": true,
     "type": "module",
@@ -22,11 +22,11 @@
         "next": "15.4.5",
         "react": "19.1.0",
         "react-dom": "19.1.0",
-        "supplier": "workspace:*"
+        "commodity": "workspace:*"
     },
     "devDependencies": {
-        "@config.supplier/eslint": "*",
-        "@config.supplier/typescript": "*",
+        "@config.commodity/eslint": "*",
+        "@config.commodity/typescript": "*",
         "@tailwindcss/postcss": "^4",
         "@types/node": "^20",
         "@types/react": "^19",

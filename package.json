@@ -1,5 +1,5 @@
 {
-    "name": "supplier-monorepo",
+    "name": "commodity-monorepo",
     "private": true,
     "type": "module",
     "scripts": {

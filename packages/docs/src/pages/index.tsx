@@ -8,7 +8,7 @@ import CodeBlock from "@theme/CodeBlock"
 
 import styles from "./index.module.css"
 
-const heroCode = `import { createMarket, index } from "supplier"
+const heroCode = `import { createMarket, index } from "commodity"
 
 // Create market and define suppliers
 const market = createMarket()

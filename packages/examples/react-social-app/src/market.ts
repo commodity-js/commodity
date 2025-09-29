@@ -1,3 +1,3 @@
-import { createMarket } from "supplier"
+import { createMarket } from "commodity"
 
 export const market = createMarket()

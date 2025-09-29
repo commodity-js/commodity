@@ -1,4 +1,4 @@
-import { createMarket } from "supplier"
+import { createMarket } from "commodity"
 import memo, { memoizeClear } from "memoize"
 
 export const market = createMarket({
