@@ -8,7 +8,7 @@ export default defineConfig({
     server: {
         port: 3001,
         strictPort: true,
-        allowedHosts: ["localhost", "csb.app"]
+        allowedHosts: ["localhost", ".csb.app"]
     },
 
     resolve: {
