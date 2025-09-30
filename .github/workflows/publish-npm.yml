@@ -16,7 +16,7 @@ jobs:
         runs-on: ubuntu-latest
         environment:
             name: npm-publish
-            url: https://www.npmjs.com/package/supplier
+            url: https://www.npmjs.com/package/commodity
 
         steps:
             - name: Checkout code
@@ -42,10 +42,10 @@ jobs:
               run: pnpm install --frozen-lockfile
 
             - name: Build package
-              run: pnpm run build --filter=supplier
+              run: pnpm run build --filter=commodity
 
             - name: Run tests
-              run: pnpm test --filter=supplier
+              run: pnpm test --filter=commodity
 
             - name: Generate changelog
               id: changelog
@@ -73,7 +73,7 @@ jobs:
                   echo "version=$VERSION" >> $GITHUB_OUTPUT
 
             - name: Bump version
-              working-directory: ./packages/supplier
+              working-directory: ./packages/commodity
               run: |
                   CURRENT_TAG=$(git describe --tags --abbrev=0)
                   VERSION=${CURRENT_TAG#v}
@@ -85,7 +85,7 @@ jobs:
                   pnpm version $VERSION --no-git-tag-version
 
             - name: Publish to NPM
-              working-directory: ./packages/supplier
+              working-directory: ./packages/commodity
               run: npm publish
 
             - name: Create Release
@@ -107,7 +107,7 @@ jobs:
                   path: CHANGELOG.md
 
             - name: Commit version bump
-              working-directory: ./packages/supplier
+              working-directory: ./packages/commodity
               run: |
                   CURRENT_TAG=$(git describe --tags --abbrev=0)
                   VERSION=${CURRENT_TAG#v}

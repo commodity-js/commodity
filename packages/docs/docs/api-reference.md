@@ -1,6 +1,6 @@
 # API Reference
 
-A concise guide to the main functions and methods in Supplier.
+A concise guide to the main functions and methods in Commodity.
 
 ## Core Functions
 
@@ -23,23 +23,51 @@ These methods are chained off `market.offer(name)`.
 
 The `asProduct` method accepts an options object with the following keys:
 
-| Key              | Description                                                                                                      |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------- |
-| **`suppliers`**  | An array of other suppliers this product depends on.                                                             |
-| **`justInTime`** | An array of suppliers that can be assembled later, on demand.                                                    |
-| **`factory`**    | The function that creates the product instance. It receives `$` (supplies) and `$$` (JIT supplies) as arguments. |
-| **`preload`**    | A boolean (`true` by default) to control eager vs. lazy loading.                                                 |
+| Key              | Description                                                                                                             |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **`suppliers`**  | An array of other suppliers this product depends on.                                                                    |
+| **`justInTime`** | An array of suppliers that can be assembled later, on demand.                                                           |
+| **`factory`**    | The function that creates the product instance. It receives `$` (supplies) and `$$` (JIT supplies) as arguments.        |
+| **`lazy`**       | A boolean (`false` by default). If `true`, the product is lazy loaded on first access. Eager loading is the default.    |
+| **`init`**       | A function `(value, $) => void` that runs immediately after the product is created, for side-effects or initialization. |
 
-## Using Suppliers and Products
+## Resource Supplier Methods
 
-| Method                         | Description                                                      |
-| ------------------------------ | ---------------------------------------------------------------- |
-| **`.pack(value)`**             | Provides a concrete value for a `Resource` or mocks a `Product`. |
-| **`.assemble(supplies)`**      | Resolves all dependencies and creates a product instance.        |
-| **`.unpack()`**                | Retrieves the final value from an assembled product.             |
-| **`.reassemble(newSupplies)`** | Creates a new product instance with different context/supplies.  |
-| **`.prototype(options)`**      | Creates an alternative implementation of a product supplier.     |
-| **`.try(prototype)`**          | Swaps a product's dependency with a specified prototype.         |
+These methods are available on resource supplier instances.
+
+| Method             | Description                                 |
+| ------------------ | ------------------------------------------- |
+| **`.pack(value)`** | Provides a concrete value for the resource. |
+
+## Resource Methods
+
+These methods are available on resource instances.
+
+| Method             | Description                              |
+| ------------------ | ---------------------------------------- |
+| **`.pack(value)`** | Provides another value for the resource. |
+
+## Product Supplier Methods
+
+These methods are available on product supplier instances.
+
+| Method                    | Description                                                  |
+| ------------------------- | ------------------------------------------------------------ |
+| **`.assemble(supplies)`** | Resolves all dependencies and creates a product instance.    |
+| **`.unpack()`**           | Retrieves the final value from an assembled product.         |
+| **`.prototype(options)`** | Creates an alternative implementation of a product supplier. |
+| **`.try(prototype)`**     | Swaps a product's dependency with a specified prototype.     |
+| **`.pack(value)`**        | Provides a concrete value to mock the product (for testing). |
+
+## Product Methods
+
+These methods are available on assembled product instances.
+
+| Method                         | Description                                                     |
+| ------------------------------ | --------------------------------------------------------------- |
+| **`.unpack()`**                | Retrieves the final value from an assembled product.            |
+| **`.reassemble(newSupplies)`** | Creates a new product instance with different context/supplies. |
+| **`.pack(value)`**             | Provides a concrete value to mock the product (for testing).    |
 
 ## Factory Function (`factory`)
 
@@ -48,4 +76,4 @@ The factory function is where your service logic lives. It receives two argument
 -   **`$` (Supplies)**: An object to access regular dependencies.
     -   `$(supplier)`: Unpacks the dependency's value directly.
     -   `$[supplier.name]`: Accesses the packed dependency instance, allowing you to call `.reassemble()` on it.
--   **`$$` (Just-in-Time Supplies)**: An object containing JIT suppliers, which must be assembled manually.
+-   **`$$` (Just-in-Time Suppliers)**: An object containing JIT suppliers, which must be assembled manually.

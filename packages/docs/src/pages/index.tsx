@@ -5,6 +5,7 @@ import useDocusaurusContext from "@docusaurus/useDocusaurusContext"
 import Layout from "@theme/Layout"
 import Heading from "@theme/Heading"
 import CodeBlock from "@theme/CodeBlock"
+import SectionSeparator from "@site/src/components/SectionSeparator"
 
 import styles from "./index.module.css"
 
@@ -26,43 +27,81 @@ const api = apiSupplier
 // Use it!
 const users = await api.getUsers()`
 
-const typeExample = `// ❌ This fails at compile time
-const broken = apiService.assemble(
-    index() // Missing required sessionSupplier!
-)
+const typeExample = `const configSupplier = market.offer("config").asResource<{
+    api: { baseUrl: string };
+}>();
 
-// ✅ TypeScript ensures all dependencies are provided
-const working = apiService.assemble(
-    index(sessionSupplier.pack({ userId: "123" }))
-)`
+const dbSupplier = market.offer("db").asProduct({
+    factory: () => new DatabaseClient() // Returns a DatabaseClient instance
+});
 
-const performanceExample = `// Traditional DI container
-@Injectable()
-class Service {
-    constructor(@Inject(DB) private db: Database) {}
-}
+const userServiceSupplier = market.offer("userService").asProduct({
+    suppliers: [configSupplier, dbSupplier],
+    factory: ($) => {
+        // No explicit types needed! They are all inferred.
 
-// Supplier - just functions
-const service = market.offer("service").asProduct({
+        const config = $(configSupplier);
+        //      ^? const config: { api: { baseUrl: string } }
+        //         (Inferred from the .asResource<T>() definition)
+
+        const db = $(dbSupplier);
+        //    ^? const db: DatabaseClient
+        //       (Inferred from the dbSupplier's factory return type)
+
+        return {
+            getUser: (id: string) => db.fetchUser(id, config.api.baseUrl)
+        };
+    }
+});`
+
+const performanceExample = `// An expensive service, lazy-loaded for on-demand performance.
+const reportGeneratorSupplier = market.offer("reporter").asProduct({
+    factory: () => {
+        // This expensive logic runs only ONCE, the first time it's needed.
+        console.log("🚀 Initializing Report Generator...");
+        return new ReportGenerator();
+    },
+    lazy: true
+});
+
+const appSupplier = market.offer("app").asProduct({
+    suppliers: [reportGeneratorSupplier],
+    factory: ($) => (userAction: "view_dashboard" | "generate_report") => {
+        if (userAction === "generate_report") {
+            // The generator is created on the first call thanks to lazy loading.
+            // Subsequent calls within the same context will reuse the
+            // same, memoized instance without running the factory again.
+            const reporter = $(reportGeneratorSupplier);
+            reporter.generate();
+        }
+    }
+});`
+
+const testingExample = `// A product that depends on a real database.
+const userProfileSupplier = market.offer("userProfile").asProduct({
     suppliers: [dbSupplier],
-    factory: ($) => new Service($(dbSupplier))
-})
+    factory: ($) => ({
+        bio: $(dbSupplier).fetchBio()
+    })
+});
 
-// 🚀 3x faster, 70% smaller bundle`
+// For tests, create a prototype with no dependencies.
+const mockUserProfile = userProfileSupplier.prototype({
+    suppliers: [], // <-- No database needed!
+    factory: () => ({
+        bio: "This is a mock bio for testing."
+    })
+});
 
-const testingExample = `// Original service with real DB
-const userService = createUserService()
+// The component we want to test.
+const appSupplier = market.offer("app").asProduct({
+    suppliers: [userProfileSupplier],
+    factory: ($) => \`<div>\${$(userProfileSupplier).bio}</div>\`
+});
 
-// Test with mock - same interface, zero config
-const testService = userService.assemble(
-    index(
-        sessionSupplier.pack({ userId: "test-user" }),
-        dbSupplier.pack(mockDatabase)
-    )
-)
-
-// Perfect isolation for testing
-expect(testService.getUser()).toBe(mockUser)`
+// In the test, just .try() the prototype.
+// No need to provide a database connection!
+const app = appSupplier.try(mockUserProfile).assemble().unpack();`
 
 function Hero() {
     const { siteConfig } = useDocusaurusContext()
@@ -75,21 +114,17 @@ function Hero() {
             <div className="container">
                 <div className={styles.heroContent}>
                     <div className={styles.heroText}>
-                        <div className={styles.heroLogo}>
-                            <img src="img/supplier-logo.png" alt="Supplier" />
-                        </div>
                         <Heading as="h1" className={styles.heroTitle}>
                             {siteConfig.title}
                         </Heading>
                         <p className={styles.heroSubtitle}>
-                            The{" "}
-                            <span className={styles.highlight}>functional</span>
-                            , fully type-safe dependency injection library for
-                            TypeScript.
+                            The <span className={styles.highlight}>first</span>{" "}
+                            fully type-inferred and type-safe dependency
+                            injection library for TypeScript.
                             <br />
                             No decorators. No reflection. Just{" "}
                             <span className={styles.highlight}>
-                                pure functions
+                                simple functions
                             </span>
                             .
                         </p>
@@ -120,7 +155,7 @@ function Hero() {
                         </div>
                         <div className={styles.heroStats}>
                             <div className={styles.stat}>
-                                <span className={styles.statNumber}>~15KB</span>
+                                <span className={styles.statNumber}>~3KB</span>
                                 <span className={styles.statLabel}>
                                     Bundle size
                                 </span>
@@ -148,7 +183,7 @@ function Hero() {
                                     <span></span>
                                 </div>
                                 <span className={styles.codeTitle}>
-                                    supplier-demo.ts
+                                    commodity-demo.ts
                                 </span>
                             </div>
                             <CodeBlock
@@ -170,7 +205,7 @@ function WhySection() {
         <section className={styles.whySection}>
             <div className="container">
                 <div className={styles.sectionHeader}>
-                    <Heading as="h2">Why choose Supplier?</Heading>
+                    <Heading as="h2">Why choose Commodity?</Heading>
                     <p>
                         Built for modern TypeScript applications that demand
                         performance, safety, and simplicity.
@@ -178,53 +213,80 @@ function WhySection() {
                 </div>
                 <div className={styles.whyGrid}>
                     <div className={styles.whyCard}>
-                        <div className={styles.whyIcon}>🔒</div>
-                        <h3>Fully Type-Safe</h3>
+                        <div className={styles.whyIcon}>💡</div>
+                        <h3>Fully Type-Inferred</h3>
                         <p>
-                            Compile-time dependency validation. Circular
-                            dependency detection. Your dependency graph is
-                            always correct.
+                            Zero type boilerplate. End-to-end type safety with
+                            compile-time dependency validation and no extra type
+                            definitions.
                         </p>
                     </div>
                     <div className={styles.whyCard}>
-                        <div className={styles.whyIcon}>⚡</div>
-                        <h3>Zero Overhead</h3>
+                        <div className={styles.whyIcon}>✨</div>
+                        <h3>No Magic</h3>
                         <p>
-                            Pure functions and closures. No classes, decorators,
-                            or reflection. Minimal runtime footprint.
+                            Just functions and closures. No OOP,
+                            reflect-metadata, decorators, or compiler magic.
+                            What you see is what you get.
+                        </p>
+                    </div>
+                    <div className={styles.whyCard}>
+                        <div className={styles.whyIcon}>🚀</div>
+                        <h3>Performance Focused</h3>
+                        <p>
+                            Smart memoization, lazy loading, and a tiny bundle
+                            size (~3KB). Designed for minimal runtime overhead.
                         </p>
                     </div>
                     <div className={styles.whyCard}>
                         <div className={styles.whyIcon}>🧪</div>
                         <h3>Testing Friendly</h3>
                         <p>
-                            Swap dependencies effortlessly. Perfect isolation.
-                            Mock anything with simple .pack() calls.
+                            Easy mocking and dependency swapping. Swap
+                            implementations effortlessly to achieve perfect test
+                            isolation.
+                        </p>
+                    </div>
+                    <div className={styles.whyCard}>
+                        <div className={styles.whyIcon}>🏗️</div>
+                        <h3>Scalable Architecture</h3>
+                        <p>
+                            Promotes SOLID, clean, and code-splittable design
+                            patterns that grow with your application.
                         </p>
                     </div>
                     <div className={styles.whyCard}>
                         <div className={styles.whyIcon}>🌍</div>
                         <h3>Framework Agnostic</h3>
                         <p>
-                            Works everywhere TypeScript works. React, Node.js,
-                            Deno, Bun. Frontend, backend, everywhere.
+                            Works anywhere TypeScript works. Use it in React,
+                            Node.js, Deno, or Bun—from frontend to backend.
                         </p>
                     </div>
                     <div className={styles.whyCard}>
                         <div className={styles.whyIcon}>🔄</div>
                         <h3>Stateless</h3>
                         <p>
-                            Dependencies resolved via closures, not global
-                            state. Clean, predictable, and easy to reason about.
+                            Dependencies are resolved via closures, not global
+                            state. This ensures clean, predictable, and
+                            easy-to-reason-about behavior in any environment.
                         </p>
                     </div>
                     <div className={styles.whyCard}>
-                        <div className={styles.whyIcon}>📦</div>
-                        <h3>Tree Shakeable</h3>
+                        <div className={styles.whyIcon}>📖</div>
+                        <h3>Intuitive Terminology</h3>
                         <p>
-                            Import only what you use. Hyper-specialized
-                            suppliers. Perfect for code splitting and
-                            optimization.
+                            A supply chain metaphor (Market, Product, Resource)
+                            that makes dependency injection feel natural and
+                            easier to understand.
+                        </p>
+                    </div>
+                    <div className={styles.whyCard}>
+                        <div className={styles.whyIcon}>🆕</div>
+                        <h3>A New DI Paradigm</h3>
+                        <p>
+                            Don't let your past experiences with DI prevent you
+                            from trying this solution!
                         </p>
                     </div>
                 </div>
@@ -283,8 +345,8 @@ function UseCasesSection() {
                 <div className={styles.sectionHeader}>
                     <Heading as="h2">Perfect for modern apps</Heading>
                     <p>
-                        From React components to API servers, Supplier adapts to
-                        your architecture.
+                        From React components to API servers, Commodity adapts
+                        to your architecture.
                     </p>
                 </div>
                 <div className={styles.useCasesGrid}>
@@ -343,7 +405,7 @@ function CTASection() {
                     <Heading as="h2">Ready to revolutionize your DI?</Heading>
                     <p>
                         Join developers who've already made the switch to
-                        functional dependency injection.
+                        type-inferred dependency injection!
                     </p>
                     <div className={styles.ctaButtons}>
                         <Link
@@ -369,7 +431,7 @@ function CTASection() {
                     </div>
                     <div className={styles.ctaNote}>
                         <p>
-                            🚀 Install with <code>npm install supplier</code>
+                            🚀 Install with <code>npm install commodity</code>
                         </p>
                     </div>
                 </div>
@@ -386,25 +448,31 @@ export default function Home(): ReactNode {
             description="Functional, fully type-safe dependency injection for TypeScript. No decorators, no reflection - just pure functions and closures."
         >
             <Hero />
+            <SectionSeparator />
             <WhySection />
+            <SectionSeparator />
             <FeatureSection
-                title="Compile-Time Safety"
-                description="Catch dependency errors before they reach production. Supplier's architecture provides end-to-end type inference, eliminating entire classes of bugs and ensuring your dependency graph is always valid."
+                title="Fully Type-Inferred from End to End"
+                description="Catch dependency errors before they reach production. Commodity's architecture provides end-to-end type inference, eliminating entire classes of bugs and ensuring your dependency graph is always valid."
                 code={typeExample}
             />
+            <SectionSeparator />
             <FeatureSection
                 title="Unmatched Performance"
-                description="Built for speed. Functions and closures instead of classes and decorators. Smart memoization and lazy loading. One of the fastest DI solutions available."
+                description="Smart memoization: dependencies are created in parallel once per context eagerly, and cached. Or choose lazy loading to defer the creation of expensive services until they are first accessed."
                 code={performanceExample}
                 imageAlign="left"
                 variant="alt"
             />
+            <SectionSeparator />
             <FeatureSection
                 title="Effortless Testing"
-                description="Testing becomes a breeze when you can swap any dependency with a single method call. Perfect isolation, easy mocking, and clean test setup."
+                description="Isolate components completely. With .prototype(), you can create alternative implementations for testing that remove entire dependency trees, leading to cleaner and more robust tests."
                 code={testingExample}
             />
+            <SectionSeparator />
             <UseCasesSection />
+            <SectionSeparator />
             <CTASection />
         </Layout>
     )

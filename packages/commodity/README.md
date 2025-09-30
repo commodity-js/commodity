@@ -1,15 +1,19 @@
 # commodity
 
-Functional, <u>fully type-safe</u> and <u>stateless</u> dependency and Context injector for TypeScript. Enter the containerless DI revolution! No OOP, reflect-metadata, decorators, annotations or compiler magic, just functions and closures!
+First fully type-inferred and type-safe DI solution for Typescript! No OOP, reflect-metadata, decorators, annotations or compiler magic, just pure functions!
 
 ## Why Commodity?
 
-✅ **Fully type-safe** - Compile-time dependency validation and circular dependency detection  
-✅ **No magic** - Just functions and closures, no OOP, reflect-metadata, decorators, annotations or compiler magic.
-✅ **Framework agnostic** - Works everywhere TypeScript works  
-✅ **Testing friendly** - Easy mocking and dependency swapping  
-✅ **Performance focused** - Smart memoization, lazy loading, tree-shakeable  
-✅ **Stateless** - Dependencies resolved via closures, not global state
+-   ✅ **Scalable architecture** - Promotes SOLID, clean, and code-splittable design patterns.
+-   ✅ **Fully type-inferred** - Compile-time dependency validation.
+-   ✅ **Minimal boilerplate** - Trade-off: a bit more runtime boilerplate for much less type boilerplate.
+-   ✅ **Framework agnostic** - Accommodates all codebases where TypeScript works
+-   ✅ **No magic** - Just functions and closures, no OOP, reflect-metadata, decorators, annotations or compiler magic.
+-   ✅ **Testing friendly** - Easy mocking and dependency swapping
+-   ✅ **Performance focused** - Smart memoization, lazy loading, code-splittable architecture.
+-   ✅ **Stateless** - Dependencies resolved via closures, not global state.
+-   ✅ **A new DI paradigm** - Don't let your past experiences with DI prevent you from trying this one!
+-   ✅ **Intuitive, opinionated terminology** - The supply chain metaphor helps DI finally make intuitive sense.
 
 ## Installation
 
@@ -20,7 +24,7 @@ npm install commodity
 ## When to Use Commodity
 
 -   **Complex TypeScript applications** with deep function call hierarchies
--   **Avoiding prop-drilling** in React (works in both Client and Server Components)
+-   **Avoiding prop-drilling and waterfalls** in React (works in both Client and Server Components)
 -   **Microservices** that need shared context propagation
 -   **Testing scenarios** requiring easy mocking and dependency swapping
 -   **A/B testing**, feature flagging and prototyping.
@@ -28,10 +32,10 @@ npm install commodity
 
 ## Performance
 
--   **Bundle size**: ~15KB minified, tree-shakeable
--   **Tree-shakable and code-splittable**: Helps you create hyper-specialized suppliers: One function or piece of data per supplier
+-   **Hyper-minimalistic bundle size**: ~3KB minified, ~1KB minzipped. Most of the package is type definitions.
+-   **Tree-shakable and code-splittable architecture**: Helps you create hyper-specialized suppliers: One function or piece of data per supplier
 -   **Memory usage**: Smart memoization prevents duplicate dependency resolution
--   **Optimal waterfalls**: Preloads as much as it can to prevent waterfalls (customizable with `preload: false`)
+-   **Options to optimize dependency chain waterfalls**: Define suppliers as lazy or eager, call init() to preload some values as soon as possible.
 
 ## Quick Example
 
@@ -66,7 +70,7 @@ const addTodo = addTodoSupplier
     .unpack()
 
 console.log(addTodo("Learn Commodity")) // ["Learn Commodity"]
-console.log(addTodo("Build app")) // ["Learn Supplier", "Build app"]
+console.log(addTodo("Build app")) // ["Learn Commodity", "Build app"]
 ```
 
 ## Intuitive, opinionated terminology
@@ -105,12 +109,12 @@ Here's an equivalence table to more classical, technical terms
 -   Shared context - Assemble the context once at the entry point, access everywhere without prop-drilling.
 -   Smart memoization - Dependencies injected once per assemble() context for optimal performance.
 -   Context switching - Override context anywhere in the call stack using reassemble().
--   Context enrichment - Add new context and products depending on new context deep in the call stack by using just-in-time suppliers.
+-   Context enrichment - Add new context and products deep in the call stack by using just-in-time suppliers.
 
 ⚡ Waterfall Management
 
--   Eager loading - Use preload: true for immediate initialization of a product on entry point's assemble() call (default).
--   Lazy loading - Use preload: false for on-demand initialization of a product when its value is first accessed.
+-   Eager loading - Use lazy: false for immediate construction of all supplies in parallel in assemble() call (default).
+-   Lazy loading - Use lazy: true for on-demand construction of a product when its value is first accessed.
 
 🧪 Testing and Mocking
 
@@ -156,7 +160,9 @@ const session = sessionResource.unpack()
 
 ### 3. Define Products (Services)
 
-Products are your application's services, components or features. They are factory functions that can depend on other products or resources. Dependencies are accessed via the `$` object passed to the `factory` as argument. `$` is a shorthand for `supplies`, but it is just a suggestion, you can name the factory arg however you want. I like `$` because it is short and will be used a lot throughout the application.
+Products are your application's services, components or features. They are factory functions that can depend on other products or resources. Factories can return anything: simple vales, promises or other functions.
+
+Dependencies are accessed via the `$` object passed to the `factory` as argument. `$` is a shorthand for `supplies`, but it is just a suggestion, you can name the factory arg however you want. I like `$` because it is short and will be used a lot throughout the application.
 
 Use `$[supplier.name]` to access the resource or product stored in supplies, and `$(supplier)` as a shorthand to access the unpacked value of the product or resource directly. As a mnemonic, `$[]` looks like a box, so it accesses the packed, the "boxed", resource or product.
 
@@ -169,6 +175,58 @@ const userSupplier = market.offer("user").asProduct({
         const db = $(dbSupplier)
         return db.getUser(session.userId) // query the db to retrieve the user.
     }
+})
+```
+
+#### Factory Lifecycle & Memoization
+
+**Important**: Your factory function will only ever be called **once per `assemble()` call**. This eliminates the need for traditional DI service lifecycles (transient, scoped, singleton, etc.).
+
+-   **Need something called multiple times?** Return a function from your factory instead of a value
+
+```ts
+// ✅ Good: Factory called once, returns a function for multiple calls
+const createUserService = market.offer("createUserService").asProduct({
+    suppliers: [dbSupplier],
+    factory: ($) => {
+        const db = $(dbSupplier)
+        // This setup code runs only once per assemble()
+        const cache = new Map()
+
+        // Return a function that can be called multiple times
+        return (userId: string) => {
+            if (cache.has(userId)) return cache.get(userId)
+            const user = db.findUser(userId)
+            cache.set(userId, user)
+            return user
+        }
+    }
+})
+
+// Usage: createUserService() can be called multiple times
+const createUser = createUserService
+    .assemble(index(dbSupplier.pack(db)))
+    .unpack()
+const user1 = createUser("123") // Fresh call
+const user2 = createUser("123") // Cached result
+```
+
+#### Lazy vs Eager Loading
+
+By default, all products are constructed on `assemble()` call immediately in the background and in parallel, no matter how deep in the supply chain. This means no waterfalls happen. You can disable this for specific products with `lazy: true`.
+
+```ts
+// Eager loading - constructed immediately when assemble() is called
+const eagerServiceSupplier = market.offer("eagerService").asProduct({
+    suppliers: [dbSupplier],
+    factory: ($) => BuildExpensiveService($(dbSupplier))
+})
+
+// Lazy loading - initialized only when accessed
+const lazyServiceSupplier = market.offer("lazyService").asProduct({
+    suppliers: [dbSupplier],
+    factory: ($) => BuildExpensiveService($(dbSupplier)),
+    lazy: true // Loaded when first accessed via $()
 })
 ```
 
@@ -197,7 +255,7 @@ const db = //...Get your db connection
 const req = //...Get the current http request
 
 // Assemble the App, providing the Session and Db resources.
-// Bad syntax for demonstration purposes only. See index() below for syntactic suger.
+// Bad but working syntax for demonstration purposes only. See index() below for syntactic sugar.
 const appProduct = appSupplier.assemble({
     [sessionSupplier.name]: sessionSupplier.pack({
             userId: req.userId
@@ -254,15 +312,16 @@ const profile = profileSupplier.assemble(
     index(
         //userSupplier's factory will not be called, but...
         userSupplier.pack({ name: "John Doe" })
-         //assemble still requires a valid value for db and session when using pack(), since userSupplier is
-         // in the supply chain...
+         //assemble still requires a valid value for db and session when using pack(),
+         // since dbSupplier and sessionSupplier are in the supply chain...
         dbSupplier.pack(undefined),
-        // if you can't pass undefined, or some mock for them, prefer using `.prototype()` and `.try()` instead.
+        // if you can't pass undefined, or some mock for them,
+        // prefer using `.prototype()` and `.try()` instead.
         sessionSupplier.pack(undefined),
     )
 )
 
-profile === <h1>Profile of John Doe</h1>
+// profile === <h1>Profile of John Doe</h1>
 ```
 
 ### 2. `.prototype()` and `.try()` alternative implementations
@@ -285,8 +344,8 @@ const userSupplier = market.offer("user").asProduct({
 })
 
 const userPrototype = userSupplier.prototype({
-    suppliers: []
-    factory: ()=>"John Doe"
+    suppliers: [],
+    factory: () => "John Doe"
 })
 
 //You no longer need to pass some value for db and session, since userPrototype removes them from the supply chain.
@@ -346,14 +405,14 @@ const adminDashboardSupplier = market.offer("admin-dashboard").asProduct({
 
 const AppSupplier = market.offer("app").asProduct({
     suppliers: [sessionSupplier],
-    // New context computed in this factory ++ all products dependent on that new context
-    //  should be in justInTime[]
+    // Put in justInTime[] all new context computed in this factory
+    // and all products dependent on that new context
     justInTime: [adminSessionSupplier, adminDashboardSupplier]
     // Factories receive just-in-time suppliers as 2nd argument
     factory: ($, $$) => {
         const role = $(sessionSupplier).user.role
         if (role === "admin") {
-            //Just-in-time suppliers are not yet assmbled, you need to assemble them with the new context.
+            //Just-in-time suppliers are not yet assembled, you need to assemble them with the new context.
             return $$[adminDashboardSupplier].assemble(
                 {
                     ...$, // Keep all previous supplies
@@ -378,34 +437,15 @@ const session = ...//read session
 const res = appSupplier.assemble(index(sessionSupplier.pack(session))).unpack()
 ```
 
-### Lazy vs Eager Loading
-
-By default, all products are preloaded on `assemble()` call immediately in the background and in parallel, no matter how deep in the supply chain. This means no waterfalls happen. You can disable preloading of a product with `preload: false`.
-
-```ts
-// Eager loading - initialized immediately when assemble() is called
-const eagerServiceSupplier = market.offer("eagerService").asProduct({
-    suppliers: [dbSupplier],
-    factory: ($) => new ExpensiveService($(dbSupplier))
-})
-
-// Lazy loading - initialized only when accessed
-const lazyServiceSupplier = market.offer("lazyService").asProduct({
-    suppliers: [dbSupplier],
-    factory: ($) => new ExpensiveService($(dbSupplier)),
-    preload: false // Loaded when first accessed via $()
-})
-```
-
 ## Design Philosophy: The Problem with Traditional DI
 
-DI containers have always felt abstract, technical, almost magical in how they work. Like a black box, you often have to dig into the source code of a third-party library to understand how data flows in your own application. It feels like you lose control of your own data when you use one, and your entire app becomes dependent on the container to even work. Supplier aims to make DI cool again! The pattern has real power, even if current implementations on the open-source market hide that power under a lot of complexity.
+DI containers have always felt abstract, technical, almost magical in how they work. Like a black box, you often have to dig into the source code of a third-party library to understand how data flows in your own application. It feels like you lose control of your own data when you use one, and your entire app becomes dependent on the container to even work. Commodity aims to make DI cool again! The pattern has real power, even if current implementations on the open-source market hide that power under a lot of complexity.
 
-DI was complex to achieve in OOP world because of the absence of first-class functions in OOP languages. But in modern functional languages, DI should be easier, since DI itself is a functional concept. However, TypeScript DI frameworks currently available seem to have been built by imitating how they were built in OOP languages...
+DI was complex to achieve in OOP world because of the absence of first-class functions in OOP languages. But in modern functional languages, DI should be easier, since DI itself is a functional pattern. However, TypeScript DI frameworks currently available seem to have been built by imitating how they were built in OOP languages...
 
 The problem DI was solving in OOP world still exists in the functional world. In OOP world, DI helped inject data and services freely within deeply nested class hierarchies and architectures. In the functional world, DI achieves the same: inject data and services freely in deeply nested function calls. Deeply nested function calls naturally emerge when trying to decouple and implement SOLID principles in medium to highly complex applications. Without DI, you cannot achieve maximal decoupling. Even if in principle you can reuse a function elsewhere, the function is still bound in some way to the particular call stack in which it finds itself, simply by the fact that it can only be called from a parent function that has access to all the data and dependencies it needs.
 
-Supplier's "Dependency Injection Supply Chain" (DISC) model can do everything containers do, but in a more elegant, simpler, and easier-to-reason-about manner.
+Commodity's "Dependency Injection Supply Chain" (DISC) model can do everything containers do, but in a more elegant, simpler, and easier-to-reason-about manner.
 
 ## Under the hood
 
@@ -456,7 +496,8 @@ Creates a product supplier for services.
 const productSupplier = market.offer("service").asProduct({
     suppliers: [dep1, dep2], // Dependencies
     justInTime: [jit1, jit2], // Just-in-time suppliers
-    preload: boolean, // Eager (true) or lazy (false) loading
+    lazy: boolean, // Eager (false) or lazy (true)
+    init: (value, $)=>void // Run a function right after construction
     factory: ($, $$?) => {
         // Factory function
         // $ = regular supplies
@@ -505,7 +546,7 @@ const alternativeSupplier = originalSupplier.prototype({
 
 ### `.try(prototype)`
 
-Swaps a supplier with its prototype.
+Use a prototype instead of the original when resolving a product's suppliers or justInTime suppliers.
 
 ```ts
 const modifiedSupplier = originalSupplier.try(prototypeSupplier)

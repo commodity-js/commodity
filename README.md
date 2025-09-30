@@ -1,1 +1,1 @@
-packages/supplier/README.md
+packages/commodity/README.md

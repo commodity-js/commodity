@@ -5,10 +5,10 @@ import type * as Preset from "@docusaurus/preset-classic"
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 const config: Config = {
-    title: "Supplier",
+    title: "Commodity",
     tagline:
         "Functional, fully type-safe and stateless dependency injection for TypeScript",
-    favicon: "img/supplier-logo.png",
+    favicon: "img/commodity-logo.png",
 
     // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
     future: {
@@ -16,15 +16,15 @@ const config: Config = {
     },
 
     // Set the production url of your site here
-    url: "https://supplier-js.github.io",
+    url: "https://commodity-js.github.io",
     // Set the /<baseUrl>/ pathname under which your site is served
     // For GitHub pages deployment, it is often '/<projectName>/'
-    baseUrl: "/supplier/",
+    baseUrl: "/commodity/",
 
     // GitHub pages deployment config.
     // If you aren't using GitHub pages, you don't need these.
-    organizationName: "supplier-js", // Usually your GitHub org/user name.
-    projectName: "supplier", // Usually your repo name.
+    organizationName: "commodity-js", // Usually your GitHub org/user name.
+    projectName: "commodity", // Usually your repo name.
 
     onBrokenLinks: "throw",
     onBrokenMarkdownLinks: "warn",
@@ -46,7 +46,7 @@ const config: Config = {
                     // Please change this to your repo.
                     // Remove this to remove the "edit this page" links.
                     editUrl:
-                        "https://github.com/supplier-js/supplier/tree/main/packages/docs/"
+                        "https://github.com/commodity-js/commodity/tree/main/packages/docs/"
                 },
                 blog: false,
                 theme: {
@@ -58,12 +58,12 @@ const config: Config = {
 
     themeConfig: {
         // Replace with your project's social card
-        image: "img/supplier-logo.png",
+        image: "img/commodity-logo.png",
         navbar: {
-            title: "Supplier",
+            title: "Commodity",
             logo: {
-                alt: "Supplier Logo",
-                src: "img/supplier-logo.png"
+                alt: "Commodity Logo",
+                src: "img/commodity-logo.png"
             },
             items: [
                 {
@@ -73,12 +73,12 @@ const config: Config = {
                     label: "Docs"
                 },
                 {
-                    href: "https://www.npmjs.com/package/supplier",
+                    href: "https://www.npmjs.com/package/commodity",
                     label: "npm",
                     position: "right"
                 },
                 {
-                    href: "https://github.com/supplier-js/supplier",
+                    href: "https://github.com/commodity-js/commodity",
                     label: "GitHub",
                     position: "right"
                 }
@@ -105,11 +105,11 @@ const config: Config = {
                     items: [
                         {
                             label: "GitHub Issues",
-                            href: "https://github.com/supplier-js/supplier/issues"
+                            href: "https://github.com/commodity-js/commodity/issues"
                         },
                         {
                             label: "GitHub Discussions",
-                            href: "https://github.com/supplier-js/supplier/discussions"
+                            href: "https://github.com/commodity-js/commodity/discussions"
                         }
                     ]
                 },
@@ -118,20 +118,20 @@ const config: Config = {
                     items: [
                         {
                             label: "npm Package",
-                            href: "https://www.npmjs.com/package/supplier"
+                            href: "https://www.npmjs.com/package/commodity"
                         },
                         {
                             label: "GitHub",
-                            href: "https://github.com/supplier-js/supplier"
+                            href: "https://github.com/commodity-js/commodity"
                         }
                     ]
                 }
             ],
-            copyright: `Copyright © ${new Date().getFullYear()} Supplier. Built with Docusaurus.`
+            copyright: `Copyright © ${new Date().getFullYear()} Commodity. Built with Docusaurus.`
         },
         prism: {
-            theme: prismThemes.github,
-            darkTheme: prismThemes.dracula,
+            theme: prismThemes.gruvboxMaterialDark,
+            darkTheme: prismThemes.gruvboxMaterialDark,
             additionalLanguages: ["typescript", "tsx", "javascript", "jsx"]
         }
     } satisfies Preset.ThemeConfig

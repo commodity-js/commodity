@@ -276,6 +276,7 @@ export const createMarket = () => {
 
                                     if (
                                         supply &&
+                                        isProduct(supply) &&
                                         supply._dependsOnOneOf(overrides)
                                     ) {
                                         return true

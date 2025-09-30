@@ -1,12 +1,12 @@
 # Testing and Mocking
 
-Supplier makes testing easy by providing two powerful mocking strategies, allowing you to isolate components and control dependencies during tests.
+Commodity makes testing easy by providing two powerful mocking strategies, allowing you to isolate components and control dependencies during tests.
 
 ## Method 1: Mocking with `.pack()`
 
 The simplest way to mock a dependency is to use `.pack()` on a **Product Supplier**. This provides a direct value or object for that dependency, completely bypassing its factory function and its own dependencies.
 
-**Use this for:** Simple, stateless mocks where you just need to provide a specific value or a simple object with mocked methods.
+**Use this for:** Simple mocks with simple known values
 
 ```typescript
 // Production services
@@ -36,11 +36,11 @@ it("should return user data", async () => {
 })
 ```
 
-**Note**: When you `.pack()` a product, you must still satisfy the resource dependencies of its _entire_ dependency tree in the `.assemble()` call, even if they aren't used by the mock. You can often provide `undefined` if the types allow. For more complex cases, consider using a prototype.
+**Note**: When you `.pack()` a product, you must still pass to its assemble() method all the resources it depends on recursively, even if they aren't used by the mock. You can often provide `undefined` if the types allow. For more complex cases, consider using a prototype.
 
 ## Method 2: Prototypes with `.prototype()` and `.try()`
 
-For more complex scenarios where your mock needs its own logic, state, or dependencies, you can create a **prototype**. A prototype is a complete, alternative implementation of a supplier.
+For more complex scenarios where your mock needs its own logic, state, or dependencies, you can create a **prototype**. A prototype is a complete, alternative implementation of a product supplier.
 
 **Use this for:**
 
@@ -61,7 +61,7 @@ const userPrototype = userSupplier.prototype({
     factory: () => ({ name: "Mock John Doe" })
 })
 
-// In your test, `try` the prototype
+// The product spplier to test
 const profileSupplier = market.offer("profile").asProduct({
     suppliers: [userSupplier],
     factory: ($) => `<h1>Profile of ${$(userSupplier).name}</h1>`

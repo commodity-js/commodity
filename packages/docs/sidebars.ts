@@ -21,19 +21,26 @@ const sidebars: SidebarsConfig = {
             label: "Getting Started"
         },
         {
-            type: "doc",
-            id: "quick-example",
-            label: "Quick Example"
-        },
-        {
             type: "category",
-            label: "Core Concepts",
-            items: ["core-concepts", "context-switching"]
+            label: "Examples",
+            items: [
+                "examples/basic-example",
+                {
+                    type: "link",
+                    href: "/examples/react-client",
+                    label: "React example"
+                }
+            ]
         },
         {
             type: "category",
             label: "Guides",
-            items: ["testing", "performance"]
+            items: [
+                "guides/design-philosophy",
+                "guides/context-switching",
+                "guides/testing",
+                "guides/performance"
+            ]
         },
         {
             type: "category",
