@@ -7,8 +7,10 @@ export default defineConfig({
     plugins: [react(), tailwindcss()],
     server: {
         port: 3001,
-        strictPort: true
+        strictPort: true,
+        allowedHosts: ["localhost", "csb.app"]
     },
+
     resolve: {
         alias: {
             "@": path.resolve(__dirname, "./src")
