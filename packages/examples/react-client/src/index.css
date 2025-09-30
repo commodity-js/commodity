@@ -1,0 +1,77 @@
+@import "tailwindcss";
+@tailwind utilities;
+
+/* Custom CSS for additional styling */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+        "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
+        "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    margin: 0;
+    padding: 0;
+}
+
+/* Custom animations and utilities */
+@layer utilities {
+    .animate-pulse-slow {
+        animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    .border-3 {
+        border-width: 3px;
+    }
+
+    .backdrop-blur-sm {
+        backdrop-filter: blur(4px);
+    }
+
+    .backdrop-blur {
+        backdrop-filter: blur(8px);
+    }
+}
+
+/* Smooth scrolling */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Focus styles for accessibility */
+*:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+/* Custom button hover effects */
+@layer components {
+    .btn-primary {
+        @apply px-4 py-2 bg-blue-600 text-white rounded-lg font-medium shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 active:scale-95;
+    }
+
+    .btn-secondary {
+        @apply px-4 py-2 bg-transparent border border-gray-300 text-gray-700 rounded-lg font-medium shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 active:scale-95;
+    }
+
+    .card {
+        @apply bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-1;
+    }
+
+    .input {
+        @apply px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors;
+    }
+}
+
+/* Dark theme adjustments */
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: #1a1a1a;
+        color: #ffffff;
+    }
+}
+
+/* Responsive design helpers */
+@layer utilities {
+    .container-app {
+        @apply max-w-6xl mx-auto px-4 sm:px-6 lg:px-8;
+    }
+}
