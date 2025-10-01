@@ -4,15 +4,24 @@ import { once } from "#utils"
 /**
  * Hires a team of product suppliers and provides an assembly function.
  * This function creates a dependency resolution system that can assemble products
- * by resolving their dependencies in the correct order.
+ * by resolving their dependencies in the correct order. It handles circular dependency
+ * detection and lazy evaluation through property getters.
+ *
+ * The hire function is the core of the commodity dependency injection system. It creates
+ * a proxy-like object that lazily assembles products as they're accessed, ensuring that
+ * each product is only assembled once even if multiple products depend on it.
+ *
  * @param suppliers - Array of product suppliers to hire
  * @returns An object with an assemble method for dependency resolution
  * @internal
  * @example
  * ```typescript
- * const team = hire([userService, logger, config])
+ * const team = hire([userService, logger, database])
  * const assembled = team.assemble({ config: packedConfig })
- * const userService = assembled.userService
+ *
+ * // Access products - they're assembled on first access
+ * const userServiceInstance = assembled.userService
+ * const loggerInstance = assembled.logger
  * ```
  */
 export function hire(suppliers: ProductSupplier<string, any, any, any>[]) {
@@ -20,9 +29,22 @@ export function hire(suppliers: ProductSupplier<string, any, any, any>[]) {
         /**
          * Assembles all suppliers by resolving their dependencies.
          * Creates a supply map where each supplier can access its dependencies.
-         * @param supplied - Pre-supplied dependencies (optional)
-         * @returns A supply map with all resolved dependencies
+         * Uses lazy evaluation via property getters to handle circular dependencies
+         * and ensure each product is only assembled once.
+         *
+         * @param supplied - Pre-supplied dependencies (resources that must be provided)
+         * @returns A supply map with all resolved dependencies, accessible as properties
          * @throws Error if any required dependency cannot be resolved
+         * @example
+         * ```typescript
+         * const supplies = team.assemble({
+         *   config: packedConfig,
+         *   apiKey: packedApiKey
+         * })
+         *
+         * // Access assembled products
+         * const service = supplies.userService.unpack()
+         * ```
          */
 
         assemble: (supplied: Record<string, any>) => {

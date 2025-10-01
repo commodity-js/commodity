@@ -24,11 +24,15 @@ const sidebars: SidebarsConfig = {
             type: "category",
             label: "Examples",
             items: [
-                "examples/basic-example",
+                {
+                    type: "doc",
+                    id: "examples/simple-example",
+                    label: "Simple"
+                },
                 {
                     type: "link",
                     href: "/examples/react-client",
-                    label: "React example"
+                    label: "React"
                 }
             ]
         },

@@ -1,4 +1,4 @@
-# Basic example
+# Simple example
 
 Dummy todo app built with Commodity.
 

@@ -1,8 +1,6 @@
 import { market } from "@/market"
 import { queryClient } from "@/query"
-
-// Simulate API latency
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+import { sleep } from "commodity"
 
 // Simple wireframe types with minimal IDs
 export interface User {
@@ -81,7 +79,7 @@ export const userQuerySupplier = market.offer("userQuery").asProduct({
         return {
             queryKey: ["user", id],
             queryFn: async () => {
-                await delay(1000)
+                await sleep(1000)
                 const user = mockUsers.find((user) => user.id === id)
                 if (!user) {
                     throw new Error(`User with id ${id} not found`)
@@ -97,7 +95,7 @@ export const usersQuerySupplier = market.offer("usersQuery").asProduct({
         return {
             queryKey: ["users"],
             queryFn: async () => {
-                await delay(1000)
+                await sleep(1000)
                 return mockUsers
             }
         }
@@ -118,7 +116,7 @@ export const repliesQuerySupplier = market.offer("repliesQuery").asProduct({
         return {
             queryKey: ["replies", commentId],
             queryFn: async () => {
-                await delay(1000)
+                await sleep(1000)
                 return mockReplies.filter(
                     (reply) => reply.commentId === commentId
                 )
@@ -133,7 +131,7 @@ export const commentsQuerySupplier = market.offer("commentsQuery").asProduct({
         return {
             queryKey: ["comments", postId],
             queryFn: async () => {
-                await delay(1000)
+                await sleep(1000)
                 return mockComments.filter(
                     (comment) => comment.postId === postId
                 )
@@ -148,7 +146,7 @@ export const postsQuerySupplier = market.offer("postsQuery").asProduct({
         return {
             queryKey: ["posts"],
             queryFn: async () => {
-                await delay(1000)
+                await sleep(1000)
                 return populatedPosts
             }
         }

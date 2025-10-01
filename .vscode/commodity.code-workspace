@@ -2,9 +2,6 @@
     "folders": [
         {
             "path": ".."
-        },
-        {
-            "path": "../../examples/react-client"
         }
     ],
     "settings": {
@@ -24,19 +21,6 @@
                 "type": "shell",
                 "command": "pnpm",
                 "args": ["run", "dev"],
-                "runOptions": {
-                    "runOn": "folderOpen"
-                },
-                "isBackground": true
-            },
-            {
-                "label": "Start React Client Watch Mode",
-                "type": "shell",
-                "command": "pnpm",
-                "args": ["run", "dev"],
-                "options": {
-                    "cwd": "${workspaceFolder}/../examples/react-client"
-                },
                 "runOptions": {
                     "runOn": "folderOpen"
                 },

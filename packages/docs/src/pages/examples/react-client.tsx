@@ -9,15 +9,15 @@ export default function ExampleReactClient() {
             description="Functional, fully type-safe dependency injection for TypeScript. No decorators, no reflection - just pure functions and closures."
         >
             <iframe
-                src="https://codesandbox.io/p/github/commodity-js/examples-react-client/main?embed=1&file=%2FREADME.md"
+                src="https://codesandbox.io/p/sandbox/github/commodity-js/commodity/tree/main/packages/examples/react-client?embed=1&file=%2FREADME.md"
                 style={{
                     width: "100%",
                     height: "90vh",
-                    border: "0",
+                    border: 0,
                     borderRadius: "4px",
                     overflow: "hidden"
                 }}
-                title="commodity-js/examples-react-client/main"
+                title="@commodity-js/examples/react-client"
                 allow="accelerometer; ambient-light-sensor; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; payment; usb; vr; xr-spatial-tracking"
                 sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
             ></iframe>
