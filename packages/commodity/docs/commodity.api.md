@@ -4,6 +4,937 @@
 
 ```ts
 
+// @public
+export type $<SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[]> = (<NAME extends keyof SupplyMapFromSuppliers<SUPPLIERS>>(supplier: {
+    name: NAME;
+}) => SupplyMapFromSuppliers<SUPPLIERS>[NAME] extends {
+    unpack(): infer VALUE;
+} ? VALUE : never) & SupplyMapFromSuppliers<SUPPLIERS>;
+
+// @public
+export const createMarket: () => {
+    offer<NAME extends string>(name: NAME): {
+        asResource: <CONSTRAINT>() => {
+            name: NAME;
+            pack<THIS extends ResourceSupplier<NAME, CONSTRAINT>, NEW_VALUE extends CONSTRAINT>(this: THIS, value: NEW_VALUE): {
+                name: NAME;
+                pack<THIS_1 extends Resource<NAME, CONSTRAINT>, NEW_VALUE_1 extends CONSTRAINT>(this: THIS_1, value: NEW_VALUE_1): {
+                    name: NAME;
+                    pack: (value: CONSTRAINT) => Resource<NAME, CONSTRAINT>;
+                    _resource: true;
+                    unpack: () => NEW_VALUE_1;
+                };
+                _resource: true;
+                unpack: () => NonNullable<NEW_VALUE>;
+            };
+            _constraint: CONSTRAINT;
+            _resource: true;
+        };
+        asProduct: <VALUE, SUPPLIERS extends Supplier<string, any, any, any, any, any, IS_PROTOTYPE extends false ? false : boolean>[] = [], JUST_IN_TIME extends Supplier<string, any, any, any, any, any, IS_PROTOTYPE extends false ? false : boolean>[] = [], IS_PROTOTYPE extends boolean = false>(config: {
+            suppliers?: [...SUPPLIERS];
+            justInTime?: [...JUST_IN_TIME];
+            factory: (supplies: $<SUPPLIERS>, justInTime: MapFromList<[...JUST_IN_TIME]>) => VALUE;
+            init?: (value: VALUE, supplies: $<SUPPLIERS>) => void;
+            lazy?: boolean;
+            isPrototype?: IS_PROTOTYPE;
+        }) => HasCircularDependency<{
+            name: NAME;
+            suppliers: SUPPLIERS;
+            justInTime: JUST_IN_TIME;
+            factory: (supplies: $<SUPPLIERS>, justInTime: MapFromList<[...JUST_IN_TIME]>) => VALUE;
+            lazy: boolean;
+            init: ((value: VALUE, supplies: $<SUPPLIERS>) => void) | undefined;
+            pack: <THIS extends ProductSupplier<NAME, VALUE, any, any, any, any, any>, NEW_VALUE_2 extends VALUE>(this: THIS, value: NEW_VALUE_2) => {
+                name: NAME;
+                supplies: {};
+                pack: <THIS_1 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_1, value: NEW_VALUE_3) => {
+                    name: NAME;
+                    supplies: {};
+                    pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                    unpack: () => NEW_VALUE_3;
+                    reassemble<THIS_2 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_2): THIS_2;
+                    _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                    _product: true;
+                    _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                };
+                _dependsOnOneOf: () => boolean;
+                unpack: () => NonNullable<NEW_VALUE_2>;
+                reassemble<THIS_1 extends Product<NAME, NEW_VALUE_2, $<SUPPLIERS>>>(this: THIS_1): THIS_1;
+                _product: true;
+                _supplier: THIS;
+            };
+            assemble: <THIS extends ProductSupplier<NAME, VALUE, Supplier<string, any, any, any, any, any, any>[], any, any, any, any>>(this: THIS, toSupply: ToSupply<THIS["suppliers"]>) => {
+                name: NAME;
+                supplies: $<THIS["suppliers"]>;
+                pack: <THIS_1 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_1, value: NEW_VALUE_3) => {
+                    name: NAME;
+                    supplies: {};
+                    pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                    unpack: () => NEW_VALUE_3;
+                    reassemble<THIS_2 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_2): THIS_2;
+                    _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                    _product: true;
+                    _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                };
+                unpack: () => ReturnType<THIS["factory"]>;
+                reassemble<THIS_1 extends Product<NAME, VALUE, any>>(this: THIS_1, overrides: SupplyMap): THIS_1 & {
+                    supplies: $<THIS["suppliers"]>;
+                    unpack: () => ReturnType<THIS["factory"]>;
+                };
+                _dependsOnOneOf(this: Product<any, any, any>, overrides: SupplyMap): boolean;
+                _product: true;
+                _supplier: THIS;
+            };
+            try: <THIS extends ProductSupplier<NAME, VALUE, SUPPLIERS_1, JUST_IN_TIME_1, any, any, any> & {
+                _jitOnly?: true;
+            }, SUPPLIERS_1 extends ProductSupplier<string, any, any, any, any, any, any>[], JUST_IN_TIME_1 extends ProductSupplier<string, any, any, any, any, any, any>[], TRIED_SUPPLIERS extends ProductSupplier<string, any, any, any, any, any, true>[]>(this: THIS, ...suppliers: TRIED_SUPPLIERS) => HasCircularDependency<{
+                name: NAME;
+                suppliers: SUPPLIERS_1 | TrySuppliers<THIS["suppliers"], TRIED_SUPPLIERS>;
+                justInTime: TrySuppliers<THIS["justInTime"], TRIED_SUPPLIERS>;
+                factory: (supplies: any, justInTime: any) => VALUE;
+                init: ((value: VALUE, supplies: any) => void) | undefined;
+                lazy: boolean | undefined;
+                pack: <THIS_1 extends ProductSupplier<NAME, VALUE, any, any, any, any, any>, NEW_VALUE_2 extends VALUE>(this: THIS_1, value: NEW_VALUE_2) => {
+                    name: NAME;
+                    supplies: {};
+                    pack: <THIS_2 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_2, value: NEW_VALUE_3) => {
+                        name: NAME;
+                        supplies: {};
+                        pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                        unpack: () => NEW_VALUE_3;
+                        reassemble<THIS_3 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_3): THIS_3;
+                        _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                        _product: true;
+                        _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                    };
+                    _dependsOnOneOf: () => boolean;
+                    unpack: () => NonNullable<NEW_VALUE_2>;
+                    reassemble<THIS_2 extends Product<NAME, NEW_VALUE_2, $<SUPPLIERS>>>(this: THIS_2): THIS_2;
+                    _product: true;
+                    _supplier: THIS_1;
+                };
+                assemble: <THIS_1 extends ProductSupplier<NAME, VALUE, Supplier<string, any, any, any, any, any, any>[], any, any, any, any>>(this: THIS_1, toSupply: ToSupply<THIS_1["suppliers"]>) => {
+                    name: NAME;
+                    supplies: $<THIS_1["suppliers"]>;
+                    pack: <THIS_2 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_2, value: NEW_VALUE_3) => {
+                        name: NAME;
+                        supplies: {};
+                        pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                        unpack: () => NEW_VALUE_3;
+                        reassemble<THIS_3 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_3): THIS_3;
+                        _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                        _product: true;
+                        _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                    };
+                    unpack: () => ReturnType<THIS_1["factory"]>;
+                    reassemble<THIS_2 extends Product<NAME, VALUE, any>>(this: THIS_2, overrides: SupplyMap): THIS_2 & {
+                        supplies: $<THIS_1["suppliers"]>;
+                        unpack: () => ReturnType<THIS_1["factory"]>;
+                    };
+                    _dependsOnOneOf(this: Product<any, any, any>, overrides: SupplyMap): boolean;
+                    _product: true;
+                    _supplier: THIS_1;
+                };
+                jitOnly: <THIS_1>(this: THIS_1) => THIS_1 & {
+                    _jitOnly: true;
+                };
+                _isPrototype: true;
+                _product: true;
+            }> extends true ? unknown : {
+                name: NAME;
+                suppliers: SUPPLIERS_1 | TrySuppliers<THIS["suppliers"], TRIED_SUPPLIERS>;
+                justInTime: TrySuppliers<THIS["justInTime"], TRIED_SUPPLIERS>;
+                factory: (supplies: any, justInTime: any) => VALUE;
+                init: ((value: VALUE, supplies: any) => void) | undefined;
+                lazy: boolean | undefined;
+                pack: <THIS_1 extends ProductSupplier<NAME, VALUE, any, any, any, any, any>, NEW_VALUE_2 extends VALUE>(this: THIS_1, value: NEW_VALUE_2) => {
+                    name: NAME;
+                    supplies: {};
+                    pack: <THIS_2 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_2, value: NEW_VALUE_3) => {
+                        name: NAME;
+                        supplies: {};
+                        pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                        unpack: () => NEW_VALUE_3;
+                        reassemble<THIS_3 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_3): THIS_3;
+                        _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                        _product: true;
+                        _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                    };
+                    _dependsOnOneOf: () => boolean;
+                    unpack: () => NonNullable<NEW_VALUE_2>;
+                    reassemble<THIS_2 extends Product<NAME, NEW_VALUE_2, $<SUPPLIERS>>>(this: THIS_2): THIS_2;
+                    _product: true;
+                    _supplier: THIS_1;
+                };
+                assemble: <THIS_1 extends ProductSupplier<NAME, VALUE, Supplier<string, any, any, any, any, any, any>[], any, any, any, any>>(this: THIS_1, toSupply: ToSupply<THIS_1["suppliers"]>) => {
+                    name: NAME;
+                    supplies: $<THIS_1["suppliers"]>;
+                    pack: <THIS_2 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_2, value: NEW_VALUE_3) => {
+                        name: NAME;
+                        supplies: {};
+                        pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                        unpack: () => NEW_VALUE_3;
+                        reassemble<THIS_3 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_3): THIS_3;
+                        _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                        _product: true;
+                        _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                    };
+                    unpack: () => ReturnType<THIS_1["factory"]>;
+                    reassemble<THIS_2 extends Product<NAME, VALUE, any>>(this: THIS_2, overrides: SupplyMap): THIS_2 & {
+                        supplies: $<THIS_1["suppliers"]>;
+                        unpack: () => ReturnType<THIS_1["factory"]>;
+                    };
+                    _dependsOnOneOf(this: Product<any, any, any>, overrides: SupplyMap): boolean;
+                    _product: true;
+                    _supplier: THIS_1;
+                };
+                jitOnly: <THIS_1>(this: THIS_1) => THIS_1 & {
+                    _jitOnly: true;
+                };
+                _isPrototype: true;
+                _product: true;
+            };
+            with: <THIS extends ProductSupplier<NAME, VALUE, SUPPLIERS_2, any, any, any, any>, SUPPLIERS_2 extends Supplier<string, any, any, any, any, any, any>[], WITH_SUPPLIERS extends ProductSupplier<string, any, any, any, any, any, any>[]>(this: THIS, ...suppliers: WITH_SUPPLIERS) => HasCircularDependency<{
+                name: NAME;
+                suppliers: [...FilterSuppliers<THIS["suppliers"], WITH_SUPPLIERS>, ...WITH_SUPPLIERS];
+                justInTime: any;
+                factory: (supplies: any, justInTime: any) => VALUE;
+                init: ((value: VALUE, supplies: any) => void) | undefined;
+                lazy: boolean | undefined;
+                pack: <THIS_1 extends ProductSupplier<NAME, VALUE, any, any, any, any, any>, NEW_VALUE_2 extends VALUE>(this: THIS_1, value: NEW_VALUE_2) => {
+                    name: NAME;
+                    supplies: {};
+                    pack: <THIS_2 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_2, value: NEW_VALUE_3) => {
+                        name: NAME;
+                        supplies: {};
+                        pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                        unpack: () => NEW_VALUE_3;
+                        reassemble<THIS_3 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_3): THIS_3;
+                        _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                        _product: true;
+                        _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                    };
+                    _dependsOnOneOf: () => boolean;
+                    unpack: () => NonNullable<NEW_VALUE_2>;
+                    reassemble<THIS_2 extends Product<NAME, NEW_VALUE_2, $<SUPPLIERS>>>(this: THIS_2): THIS_2;
+                    _product: true;
+                    _supplier: THIS_1;
+                };
+                assemble: <THIS_1 extends ProductSupplier<NAME, VALUE, Supplier<string, any, any, any, any, any, any>[], any, any, any, any>>(this: THIS_1, toSupply: ToSupply<THIS_1["suppliers"]>) => {
+                    name: NAME;
+                    supplies: $<THIS_1["suppliers"]>;
+                    pack: <THIS_2 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_2, value: NEW_VALUE_3) => {
+                        name: NAME;
+                        supplies: {};
+                        pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                        unpack: () => NEW_VALUE_3;
+                        reassemble<THIS_3 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_3): THIS_3;
+                        _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                        _product: true;
+                        _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                    };
+                    unpack: () => ReturnType<THIS_1["factory"]>;
+                    reassemble<THIS_2 extends Product<NAME, VALUE, any>>(this: THIS_2, overrides: SupplyMap): THIS_2 & {
+                        supplies: $<THIS_1["suppliers"]>;
+                        unpack: () => ReturnType<THIS_1["factory"]>;
+                    };
+                    _dependsOnOneOf(this: Product<any, any, any>, overrides: SupplyMap): boolean;
+                    _product: true;
+                    _supplier: THIS_1;
+                };
+                jitOnly: <THIS_1>(this: THIS_1) => THIS_1 & {
+                    _jitOnly: true;
+                };
+                _isPrototype: true;
+                _product: true;
+            }> extends true ? unknown : {
+                name: NAME;
+                suppliers: [...FilterSuppliers<THIS["suppliers"], WITH_SUPPLIERS>, ...WITH_SUPPLIERS];
+                justInTime: any;
+                factory: (supplies: any, justInTime: any) => VALUE;
+                init: ((value: VALUE, supplies: any) => void) | undefined;
+                lazy: boolean | undefined;
+                pack: <THIS_1 extends ProductSupplier<NAME, VALUE, any, any, any, any, any>, NEW_VALUE_2 extends VALUE>(this: THIS_1, value: NEW_VALUE_2) => {
+                    name: NAME;
+                    supplies: {};
+                    pack: <THIS_2 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_2, value: NEW_VALUE_3) => {
+                        name: NAME;
+                        supplies: {};
+                        pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                        unpack: () => NEW_VALUE_3;
+                        reassemble<THIS_3 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_3): THIS_3;
+                        _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                        _product: true;
+                        _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                    };
+                    _dependsOnOneOf: () => boolean;
+                    unpack: () => NonNullable<NEW_VALUE_2>;
+                    reassemble<THIS_2 extends Product<NAME, NEW_VALUE_2, $<SUPPLIERS>>>(this: THIS_2): THIS_2;
+                    _product: true;
+                    _supplier: THIS_1;
+                };
+                assemble: <THIS_1 extends ProductSupplier<NAME, VALUE, Supplier<string, any, any, any, any, any, any>[], any, any, any, any>>(this: THIS_1, toSupply: ToSupply<THIS_1["suppliers"]>) => {
+                    name: NAME;
+                    supplies: $<THIS_1["suppliers"]>;
+                    pack: <THIS_2 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_2, value: NEW_VALUE_3) => {
+                        name: NAME;
+                        supplies: {};
+                        pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                        unpack: () => NEW_VALUE_3;
+                        reassemble<THIS_3 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_3): THIS_3;
+                        _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                        _product: true;
+                        _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                    };
+                    unpack: () => ReturnType<THIS_1["factory"]>;
+                    reassemble<THIS_2 extends Product<NAME, VALUE, any>>(this: THIS_2, overrides: SupplyMap): THIS_2 & {
+                        supplies: $<THIS_1["suppliers"]>;
+                        unpack: () => ReturnType<THIS_1["factory"]>;
+                    };
+                    _dependsOnOneOf(this: Product<any, any, any>, overrides: SupplyMap): boolean;
+                    _product: true;
+                    _supplier: THIS_1;
+                };
+                jitOnly: <THIS_1>(this: THIS_1) => THIS_1 & {
+                    _jitOnly: true;
+                };
+                _isPrototype: true;
+                _product: true;
+            };
+            jitOnly: <THIS>(this: THIS) => THIS & {
+                _jitOnly: true;
+            };
+            prototype: <THIS extends ProductSupplier<NAME, VALUE, any, any, any, any, any>, SUPPLIERS_OF_PROTOTYPE extends Supplier<string, any, any, any, any, any, false>[] = [], JUST_IN_TIME_OF_PROTOTYPE extends Supplier<string, any, any, any, any, any, false>[] = []>(this: THIS, config: {
+                factory: (supplies: $<SUPPLIERS_OF_PROTOTYPE>, justInTime: MapFromList<[...JUST_IN_TIME_OF_PROTOTYPE]>) => VALUE;
+                suppliers?: [...SUPPLIERS_OF_PROTOTYPE];
+                justInTime?: [...JUST_IN_TIME_OF_PROTOTYPE];
+                init?: (value: VALUE, supplies: $<SUPPLIERS_OF_PROTOTYPE>) => void;
+                lazy?: boolean;
+            }) => HasCircularDependency<{
+                name: NAME;
+                suppliers: SUPPLIERS_OF_PROTOTYPE;
+                justInTime: JUST_IN_TIME_OF_PROTOTYPE;
+                factory: (supplies: $<SUPPLIERS_OF_PROTOTYPE>, justInTime: MapFromList<[...JUST_IN_TIME_OF_PROTOTYPE]>) => VALUE;
+                init: ((value: VALUE, supplies: $<SUPPLIERS_OF_PROTOTYPE>) => void) | undefined;
+                lazy: boolean;
+                pack: <THIS_1 extends ProductSupplier<NAME, VALUE, any, any, any, any, any>, NEW_VALUE_2 extends VALUE>(this: THIS_1, value: NEW_VALUE_2) => {
+                    name: NAME;
+                    supplies: {};
+                    pack: <THIS_2 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_2, value: NEW_VALUE_3) => {
+                        name: NAME;
+                        supplies: {};
+                        pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                        unpack: () => NEW_VALUE_3;
+                        reassemble<THIS_3 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_3): THIS_3;
+                        _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                        _product: true;
+                        _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                    };
+                    _dependsOnOneOf: () => boolean;
+                    unpack: () => NonNullable<NEW_VALUE_2>;
+                    reassemble<THIS_2 extends Product<NAME, NEW_VALUE_2, $<SUPPLIERS>>>(this: THIS_2): THIS_2;
+                    _product: true;
+                    _supplier: THIS_1;
+                };
+                assemble: <THIS_1 extends ProductSupplier<NAME, VALUE, Supplier<string, any, any, any, any, any, any>[], any, any, any, any>>(this: THIS_1, toSupply: ToSupply<THIS_1["suppliers"]>) => {
+                    name: NAME;
+                    supplies: $<THIS_1["suppliers"]>;
+                    pack: <THIS_2 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_2, value: NEW_VALUE_3) => {
+                        name: NAME;
+                        supplies: {};
+                        pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                        unpack: () => NEW_VALUE_3;
+                        reassemble<THIS_3 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_3): THIS_3;
+                        _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                        _product: true;
+                        _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                    };
+                    unpack: () => ReturnType<THIS_1["factory"]>;
+                    reassemble<THIS_2 extends Product<NAME, VALUE, any>>(this: THIS_2, overrides: SupplyMap): THIS_2 & {
+                        supplies: $<THIS_1["suppliers"]>;
+                        unpack: () => ReturnType<THIS_1["factory"]>;
+                    };
+                    _dependsOnOneOf(this: Product<any, any, any>, overrides: SupplyMap): boolean;
+                    _product: true;
+                    _supplier: THIS_1;
+                };
+                jitOnly: <THIS_1>(this: THIS_1) => THIS_1 & {
+                    _jitOnly: true;
+                };
+                _isPrototype: true;
+                _product: true;
+            }> extends true ? unknown : {
+                name: NAME;
+                suppliers: SUPPLIERS_OF_PROTOTYPE;
+                justInTime: JUST_IN_TIME_OF_PROTOTYPE;
+                factory: (supplies: $<SUPPLIERS_OF_PROTOTYPE>, justInTime: MapFromList<[...JUST_IN_TIME_OF_PROTOTYPE]>) => VALUE;
+                init: ((value: VALUE, supplies: $<SUPPLIERS_OF_PROTOTYPE>) => void) | undefined;
+                lazy: boolean;
+                pack: <THIS_1 extends ProductSupplier<NAME, VALUE, any, any, any, any, any>, NEW_VALUE_2 extends VALUE>(this: THIS_1, value: NEW_VALUE_2) => {
+                    name: NAME;
+                    supplies: {};
+                    pack: <THIS_2 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_2, value: NEW_VALUE_3) => {
+                        name: NAME;
+                        supplies: {};
+                        pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                        unpack: () => NEW_VALUE_3;
+                        reassemble<THIS_3 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_3): THIS_3;
+                        _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                        _product: true;
+                        _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                    };
+                    _dependsOnOneOf: () => boolean;
+                    unpack: () => NonNullable<NEW_VALUE_2>;
+                    reassemble<THIS_2 extends Product<NAME, NEW_VALUE_2, $<SUPPLIERS>>>(this: THIS_2): THIS_2;
+                    _product: true;
+                    _supplier: THIS_1;
+                };
+                assemble: <THIS_1 extends ProductSupplier<NAME, VALUE, Supplier<string, any, any, any, any, any, any>[], any, any, any, any>>(this: THIS_1, toSupply: ToSupply<THIS_1["suppliers"]>) => {
+                    name: NAME;
+                    supplies: $<THIS_1["suppliers"]>;
+                    pack: <THIS_2 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_2, value: NEW_VALUE_3) => {
+                        name: NAME;
+                        supplies: {};
+                        pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                        unpack: () => NEW_VALUE_3;
+                        reassemble<THIS_3 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_3): THIS_3;
+                        _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                        _product: true;
+                        _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                    };
+                    unpack: () => ReturnType<THIS_1["factory"]>;
+                    reassemble<THIS_2 extends Product<NAME, VALUE, any>>(this: THIS_2, overrides: SupplyMap): THIS_2 & {
+                        supplies: $<THIS_1["suppliers"]>;
+                        unpack: () => ReturnType<THIS_1["factory"]>;
+                    };
+                    _dependsOnOneOf(this: Product<any, any, any>, overrides: SupplyMap): boolean;
+                    _product: true;
+                    _supplier: THIS_1;
+                };
+                jitOnly: <THIS_1>(this: THIS_1) => THIS_1 & {
+                    _jitOnly: true;
+                };
+                _isPrototype: true;
+                _product: true;
+            };
+            _isPrototype: IS_PROTOTYPE;
+            _product: true;
+        }> extends true ? unknown : {
+            name: NAME;
+            suppliers: SUPPLIERS;
+            justInTime: JUST_IN_TIME;
+            factory: (supplies: $<SUPPLIERS>, justInTime: MapFromList<[...JUST_IN_TIME]>) => VALUE;
+            lazy: boolean;
+            init: ((value: VALUE, supplies: $<SUPPLIERS>) => void) | undefined;
+            pack: <THIS extends ProductSupplier<NAME, VALUE, any, any, any, any, any>, NEW_VALUE_2 extends VALUE>(this: THIS, value: NEW_VALUE_2) => {
+                name: NAME;
+                supplies: {};
+                pack: <THIS_1 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_1, value: NEW_VALUE_3) => {
+                    name: NAME;
+                    supplies: {};
+                    pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                    unpack: () => NEW_VALUE_3;
+                    reassemble<THIS_2 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_2): THIS_2;
+                    _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                    _product: true;
+                    _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                };
+                _dependsOnOneOf: () => boolean;
+                unpack: () => NonNullable<NEW_VALUE_2>;
+                reassemble<THIS_1 extends Product<NAME, NEW_VALUE_2, $<SUPPLIERS>>>(this: THIS_1): THIS_1;
+                _product: true;
+                _supplier: THIS;
+            };
+            assemble: <THIS extends ProductSupplier<NAME, VALUE, Supplier<string, any, any, any, any, any, any>[], any, any, any, any>>(this: THIS, toSupply: ToSupply<THIS["suppliers"]>) => {
+                name: NAME;
+                supplies: $<THIS["suppliers"]>;
+                pack: <THIS_1 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_1, value: NEW_VALUE_3) => {
+                    name: NAME;
+                    supplies: {};
+                    pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                    unpack: () => NEW_VALUE_3;
+                    reassemble<THIS_2 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_2): THIS_2;
+                    _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                    _product: true;
+                    _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                };
+                unpack: () => ReturnType<THIS["factory"]>;
+                reassemble<THIS_1 extends Product<NAME, VALUE, any>>(this: THIS_1, overrides: SupplyMap): THIS_1 & {
+                    supplies: $<THIS["suppliers"]>;
+                    unpack: () => ReturnType<THIS["factory"]>;
+                };
+                _dependsOnOneOf(this: Product<any, any, any>, overrides: SupplyMap): boolean;
+                _product: true;
+                _supplier: THIS;
+            };
+            try: <THIS extends ProductSupplier<NAME, VALUE, SUPPLIERS_1, JUST_IN_TIME_1, any, any, any> & {
+                _jitOnly?: true;
+            }, SUPPLIERS_1 extends ProductSupplier<string, any, any, any, any, any, any>[], JUST_IN_TIME_1 extends ProductSupplier<string, any, any, any, any, any, any>[], TRIED_SUPPLIERS extends ProductSupplier<string, any, any, any, any, any, true>[]>(this: THIS, ...suppliers: TRIED_SUPPLIERS) => HasCircularDependency<{
+                name: NAME;
+                suppliers: SUPPLIERS_1 | TrySuppliers<THIS["suppliers"], TRIED_SUPPLIERS>;
+                justInTime: TrySuppliers<THIS["justInTime"], TRIED_SUPPLIERS>;
+                factory: (supplies: any, justInTime: any) => VALUE;
+                init: ((value: VALUE, supplies: any) => void) | undefined;
+                lazy: boolean | undefined;
+                pack: <THIS_1 extends ProductSupplier<NAME, VALUE, any, any, any, any, any>, NEW_VALUE_2 extends VALUE>(this: THIS_1, value: NEW_VALUE_2) => {
+                    name: NAME;
+                    supplies: {};
+                    pack: <THIS_2 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_2, value: NEW_VALUE_3) => {
+                        name: NAME;
+                        supplies: {};
+                        pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                        unpack: () => NEW_VALUE_3;
+                        reassemble<THIS_3 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_3): THIS_3;
+                        _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                        _product: true;
+                        _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                    };
+                    _dependsOnOneOf: () => boolean;
+                    unpack: () => NonNullable<NEW_VALUE_2>;
+                    reassemble<THIS_2 extends Product<NAME, NEW_VALUE_2, $<SUPPLIERS>>>(this: THIS_2): THIS_2;
+                    _product: true;
+                    _supplier: THIS_1;
+                };
+                assemble: <THIS_1 extends ProductSupplier<NAME, VALUE, Supplier<string, any, any, any, any, any, any>[], any, any, any, any>>(this: THIS_1, toSupply: ToSupply<THIS_1["suppliers"]>) => {
+                    name: NAME;
+                    supplies: $<THIS_1["suppliers"]>;
+                    pack: <THIS_2 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_2, value: NEW_VALUE_3) => {
+                        name: NAME;
+                        supplies: {};
+                        pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                        unpack: () => NEW_VALUE_3;
+                        reassemble<THIS_3 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_3): THIS_3;
+                        _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                        _product: true;
+                        _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                    };
+                    unpack: () => ReturnType<THIS_1["factory"]>;
+                    reassemble<THIS_2 extends Product<NAME, VALUE, any>>(this: THIS_2, overrides: SupplyMap): THIS_2 & {
+                        supplies: $<THIS_1["suppliers"]>;
+                        unpack: () => ReturnType<THIS_1["factory"]>;
+                    };
+                    _dependsOnOneOf(this: Product<any, any, any>, overrides: SupplyMap): boolean;
+                    _product: true;
+                    _supplier: THIS_1;
+                };
+                jitOnly: <THIS_1>(this: THIS_1) => THIS_1 & {
+                    _jitOnly: true;
+                };
+                _isPrototype: true;
+                _product: true;
+            }> extends true ? unknown : {
+                name: NAME;
+                suppliers: SUPPLIERS_1 | TrySuppliers<THIS["suppliers"], TRIED_SUPPLIERS>;
+                justInTime: TrySuppliers<THIS["justInTime"], TRIED_SUPPLIERS>;
+                factory: (supplies: any, justInTime: any) => VALUE;
+                init: ((value: VALUE, supplies: any) => void) | undefined;
+                lazy: boolean | undefined;
+                pack: <THIS_1 extends ProductSupplier<NAME, VALUE, any, any, any, any, any>, NEW_VALUE_2 extends VALUE>(this: THIS_1, value: NEW_VALUE_2) => {
+                    name: NAME;
+                    supplies: {};
+                    pack: <THIS_2 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_2, value: NEW_VALUE_3) => {
+                        name: NAME;
+                        supplies: {};
+                        pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                        unpack: () => NEW_VALUE_3;
+                        reassemble<THIS_3 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_3): THIS_3;
+                        _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                        _product: true;
+                        _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                    };
+                    _dependsOnOneOf: () => boolean;
+                    unpack: () => NonNullable<NEW_VALUE_2>;
+                    reassemble<THIS_2 extends Product<NAME, NEW_VALUE_2, $<SUPPLIERS>>>(this: THIS_2): THIS_2;
+                    _product: true;
+                    _supplier: THIS_1;
+                };
+                assemble: <THIS_1 extends ProductSupplier<NAME, VALUE, Supplier<string, any, any, any, any, any, any>[], any, any, any, any>>(this: THIS_1, toSupply: ToSupply<THIS_1["suppliers"]>) => {
+                    name: NAME;
+                    supplies: $<THIS_1["suppliers"]>;
+                    pack: <THIS_2 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_2, value: NEW_VALUE_3) => {
+                        name: NAME;
+                        supplies: {};
+                        pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                        unpack: () => NEW_VALUE_3;
+                        reassemble<THIS_3 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_3): THIS_3;
+                        _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                        _product: true;
+                        _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                    };
+                    unpack: () => ReturnType<THIS_1["factory"]>;
+                    reassemble<THIS_2 extends Product<NAME, VALUE, any>>(this: THIS_2, overrides: SupplyMap): THIS_2 & {
+                        supplies: $<THIS_1["suppliers"]>;
+                        unpack: () => ReturnType<THIS_1["factory"]>;
+                    };
+                    _dependsOnOneOf(this: Product<any, any, any>, overrides: SupplyMap): boolean;
+                    _product: true;
+                    _supplier: THIS_1;
+                };
+                jitOnly: <THIS_1>(this: THIS_1) => THIS_1 & {
+                    _jitOnly: true;
+                };
+                _isPrototype: true;
+                _product: true;
+            };
+            with: <THIS extends ProductSupplier<NAME, VALUE, SUPPLIERS_2, any, any, any, any>, SUPPLIERS_2 extends Supplier<string, any, any, any, any, any, any>[], WITH_SUPPLIERS extends ProductSupplier<string, any, any, any, any, any, any>[]>(this: THIS, ...suppliers: WITH_SUPPLIERS) => HasCircularDependency<{
+                name: NAME;
+                suppliers: [...FilterSuppliers<THIS["suppliers"], WITH_SUPPLIERS>, ...WITH_SUPPLIERS];
+                justInTime: any;
+                factory: (supplies: any, justInTime: any) => VALUE;
+                init: ((value: VALUE, supplies: any) => void) | undefined;
+                lazy: boolean | undefined;
+                pack: <THIS_1 extends ProductSupplier<NAME, VALUE, any, any, any, any, any>, NEW_VALUE_2 extends VALUE>(this: THIS_1, value: NEW_VALUE_2) => {
+                    name: NAME;
+                    supplies: {};
+                    pack: <THIS_2 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_2, value: NEW_VALUE_3) => {
+                        name: NAME;
+                        supplies: {};
+                        pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                        unpack: () => NEW_VALUE_3;
+                        reassemble<THIS_3 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_3): THIS_3;
+                        _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                        _product: true;
+                        _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                    };
+                    _dependsOnOneOf: () => boolean;
+                    unpack: () => NonNullable<NEW_VALUE_2>;
+                    reassemble<THIS_2 extends Product<NAME, NEW_VALUE_2, $<SUPPLIERS>>>(this: THIS_2): THIS_2;
+                    _product: true;
+                    _supplier: THIS_1;
+                };
+                assemble: <THIS_1 extends ProductSupplier<NAME, VALUE, Supplier<string, any, any, any, any, any, any>[], any, any, any, any>>(this: THIS_1, toSupply: ToSupply<THIS_1["suppliers"]>) => {
+                    name: NAME;
+                    supplies: $<THIS_1["suppliers"]>;
+                    pack: <THIS_2 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_2, value: NEW_VALUE_3) => {
+                        name: NAME;
+                        supplies: {};
+                        pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                        unpack: () => NEW_VALUE_3;
+                        reassemble<THIS_3 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_3): THIS_3;
+                        _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                        _product: true;
+                        _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                    };
+                    unpack: () => ReturnType<THIS_1["factory"]>;
+                    reassemble<THIS_2 extends Product<NAME, VALUE, any>>(this: THIS_2, overrides: SupplyMap): THIS_2 & {
+                        supplies: $<THIS_1["suppliers"]>;
+                        unpack: () => ReturnType<THIS_1["factory"]>;
+                    };
+                    _dependsOnOneOf(this: Product<any, any, any>, overrides: SupplyMap): boolean;
+                    _product: true;
+                    _supplier: THIS_1;
+                };
+                jitOnly: <THIS_1>(this: THIS_1) => THIS_1 & {
+                    _jitOnly: true;
+                };
+                _isPrototype: true;
+                _product: true;
+            }> extends true ? unknown : {
+                name: NAME;
+                suppliers: [...FilterSuppliers<THIS["suppliers"], WITH_SUPPLIERS>, ...WITH_SUPPLIERS];
+                justInTime: any;
+                factory: (supplies: any, justInTime: any) => VALUE;
+                init: ((value: VALUE, supplies: any) => void) | undefined;
+                lazy: boolean | undefined;
+                pack: <THIS_1 extends ProductSupplier<NAME, VALUE, any, any, any, any, any>, NEW_VALUE_2 extends VALUE>(this: THIS_1, value: NEW_VALUE_2) => {
+                    name: NAME;
+                    supplies: {};
+                    pack: <THIS_2 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_2, value: NEW_VALUE_3) => {
+                        name: NAME;
+                        supplies: {};
+                        pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                        unpack: () => NEW_VALUE_3;
+                        reassemble<THIS_3 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_3): THIS_3;
+                        _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                        _product: true;
+                        _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                    };
+                    _dependsOnOneOf: () => boolean;
+                    unpack: () => NonNullable<NEW_VALUE_2>;
+                    reassemble<THIS_2 extends Product<NAME, NEW_VALUE_2, $<SUPPLIERS>>>(this: THIS_2): THIS_2;
+                    _product: true;
+                    _supplier: THIS_1;
+                };
+                assemble: <THIS_1 extends ProductSupplier<NAME, VALUE, Supplier<string, any, any, any, any, any, any>[], any, any, any, any>>(this: THIS_1, toSupply: ToSupply<THIS_1["suppliers"]>) => {
+                    name: NAME;
+                    supplies: $<THIS_1["suppliers"]>;
+                    pack: <THIS_2 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_2, value: NEW_VALUE_3) => {
+                        name: NAME;
+                        supplies: {};
+                        pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                        unpack: () => NEW_VALUE_3;
+                        reassemble<THIS_3 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_3): THIS_3;
+                        _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                        _product: true;
+                        _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                    };
+                    unpack: () => ReturnType<THIS_1["factory"]>;
+                    reassemble<THIS_2 extends Product<NAME, VALUE, any>>(this: THIS_2, overrides: SupplyMap): THIS_2 & {
+                        supplies: $<THIS_1["suppliers"]>;
+                        unpack: () => ReturnType<THIS_1["factory"]>;
+                    };
+                    _dependsOnOneOf(this: Product<any, any, any>, overrides: SupplyMap): boolean;
+                    _product: true;
+                    _supplier: THIS_1;
+                };
+                jitOnly: <THIS_1>(this: THIS_1) => THIS_1 & {
+                    _jitOnly: true;
+                };
+                _isPrototype: true;
+                _product: true;
+            };
+            jitOnly: <THIS>(this: THIS) => THIS & {
+                _jitOnly: true;
+            };
+            prototype: <THIS extends ProductSupplier<NAME, VALUE, any, any, any, any, any>, SUPPLIERS_OF_PROTOTYPE extends Supplier<string, any, any, any, any, any, false>[] = [], JUST_IN_TIME_OF_PROTOTYPE extends Supplier<string, any, any, any, any, any, false>[] = []>(this: THIS, config: {
+                factory: (supplies: $<SUPPLIERS_OF_PROTOTYPE>, justInTime: MapFromList<[...JUST_IN_TIME_OF_PROTOTYPE]>) => VALUE;
+                suppliers?: [...SUPPLIERS_OF_PROTOTYPE];
+                justInTime?: [...JUST_IN_TIME_OF_PROTOTYPE];
+                init?: (value: VALUE, supplies: $<SUPPLIERS_OF_PROTOTYPE>) => void;
+                lazy?: boolean;
+            }) => HasCircularDependency<{
+                name: NAME;
+                suppliers: SUPPLIERS_OF_PROTOTYPE;
+                justInTime: JUST_IN_TIME_OF_PROTOTYPE;
+                factory: (supplies: $<SUPPLIERS_OF_PROTOTYPE>, justInTime: MapFromList<[...JUST_IN_TIME_OF_PROTOTYPE]>) => VALUE;
+                init: ((value: VALUE, supplies: $<SUPPLIERS_OF_PROTOTYPE>) => void) | undefined;
+                lazy: boolean;
+                pack: <THIS_1 extends ProductSupplier<NAME, VALUE, any, any, any, any, any>, NEW_VALUE_2 extends VALUE>(this: THIS_1, value: NEW_VALUE_2) => {
+                    name: NAME;
+                    supplies: {};
+                    pack: <THIS_2 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_2, value: NEW_VALUE_3) => {
+                        name: NAME;
+                        supplies: {};
+                        pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                        unpack: () => NEW_VALUE_3;
+                        reassemble<THIS_3 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_3): THIS_3;
+                        _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                        _product: true;
+                        _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                    };
+                    _dependsOnOneOf: () => boolean;
+                    unpack: () => NonNullable<NEW_VALUE_2>;
+                    reassemble<THIS_2 extends Product<NAME, NEW_VALUE_2, $<SUPPLIERS>>>(this: THIS_2): THIS_2;
+                    _product: true;
+                    _supplier: THIS_1;
+                };
+                assemble: <THIS_1 extends ProductSupplier<NAME, VALUE, Supplier<string, any, any, any, any, any, any>[], any, any, any, any>>(this: THIS_1, toSupply: ToSupply<THIS_1["suppliers"]>) => {
+                    name: NAME;
+                    supplies: $<THIS_1["suppliers"]>;
+                    pack: <THIS_2 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_2, value: NEW_VALUE_3) => {
+                        name: NAME;
+                        supplies: {};
+                        pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                        unpack: () => NEW_VALUE_3;
+                        reassemble<THIS_3 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_3): THIS_3;
+                        _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                        _product: true;
+                        _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                    };
+                    unpack: () => ReturnType<THIS_1["factory"]>;
+                    reassemble<THIS_2 extends Product<NAME, VALUE, any>>(this: THIS_2, overrides: SupplyMap): THIS_2 & {
+                        supplies: $<THIS_1["suppliers"]>;
+                        unpack: () => ReturnType<THIS_1["factory"]>;
+                    };
+                    _dependsOnOneOf(this: Product<any, any, any>, overrides: SupplyMap): boolean;
+                    _product: true;
+                    _supplier: THIS_1;
+                };
+                jitOnly: <THIS_1>(this: THIS_1) => THIS_1 & {
+                    _jitOnly: true;
+                };
+                _isPrototype: true;
+                _product: true;
+            }> extends true ? unknown : {
+                name: NAME;
+                suppliers: SUPPLIERS_OF_PROTOTYPE;
+                justInTime: JUST_IN_TIME_OF_PROTOTYPE;
+                factory: (supplies: $<SUPPLIERS_OF_PROTOTYPE>, justInTime: MapFromList<[...JUST_IN_TIME_OF_PROTOTYPE]>) => VALUE;
+                init: ((value: VALUE, supplies: $<SUPPLIERS_OF_PROTOTYPE>) => void) | undefined;
+                lazy: boolean;
+                pack: <THIS_1 extends ProductSupplier<NAME, VALUE, any, any, any, any, any>, NEW_VALUE_2 extends VALUE>(this: THIS_1, value: NEW_VALUE_2) => {
+                    name: NAME;
+                    supplies: {};
+                    pack: <THIS_2 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_2, value: NEW_VALUE_3) => {
+                        name: NAME;
+                        supplies: {};
+                        pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                        unpack: () => NEW_VALUE_3;
+                        reassemble<THIS_3 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_3): THIS_3;
+                        _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                        _product: true;
+                        _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                    };
+                    _dependsOnOneOf: () => boolean;
+                    unpack: () => NonNullable<NEW_VALUE_2>;
+                    reassemble<THIS_2 extends Product<NAME, NEW_VALUE_2, $<SUPPLIERS>>>(this: THIS_2): THIS_2;
+                    _product: true;
+                    _supplier: THIS_1;
+                };
+                assemble: <THIS_1 extends ProductSupplier<NAME, VALUE, Supplier<string, any, any, any, any, any, any>[], any, any, any, any>>(this: THIS_1, toSupply: ToSupply<THIS_1["suppliers"]>) => {
+                    name: NAME;
+                    supplies: $<THIS_1["suppliers"]>;
+                    pack: <THIS_2 extends Product<NAME, VALUE, $<SUPPLIERS>>, NEW_VALUE_3 extends VALUE>(this: THIS_2, value: NEW_VALUE_3) => {
+                        name: NAME;
+                        supplies: {};
+                        pack: (value: VALUE) => Product<NAME, VALUE, $<SUPPLIERS>>;
+                        unpack: () => NEW_VALUE_3;
+                        reassemble<THIS_3 extends Product<NAME, NEW_VALUE_3, $<SUPPLIERS>>>(this: THIS_3): THIS_3;
+                        _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+                        _product: true;
+                        _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+                    };
+                    unpack: () => ReturnType<THIS_1["factory"]>;
+                    reassemble<THIS_2 extends Product<NAME, VALUE, any>>(this: THIS_2, overrides: SupplyMap): THIS_2 & {
+                        supplies: $<THIS_1["suppliers"]>;
+                        unpack: () => ReturnType<THIS_1["factory"]>;
+                    };
+                    _dependsOnOneOf(this: Product<any, any, any>, overrides: SupplyMap): boolean;
+                    _product: true;
+                    _supplier: THIS_1;
+                };
+                jitOnly: <THIS_1>(this: THIS_1) => THIS_1 & {
+                    _jitOnly: true;
+                };
+                _isPrototype: true;
+                _product: true;
+            };
+            _isPrototype: IS_PROTOTYPE;
+            _product: true;
+        };
+    };
+};
+
+// @public
+export type ExcludeSuppliersType<SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[], TYPE extends ProductSupplier<string, any, any, any, any, any> | ResourceSupplier<string, any>> = SUPPLIERS extends readonly [infer Head, ...infer Tail] ? Head extends TYPE ? Tail extends Supplier<string, any, any, any, any, any, any>[] ? ExcludeSuppliersType<Tail, TYPE> : [] : Tail extends Supplier<string, any, any, any, any, any, any>[] ? [Head, ...ExcludeSuppliersType<Tail, TYPE>] : [Head] : [];
+
+// @public
+export type FilterSuppliers<OLD extends Supplier<string, any, any, any, any, any, any>[], NEW extends ProductSupplier<string, any, any, any, any, any, any>[]> = OLD extends [infer Head, ...infer Tail] ? Tail extends Supplier<string, any, any, any, any, any, any>[] ? Head extends {
+    name: NEW[number]["name"];
+} ? FilterSuppliers<Tail, NEW> : [Head, ...FilterSuppliers<Tail, NEW>] : Head extends {
+    name: NEW[number]["name"];
+} ? [] : [Head] : [];
+
+// @public
+export type HasCircularDependency<SUPPLIER extends Pick<ProductSupplier<string, any, any, any, any, any, any>, "name" | "suppliers">> = SUPPLIER["name"] extends (TransitiveSuppliers<SUPPLIER["suppliers"]>[number] extends infer S ? S extends Supplier<string, any, any, any, any, any, any> ? S["name"] : never : never) ? true : false;
+
+// @public
+export function index<LIST extends {
+    name: string;
+}[]>(...list: LIST): MapFromList<LIST>;
+
+// @public
+export type MapFromList<LIST extends {
+    name: string;
+}[]> = LIST extends [] ? Record<never, never> : Merge<{
+    [K in keyof LIST]: {
+        [NAME in LIST[K]["name"]]: LIST[K];
+    };
+}[number]>;
+
+// @public
+export type Merge<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never;
+
+// @public
+export type Product<NAME extends string, VALUE, SUPPLIES extends SupplyMap> = {
+    name: NAME;
+    supplies: SUPPLIES;
+    unpack: () => VALUE;
+    pack: (value: VALUE) => Product<NAME, VALUE, SUPPLIES>;
+    reassemble: (overrides: SupplyMap) => Product<NAME, VALUE, SUPPLIES>;
+    _dependsOnOneOf: (overrides: SupplyMap) => boolean;
+    _product: true;
+    _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>;
+};
+
+// @public
+export type ProductSupplier<NAME extends string, VALUE, SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[] = [], JUST_IN_TIME extends Supplier<string, any, any, any, any, any, any>[] = [], SUPPLIES extends $<SUPPLIERS> = $<SUPPLIERS>, JUST_IN_TIME_MAP extends MapFromList<[...JUST_IN_TIME]> = MapFromList<[
+...JUST_IN_TIME
+]>, IS_PROTOTYPE extends boolean = false> = {
+    name: NAME;
+    suppliers: SUPPLIERS;
+    justInTime: JUST_IN_TIME;
+    factory: (supplies: SUPPLIES, justInTime: JUST_IN_TIME_MAP) => VALUE;
+    assemble: (toSupply: ToSupply<SUPPLIERS>) => Product<NAME, VALUE, SUPPLIES>;
+    pack: (value: VALUE) => Product<NAME, VALUE, Record<never, never>>;
+    try?: (...suppliers: ProductSupplier<string, any, any, any, any, any, true>[]) => ProductSupplier<NAME, VALUE, any, any, any, any, true>;
+    with?: (...suppliers: ProductSupplier<string, any, any, any, any, any, false>[]) => ProductSupplier<NAME, VALUE, any, any, any, any, true>;
+    jitOnly: () => ProductSupplier<NAME, VALUE, any, any, any, any, false>;
+    prototype?: ({ factory, suppliers, justInTime, init, lazy }: {
+        factory: (supplies: $<Supplier<string, any, any, any, any, any, any>[]>, justInTime: MapFromList<Supplier<string, any, any, any, any, any, any>[]>) => VALUE;
+        suppliers?: Supplier<string, any, any, any, any, any, any>[];
+        justInTime?: Supplier<string, any, any, any, any, any, any>[];
+        init?: (value: VALUE, supplies: $<Supplier<string, any, any, any, any, any, any>[]>) => void;
+        lazy?: boolean;
+    }) => ProductSupplier<NAME, VALUE, Supplier<string, any, any, any, any, any, any>[], Supplier<string, any, any, any, any, any, any>[], any, any, true>;
+    init?: (value: VALUE, supplies: SUPPLIES) => void;
+    lazy?: boolean;
+    _isPrototype: IS_PROTOTYPE;
+    _product: true;
+};
+
+// @public
+export type Resource<NAME extends string, VALUE> = {
+    name: NAME;
+    pack: (value: VALUE) => Resource<NAME, VALUE>;
+    unpack(): VALUE;
+    _resource: true;
+};
+
+// @public
+export type ResourceSupplier<NAME extends string, CONSTRAINT> = {
+    name: NAME;
+    pack: (value: CONSTRAINT) => Resource<NAME, CONSTRAINT>;
+    _resource: true;
+    _constraint: CONSTRAINT;
+};
+
+// Warning: (ae-internal-missing-underscore) The name "sleep" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
+export function sleep(ms: number): Promise<unknown>;
+
+// @public
+export type Supplier<NAME extends string, VALUE, SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[], JUST_IN_TIME extends Supplier<string, any, any, any, any, any, any>[], SUPPLIES extends $<SUPPLIERS>, JUST_IN_TIME_MAP extends MapFromList<[...JUST_IN_TIME]>, IS_PROTOTYPE extends boolean> = ProductSupplier<NAME, VALUE, SUPPLIERS, JUST_IN_TIME, SUPPLIES, JUST_IN_TIME_MAP, IS_PROTOTYPE> | ResourceSupplier<NAME, VALUE>;
+
+// @public
+export type SupplyMap = Record<string, Product<string, any, any> | Resource<string, any>>;
+
+// @public
+export type SupplyMapFromSuppliers<SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[]> = {
+    [SUPPLIER in SUPPLIERS[number] as SUPPLIER["name"]]: SUPPLIER extends ProductSupplier<infer NAME, infer VALUE, any, any, infer SUPPLIES, any, any> ? Product<NAME, VALUE, SUPPLIES> : SUPPLIER extends ResourceSupplier<infer NAME, infer VALUE> ? Resource<NAME, VALUE> : never;
+};
+
+// @public
+export type ToSupply<SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[]> = SupplyMapFromSuppliers<ExcludeSuppliersType<TransitiveSuppliers<SUPPLIERS>, ProductSupplier<string, any, any, any, any, any, any>>>;
+
+// @public
+export type TransitiveSuppliers<SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[]> = SUPPLIERS extends [infer FIRST, ...infer REST] ? FIRST extends ProductSupplier<string, any, infer CHILD_SUPPLIERS, any, any, any, any> ? [
+FIRST,
+...TransitiveSuppliers<CHILD_SUPPLIERS>,
+...TransitiveSuppliers<REST extends Supplier<string, any, any, any, any, any, any>[] ? REST : []>
+] : FIRST extends ResourceSupplier<string, any> ? [
+FIRST,
+...TransitiveSuppliers<REST extends Supplier<string, any, any, any, any, any, any>[] ? REST : []>
+] : never : [];
+
+// @public
+export type TrySuppliers<OLD extends Supplier<string, any, any, any, any, any, any>[], NEW extends ProductSupplier<string, any, any, any, any, any, any>[]> = OLD extends [infer Head, ...infer Tail] ? Tail extends Supplier<string, any, any, any, any, any, any>[] ? Head extends {
+    name: NEW[number]["name"];
+} ? [
+Extract<NEW[number], {
+    name: Head["name"];
+}>,
+...TrySuppliers<Tail, NEW>
+] : [
+Head,
+...TrySuppliers<Tail, NEW>
+] : Head extends {
+    name: NEW[number]["name"];
+} ? [Extract<NEW[number], {
+    name: Head["name"];
+}>] : [Head] : [];
+
 // (No @packageDocumentation comment for this package)
 
 ```
