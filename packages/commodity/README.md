@@ -1,5 +1,7 @@
 # commodity
 
+IN CONSTRUCTION, please do not install versions v0.0.x!!!
+
 First fully type-inferred and type-safe DI solution for Typescript! No OOP, reflect-metadata, decorators, annotations or compiler magic, just pure functions!
 
 ## Why Commodity?

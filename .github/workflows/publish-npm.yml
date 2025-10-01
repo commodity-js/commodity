@@ -84,9 +84,15 @@ jobs:
                   # Update package.json version
                   pnpm version $VERSION --no-git-tag-version
 
+            - name: Replace index.d.ts with beta version
+              working-directory: ./packages/commodity
+              run: |
+                  cp docs/index-beta.d.ts dist/index.d.ts
+                  cp docs/index-beta.d.ts dist/index.d.cts
+
             - name: Publish to NPM
               working-directory: ./packages/commodity
-              run: npm publish
+              run: npm publish --tag beta
 
             - name: Create Release
               uses: actions/create-release@v1

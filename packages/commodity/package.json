@@ -27,7 +27,8 @@
         "dist"
     ],
     "scripts": {
-        "build": "tsup",
+        "build": "tsup && api-extractor run",
+        "docgen": "api-extractor run --local",
         "dev": "tsup --watch",
         "test": "vitest --typecheck",
         "test:run": "vitest run --typecheck",
@@ -36,6 +37,7 @@
     "devDependencies": {
         "@config.commodity/eslint": "*",
         "@config.commodity/typescript": "*",
+        "@microsoft/api-extractor": "^7.36.0",
         "memoize": "^10.1.0",
         "tsup": "^8.5.0",
         "turbo": "^2.5.5",

@@ -3,7 +3,7 @@
  * This utility type is used internally to combine multiple types into one cohesive type.
  * @typeParam U - The union type to merge
  * @returns An intersection type that combines all members of the union
- * @beta
+ * @public
  */
 
 export type Merge<U> = (U extends any ? (k: U) => void : never) extends (
@@ -19,7 +19,7 @@ export type Merge<U> = (U extends any ? (k: U) => void : never) extends (
  *
  * @typeParam NAME - The unique identifier name for this resource
  * @typeParam VALUE - The type of value this resource contains
- * @beta
+ * @public
  * @example
  * ```typescript
  * const configResource: Resource<"config", AppConfig> = {
@@ -48,7 +48,7 @@ export type Resource<NAME extends string, VALUE> = {
  *
  * @typeParam NAME - The unique identifier name for this resource supplier
  * @typeParam CONSTRAINT - The type constraint for values this supplier can accept
- * @beta
+ * @public
  * @example
  * ```typescript
  * const configSupplier: ResourceSupplier<"config", AppConfig> = {
@@ -78,7 +78,7 @@ export type ResourceSupplier<NAME extends string, CONSTRAINT> = {
  * @typeParam NAME - The unique identifier name for this product
  * @typeParam VALUE - The type of value this product produces
  * @typeParam SUPPLIES - The map of resolved dependencies this product uses
- * @beta
+ * @public
  * @example
  * ```typescript
  * const userService: Product<"userService", UserService, { userRepo: Resource<"userRepo", UserRepository> }> = {
@@ -123,7 +123,7 @@ export type Product<NAME extends string, VALUE, SUPPLIES extends SupplyMap> = {
  * @typeParam SUPPLIES - The resolved supply map for dependencies
  * @typeParam JUST_IN_TIME_MAP - The map of just-in-time suppliers
  * @typeParam IS_PROTOTYPE - Whether this supplier is a prototype variant
- * @beta
+ * @public
  * @example
  * ```typescript
  * const userServiceSupplier: ProductSupplier<"userService", UserService, [typeof userRepoSupplier]> = {
@@ -225,7 +225,7 @@ export type ProductSupplier<
  * @typeParam SUPPLIES - The resolved supply map (for product suppliers)
  * @typeParam JUST_IN_TIME_MAP - The map of just-in-time suppliers (for product suppliers)
  * @typeParam IS_PROTOTYPE - Whether this is a prototype variant (for product suppliers)
- * @beta
+ * @public
  */
 export type Supplier<
     NAME extends string,
@@ -253,7 +253,7 @@ export type Supplier<
  *
  * @typeParam LIST - An array of objects that have a `name` property
  * @returns A map type where each key is a name from the list and values are the corresponding objects
- * @beta
+ * @public
  * @example
  * ```typescript
  * type Services = [
@@ -279,7 +279,7 @@ export type MapFromList<LIST extends { name: string }[]> = LIST extends []
  * This is used for dependency resolution and reassembly operations.
  * The map enables dynamic lookup of dependencies at runtime while maintaining type safety.
  *
- * @beta
+ * @public
  * @example
  * ```typescript
  * const supplies: SupplyMap = {
@@ -301,7 +301,7 @@ export type SupplyMap = Record<
  *
  * @typeParam SUPPLIERS - Array of supplier types to convert into a supply map
  * @returns A map where keys are supplier names and values are their assembled products/resources
- * @beta
+ * @public
  */
 export type SupplyMapFromSuppliers<
     SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[]
@@ -327,7 +327,7 @@ export type SupplyMapFromSuppliers<
  *
  * @typeParam SUPPLIERS - Array of suppliers to create the supply object from
  * @returns A callable object that provides both property access and function call access to supplies
- * @beta
+ * @public
  * @example
  * ```typescript
  * function factory(supplies: $<[typeof userRepoSupplier, typeof loggerSupplier]>) {
@@ -358,7 +358,7 @@ export type $<
  * @typeParam SUPPLIERS - The array of suppliers to filter
  * @typeParam TYPE - The supplier type to exclude (ProductSupplier or ResourceSupplier)
  * @returns A new array with the specified supplier type removed
- * @beta
+ * @public
  */
 export type ExcludeSuppliersType<
     SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[],
@@ -383,7 +383,7 @@ export type ExcludeSuppliersType<
  *
  * @typeParam SUPPLIERS - The array of suppliers to collect transitive dependencies from
  * @returns A flattened array containing all suppliers and their transitive dependencies
- * @beta
+ * @public
  */
 export type TransitiveSuppliers<
     SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[]
@@ -426,7 +426,7 @@ export type TransitiveSuppliers<
  *
  * @typeParam SUPPLIERS - The array of suppliers to analyze
  * @returns A supply map of only the resource suppliers that must be provided
- * @beta
+ * @public
  */
 export type ToSupply<
     SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[]
@@ -445,7 +445,7 @@ export type ToSupply<
  * @typeParam OLD - The original array of suppliers
  * @typeParam NEW - The new array of suppliers to merge in
  * @returns A merged array where matching names from NEW replace those in OLD
- * @beta
+ * @public
  */
 export type TrySuppliers<
     OLD extends Supplier<string, any, any, any, any, any, any>[],
@@ -473,7 +473,7 @@ export type TrySuppliers<
  * @typeParam OLD - The original array of suppliers to filter
  * @typeParam NEW - The array of suppliers whose names should be removed from OLD
  * @returns A filtered array with suppliers whose names appear in NEW removed
- * @beta
+ * @public
  */
 export type FilterSuppliers<
     OLD extends Supplier<string, any, any, any, any, any, any>[],
@@ -492,7 +492,7 @@ export type FilterSuppliers<
  * Checks if a supplier has a circular dependency by seeing if its name appears
  * in the transitive dependencies of its own suppliers.
  * This prevents infinite loops during dependency resolution.
- * @beta
+ * @public
  */
 export type HasCircularDependency<
     SUPPLIER extends Pick<

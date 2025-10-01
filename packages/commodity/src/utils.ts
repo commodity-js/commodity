@@ -64,7 +64,7 @@ export function once<T extends () => any>(func: T) {
  * @typeParam LIST - An array type where each element has a `name` property
  * @param list - Array of objects with name properties
  * @returns A map where keys are the name properties and values are the objects
- * @beta
+ * @public
  * @example
  * ```typescript
  * const suppliers = [

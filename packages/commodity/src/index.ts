@@ -47,7 +47,7 @@ function isProduct(
  * type-safe manner.
  *
  * @returns A market object with methods to create suppliers and products
- * @beta
+ * @public
  * @example
  * ```typescript
  * // Create a market
@@ -161,12 +161,6 @@ export const createMarket = () => {
                  * @typeParam JUST_IN_TIME - Array of suppliers that are resolved just-in-time (lazy)
                  * @typeParam IS_PROTOTYPE - Whether this is a prototype supplier
                  * @param config - Configuration object for the product
-                 * @param config.suppliers - Array of suppliers this product depends on (resolved eagerly)
-                 * @param config.justInTime - Array of suppliers resolved just-in-time (available but not auto-assembled)
-                 * @param config.factory - Factory function that creates the product value from dependencies
-                 * @param config.init - Optional initialization function called after the factory
-                 * @param config.lazy - Whether this product should be lazily evaluated
-                 * @param config.isPrototype - Whether this supplier is a prototype variant
                  * @returns A product supplier configuration object with methods like assemble, pack, try, with, etc.
                  * @example
                  * ```typescript
