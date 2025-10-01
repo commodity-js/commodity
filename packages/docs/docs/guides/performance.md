@@ -4,7 +4,7 @@ Commodity is designed for optimal performance, featuring a minimal bundle size, 
 
 ## Bundle Size & Footprint
 
--   **~3KB minified, ~1KB minzipped**: Hyper-minimalistic bundle size. Most of the package is type definitions.
+-   **~5KB minified, ~2KB minzipped**: Hyper-minimalistic bundle size. Most of the package is type definitions.
 -   **Zero dependencies**: Adds no external runtime dependencies to your project.
 -   **Tree-shakable and code-splittable architecture**: Helps you create hyper-specialized suppliers: One function or piece of data per supplier.
 

@@ -84,7 +84,24 @@ jobs:
                   # Update package.json version
                   pnpm version $VERSION --no-git-tag-version
 
-            - name: Replace index.d.ts with beta version
+            - name: Determine publish channel
+              id: channel
+              run: |
+                  CURRENT_TAG=$(git describe --tags --abbrev=0)
+                  VERSION=${CURRENT_TAG#v}
+
+                  if [[ $VERSION == *"-beta"* ]]; then
+                    echo "channel=beta" >> $GITHUB_OUTPUT
+                    echo "is_beta=true" >> $GITHUB_OUTPUT
+                    echo "Detected beta tag: $CURRENT_TAG"
+                  else
+                    echo "channel=latest" >> $GITHUB_OUTPUT
+                    echo "is_beta=false" >> $GITHUB_OUTPUT
+                    echo "Detected stable tag: $CURRENT_TAG"
+                  fi
+
+            - name: Replace index.d.ts with beta version (beta only)
+              if: steps.channel.outputs.is_beta == 'true'
               working-directory: ./packages/commodity
               run: |
                   cp docs/index-beta.d.ts dist/index.d.ts
@@ -92,7 +109,7 @@ jobs:
 
             - name: Publish to NPM
               working-directory: ./packages/commodity
-              run: npm publish --tag beta
+              run: npm publish --tag ${{ steps.channel.outputs.channel }}
 
             - name: Create Release
               uses: actions/create-release@v1
@@ -104,7 +121,7 @@ jobs:
                   body: |
                       ${{ steps.changelog.outputs.changelog }}
                   draft: false
-                  prerelease: false
+                  prerelease: ${{ steps.channel.outputs.is_beta == 'true' }}
 
             - name: Upload changelog artifact
               uses: actions/upload-artifact@v4

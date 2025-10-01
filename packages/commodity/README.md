@@ -34,7 +34,7 @@ npm install commodity
 
 ## Performance
 
--   **Hyper-minimalistic bundle size**: ~3KB minified, ~1KB minzipped. Most of the package is type definitions.
+-   **Hyper-minimalistic bundle size**: ~5KB minified, ~2KB minzipped. Most of the package is type definitions.
 -   **Tree-shakable and code-splittable architecture**: Helps you create hyper-specialized suppliers: One function or piece of data per supplier
 -   **Memory usage**: Smart memoization prevents duplicate dependency resolution
 -   **Options to optimize dependency chain waterfalls**: Define suppliers as lazy or eager, call init() to preload some values as soon as possible.
