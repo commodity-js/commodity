@@ -1,7 +1,7 @@
 {
     "name": "commodity",
     "type": "module",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "description": "First fully type-inferred DI solution for Typescript",
     "main": "dist/index.cjs",
     "module": "dist/index.js",
