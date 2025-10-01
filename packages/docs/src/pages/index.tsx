@@ -148,7 +148,7 @@ function Hero() {
                                     "button",
                                     styles.secondaryButton
                                 )}
-                                to="/docs/quick-example"
+                                to="/docs/examples/simple-example"
                             >
                                 View Example
                             </Link>
@@ -424,7 +424,7 @@ function CTASection() {
                         </Link>
                         <Link
                             className={clsx("button", styles.secondaryButton)}
-                            to="/docs/quick-example"
+                            to="/docs/getting-started"
                         >
                             View Documentation
                         </Link>

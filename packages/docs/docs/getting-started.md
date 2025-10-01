@@ -60,6 +60,6 @@ console.log(userService.id) // "user-123"
 
 ## Next Steps
 
--   Walk through a **[Basic Example](examples/basic-example)** of a complete application.
+-   Walk through a **[Basic Example](examples/simple-example)** of a complete application.
 -   Learn about **[Testing and Mocking](guides/testing)** strategies.
 -   Dive into the **[Design philosophy and semantics](guides/design-philosophy)** of Commodity.
