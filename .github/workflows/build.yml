@@ -1,0 +1,78 @@
+name: Build
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+    workflow_call:
+
+concurrency:
+    group: "build-${{ github.ref }}"
+    cancel-in-progress: true
+
+jobs:
+    build-pages:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v5
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v5
+              with:
+                  node-version: "lts/*"
+
+            - name: Install dependencies
+              run: pnpm install
+
+            - name: Build docs website
+              run: pnpm run build --filter=docs
+
+            - name: Setup Pages
+              uses: actions/configure-pages@v5
+
+            - name: Upload artifact
+              if: github.event_name == 'workflow_call'
+              uses: actions/upload-pages-artifact@v4
+              with:
+                  path: ./packages/docs/build
+
+    build-pkg:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v5
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v5
+              with:
+                  node-version: "lts/*"
+
+            - name: Install dependencies
+              run: pnpm install
+
+            - name: Build package
+              run: pnpm run build --filter=commodity
+
+            - name: Run tests
+              run: pnpm test --filter=commodity
+
+            - name: Upload build artifacts
+              if: github.event_name == 'workflow_call'
+              uses: actions/upload-artifact@v4
+              with:
+                  name: commodity-build
+                  path: |
+                      packages/commodity/dist
+                      packages/commodity/package.json

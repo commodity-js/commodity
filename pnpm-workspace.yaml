@@ -1,0 +1,7 @@
+publicHoistPattern:
+    - "*eslint*"
+linkWorkspacePackages: deep
+packages:
+    - "packages/*"
+    - "packages/examples/*"
+    - "packages/config/*"

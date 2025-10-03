@@ -1,0 +1,146 @@
+/**
+ * Any CSS included here will be global. The classic template
+ * bundles Infima by default. Infima is a CSS framework designed to
+ * work well for content-centric websites.
+ */
+
+/* You can override the default Infima variables here. */
+:root {
+    --ifm-color-primary: #f97316;
+    --ifm-color-primary-dark: #ea580c;
+    --ifm-color-primary-darker: #dc2626;
+    --ifm-color-primary-darkest: #c2410c;
+    --ifm-color-primary-light: #fb923c;
+    --ifm-color-primary-lighter: #fdba74;
+    --ifm-color-primary-lightest: #fed7aa;
+    --ifm-code-font-size: 95%;
+    --docusaurus-highlighted-code-line-bg: rgba(249, 115, 22, 0.1);
+    --ifm-font-family-base: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+/* For readability concerns, you should choose a lighter palette in dark mode. */
+[data-theme="dark"] {
+    --ifm-color-primary: #fb923c;
+    --ifm-color-primary-dark: #f97316;
+    --ifm-color-primary-darker: #ea580c;
+    --ifm-color-primary-darkest: #c2410c;
+    --ifm-color-primary-light: #fdba74;
+    --ifm-color-primary-lighter: #fed7aa;
+    --ifm-color-primary-lightest: #fef3e2;
+    --docusaurus-highlighted-code-line-bg: rgba(251, 146, 60, 0.2);
+}
+
+/* Custom fonts */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
+/* Hero customizations */
+.hero__title {
+    font-size: 4rem !important;
+    font-weight: 700 !important;
+    background: linear-gradient(120deg, #ffffff 0%, #e8f4fd 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 1rem !important;
+}
+
+.hero__subtitle {
+    font-size: 1.4rem !important;
+    color: rgba(255, 255, 255, 0.95) !important;
+    font-weight: 400 !important;
+    margin-bottom: 0 !important;
+}
+
+/* Button improvements */
+.button {
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.button--secondary {
+    background: var(--ifm-color-primary);
+    color: #ffffff;
+    border: none;
+}
+
+.button--secondary:hover {
+    background: var(--ifm-color-primary-dark);
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.button--outline {
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    color: white;
+}
+
+.button--outline:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: white;
+    color: white;
+    transform: translateY(-2px);
+}
+
+/* Code block improvements */
+.theme-code-block {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Navbar improvements */
+.navbar {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] .navbar {
+    background: rgba(24, 25, 26, 0.95);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Footer improvements */
+.footer {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+}
+
+/* Responsive font sizes */
+@media screen and (max-width: 996px) {
+    .hero__title {
+        font-size: 2.5rem !important;
+    }
+
+    .hero__subtitle {
+        font-size: 1.2rem !important;
+    }
+}
+
+/* Smooth scrolling */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Link hover effects */
+.navbar__item a:hover {
+    color: var(--ifm-color-primary) !important;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--ifm-color-primary);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--ifm-color-primary-dark);
+}

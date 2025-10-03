@@ -1,0 +1,44 @@
+{
+    "name": "commodity",
+    "type": "module",
+    "version": "0.0.1-beta.0",
+    "description": "First fully type-inferred DI solution for Typescript",
+    "main": "dist/index.cjs",
+    "module": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "sideEffects": false,
+    "author": "Commodity",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/commodity-js/commodity.git"
+    },
+    "imports": {
+        "#*": "./src/*.ts"
+    },
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "require": "./dist/index.cjs"
+        }
+    },
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "test": "vitest --typecheck",
+        "test:run": "vitest run --typecheck",
+        "typecheck": "vitest run --typecheck.only"
+    },
+    "devDependencies": {
+        "@config.commodity/eslint": "*",
+        "@config.commodity/typescript": "*",
+        "memoize": "^10.1.0",
+        "tsup": "^8.5.0",
+        "turbo": "^2.5.5",
+        "vitest": "^3.2.4"
+    }
+}
