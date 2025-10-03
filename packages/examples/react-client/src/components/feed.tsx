@@ -7,10 +7,9 @@ import { useQuery } from "@tanstack/react-query"
 
 export const FeedSupplier = market.offer("Feed").asProduct({
     suppliers: [postsQuerySupplier, ctx.sessionSupplier],
-    justInTime: [ctx.postSupplier, PostSupplier],
+    assemblers: [PostSupplier],
     factory: ($, $$) => () => {
         const { data: posts } = useQuery($(postsQuerySupplier))
-
         if (!posts) {
             return <div>Loading posts...</div>
         }
@@ -21,7 +20,7 @@ export const FeedSupplier = market.offer("Feed").asProduct({
                     const Post = $$[PostSupplier.name]
                         .assemble({
                             ...$,
-                            ...index($$[ctx.postSupplier.name].pack(post))
+                            ...index(ctx.postSupplier.pack(post))
                         })
                         .unpack()
                     return <Post key={post.id} />

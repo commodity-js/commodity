@@ -20,15 +20,6 @@ export type Merge<U> = (U extends any ? (k: U) => void : never) extends (
  * @typeParam NAME - The unique identifier name for this resource
  * @typeParam VALUE - The type of value this resource contains
  * @public
- * @example
- * ```typescript
- * const configResource: Resource<"config", AppConfig> = {
- *   name: "config",
- *   pack: (value) => configResource,
- *   unpack: () => ({ apiUrl: "https://api.example.com" }),
- *   _resource: true
- * }
- * ```
  */
 export type Resource<NAME extends string, VALUE> = {
     /** The name/identifier of this resource */
@@ -49,15 +40,6 @@ export type Resource<NAME extends string, VALUE> = {
  * @typeParam NAME - The unique identifier name for this resource supplier
  * @typeParam CONSTRAINT - The type constraint for values this supplier can accept
  * @public
- * @example
- * ```typescript
- * const configSupplier: ResourceSupplier<"config", AppConfig> = {
- *   name: "config",
- *   pack: (value: AppConfig) => ({ name: "config", pack: configSupplier.pack, unpack: () => value, _resource: true }),
- *   _resource: true,
- *   _constraint: null as unknown as AppConfig
- * }
- * ```
  */
 export type ResourceSupplier<NAME extends string, CONSTRAINT> = {
     /** The name/identifier of this resource supplier */
@@ -79,19 +61,6 @@ export type ResourceSupplier<NAME extends string, CONSTRAINT> = {
  * @typeParam VALUE - The type of value this product produces
  * @typeParam SUPPLIES - The map of resolved dependencies this product uses
  * @public
- * @example
- * ```typescript
- * const userService: Product<"userService", UserService, { userRepo: Resource<"userRepo", UserRepository> }> = {
- *   name: "userService",
- *   supplies: { userRepo: userRepoResource },
- *   unpack: () => new UserService(userRepoResource.unpack()),
- *   pack: (value) => ({ ...userService, unpack: () => value }),
- *   reassemble: (overrides) => userServiceSupplier.assemble(overrides),
- *   _dependsOnOneOf: (overrides) => "userRepo" in overrides,
- *   _product: true,
- *   _supplier: userServiceSupplier
- * }
- * ```
  */
 export type Product<NAME extends string, VALUE, SUPPLIES extends SupplyMap> = {
     /** The name/identifier of this product */
@@ -114,39 +83,33 @@ export type Product<NAME extends string, VALUE, SUPPLIES extends SupplyMap> = {
 /**
  * Represents a product supplier - a factory for creating products with dependencies.
  * Product suppliers define how to assemble complex objects from their dependencies.
- * They support various features like lazy loading, prototypes, and just-in-time resolution.
+ * They support various features like lazy loading, prototypes, and assemblers.
  *
  * @typeParam NAME - The unique identifier name for this product supplier
  * @typeParam VALUE - The type of value this supplier produces
  * @typeParam SUPPLIERS - Array of suppliers this product depends on
- * @typeParam JUST_IN_TIME - Array of suppliers resolved just-in-time (lazy)
+ * @typeParam ASSEMBLERS - Array of assemblers (lazy unassembled suppliers)
  * @typeParam SUPPLIES - The resolved supply map for dependencies
- * @typeParam JUST_IN_TIME_MAP - The map of just-in-time suppliers
+ * @typeParam ASSEMBLERS_MAP - Same as ASSEMBLERS, but formatted as a map with supplier names as keys.
  * @typeParam IS_PROTOTYPE - Whether this supplier is a prototype variant
  * @public
- * @example
- * ```typescript
- * const userServiceSupplier: ProductSupplier<"userService", UserService, [typeof userRepoSupplier]> = {
- *   name: "userService",
- *   suppliers: [userRepoSupplier],
- *   justInTime: [],
- *   factory: (supplies) => new UserService(supplies.userRepo.unpack()),
- *   assemble: (toSupply) => ({ ...productInstance }),
- *   pack: (value) => ({ ...packedProduct }),
- *   jitOnly: () => ({ ...this, _jitOnly: true }),
- *   _isPrototype: false,
- *   _product: true
- * }
- * ```
  */
 export type ProductSupplier<
     NAME extends string,
     VALUE,
     SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[] = [],
-    JUST_IN_TIME extends Supplier<string, any, any, any, any, any, any>[] = [],
+    ASSEMBLERS extends ProductSupplier<
+        string,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any
+    >[] = [],
     SUPPLIES extends $<SUPPLIERS> = $<SUPPLIERS>,
-    JUST_IN_TIME_MAP extends MapFromList<[...JUST_IN_TIME]> = MapFromList<
-        [...JUST_IN_TIME]
+    ASSEMBLERS_MAP extends MapFromList<[...ASSEMBLERS]> = MapFromList<
+        [...ASSEMBLERS]
     >,
     IS_PROTOTYPE extends boolean = false
 > = {
@@ -154,40 +117,48 @@ export type ProductSupplier<
     name: NAME
     /** Array of suppliers this product depends on */
     suppliers: SUPPLIERS
-    /** Array of suppliers resolved just-in-time (not automatically assembled) */
-    justInTime: JUST_IN_TIME
+    /** Array of assemblers (lazy unassembled suppliers) */
+    assemblers: ASSEMBLERS
     /** Factory function that creates the product value from its dependencies */
-    factory: (supplies: SUPPLIES, justInTime: JUST_IN_TIME_MAP) => VALUE
+    factory: (supplies: SUPPLIES, assemblers: ASSEMBLERS_MAP) => VALUE
     /** Assembles the product by resolving dependencies */
     assemble: (toSupply: ToSupply<SUPPLIERS>) => Product<NAME, VALUE, SUPPLIES>
     /** Packs a value into a product without dependencies */
     pack: (value: VALUE) => Product<NAME, VALUE, Record<never, never>>
-    /** Tries alternative suppliers for dependencies */
+    /** Tries alternative implementations of suppliers */
     try?: (
         ...suppliers: ProductSupplier<string, any, any, any, any, any, true>[]
     ) => ProductSupplier<NAME, VALUE, any, any, any, any, true>
-    /** Replaces specific dependencies with new ones */
+    /** Allows assembling multiple suppliers at once */
     with?: (
         ...suppliers: ProductSupplier<string, any, any, any, any, any, false>[]
     ) => ProductSupplier<NAME, VALUE, any, any, any, any, true>
-    /** Marks this supplier as just-in-time only */
-    jitOnly: () => ProductSupplier<NAME, VALUE, any, any, any, any, false>
+    /** Flag for try method. will only replace assemblers, not suppliers, with provided prototype */
+    assemblersOnly: () => ProductSupplier<
+        NAME,
+        VALUE,
+        any,
+        any,
+        any,
+        any,
+        false
+    >
     /** Creates a prototype variant with different implementation */
     prototype?: ({
         factory,
         suppliers,
-        justInTime,
+        assemblers,
         init,
         lazy
     }: {
         factory: (
             supplies: $<Supplier<string, any, any, any, any, any, any>[]>,
-            justInTime: MapFromList<
-                Supplier<string, any, any, any, any, any, any>[]
+            assemblers: MapFromList<
+                ProductSupplier<string, any, any, any, any, any, any>[]
             >
         ) => VALUE
         suppliers?: Supplier<string, any, any, any, any, any, any>[]
-        justInTime?: Supplier<string, any, any, any, any, any, any>[]
+        assemblers?: ProductSupplier<string, any, any, any, any, any, any>[]
         init?: (
             value: VALUE,
             supplies: $<Supplier<string, any, any, any, any, any, any>[]>
@@ -197,7 +168,7 @@ export type ProductSupplier<
         NAME,
         VALUE,
         Supplier<string, any, any, any, any, any, any>[],
-        Supplier<string, any, any, any, any, any, any>[],
+        ProductSupplier<string, any, any, any, any, any, any>[],
         any,
         any,
         true
@@ -221,9 +192,9 @@ export type ProductSupplier<
  * @typeParam NAME - The unique identifier name for this supplier
  * @typeParam VALUE - The type of value this supplier provides
  * @typeParam SUPPLIERS - Array of suppliers this depends on (for product suppliers)
- * @typeParam JUST_IN_TIME - Array of just-in-time suppliers (for product suppliers)
+ * @typeParam ASSEMBLERS - Array of assemblers (for product suppliers)
  * @typeParam SUPPLIES - The resolved supply map (for product suppliers)
- * @typeParam JUST_IN_TIME_MAP - The map of just-in-time suppliers (for product suppliers)
+ * @typeParam ASSEMBLERS_MAP - The map of assemblers (for product suppliers)
  * @typeParam IS_PROTOTYPE - Whether this is a prototype variant (for product suppliers)
  * @public
  */
@@ -231,18 +202,18 @@ export type Supplier<
     NAME extends string,
     VALUE,
     SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[],
-    JUST_IN_TIME extends Supplier<string, any, any, any, any, any, any>[],
+    ASSEMBLERS extends ProductSupplier<string, any, any, any, any, any, any>[],
     SUPPLIES extends $<SUPPLIERS>,
-    JUST_IN_TIME_MAP extends MapFromList<[...JUST_IN_TIME]>,
+    ASSEMBLERS_MAP extends MapFromList<[...ASSEMBLERS]>,
     IS_PROTOTYPE extends boolean
 > =
     | ProductSupplier<
           NAME,
           VALUE,
           SUPPLIERS,
-          JUST_IN_TIME,
+          ASSEMBLERS,
           SUPPLIES,
-          JUST_IN_TIME_MAP,
+          ASSEMBLERS_MAP,
           IS_PROTOTYPE
       >
     | ResourceSupplier<NAME, VALUE>
@@ -254,15 +225,6 @@ export type Supplier<
  * @typeParam LIST - An array of objects that have a `name` property
  * @returns A map type where each key is a name from the list and values are the corresponding objects
  * @public
- * @example
- * ```typescript
- * type Services = [
- *   { name: "userRepo", type: UserRepository },
- *   { name: "logger", type: Logger }
- * ]
- * type ServiceMap = MapFromList<Services>
- * // Result: { userRepo: { name: "userRepo", type: UserRepository }, logger: { name: "logger", type: Logger } }
- * ```
  */
 export type MapFromList<LIST extends { name: string }[]> = LIST extends []
     ? Record<never, never>
@@ -275,19 +237,9 @@ export type MapFromList<LIST extends { name: string }[]> = LIST extends []
       >
 
 /**
- * A map of supplies where keys are supplier names and values are products or resources.
- * This is used for dependency resolution and reassembly operations.
- * The map enables dynamic lookup of dependencies at runtime while maintaining type safety.
+ * A generic map of supplies where keys are supplier names and values are products or resources.
  *
  * @public
- * @example
- * ```typescript
- * const supplies: SupplyMap = {
- *   userRepo: userRepoResource,
- *   logger: loggerProduct,
- *   config: configResource
- * }
- * ```
  */
 export type SupplyMap = Record<
     string,
@@ -295,9 +247,7 @@ export type SupplyMap = Record<
 >
 
 /**
- * Converts an array of suppliers into a supply map with the correct product/resource types.
- * This type transformation ensures that each supplier is mapped to its corresponding
- * assembled product or resource, maintaining full type safety.
+ * Converts an array of suppliers into a corresponding $ supply map.
  *
  * @typeParam SUPPLIERS - Array of supplier types to convert into a supply map
  * @returns A map where keys are supplier names and values are their assembled products/resources
@@ -321,23 +271,13 @@ export type SupplyMapFromSuppliers<
         : never
 }
 /**
- * Creates a supplies object that provides both direct property access and function access.
+ * Adds callable access to SupplyMapFromSuppliers type defined above.
  * This type represents the resolved dependencies that can be passed to factory functions.
  * It enables accessing dependencies either as properties or by calling with a supplier object.
  *
- * @typeParam SUPPLIERS - Array of suppliers to create the supply object from
+ * @typeParam SUPPLIERS - Array of suppliers to create the $ object from
  * @returns A callable object that provides both property access and function call access to supplies
  * @public
- * @example
- * ```typescript
- * function factory(supplies: $<[typeof userRepoSupplier, typeof loggerSupplier]>) {
- *   // Property access
- *   const repo = supplies.userRepo.unpack()
- *   // Function access
- *   const logger = supplies(loggerSupplier)
- *   return new UserService(repo, logger)
- * }
- * ```
  */
 export type $<
     SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[]
@@ -439,8 +379,7 @@ export type ToSupply<
 
 /**
  * Merges two supplier arrays, replacing old suppliers with new ones when names match.
- * This is used by the `try` method to provide alternative implementations for dependencies.
- * When a supplier name exists in both arrays, the new supplier takes precedence.
+ * This is used by the `try` method to merge tried suppliers together.
  *
  * @typeParam OLD - The original array of suppliers
  * @typeParam NEW - The new array of suppliers to merge in
@@ -472,7 +411,7 @@ export type TrySuppliers<
  *
  * @typeParam OLD - The original array of suppliers to filter
  * @typeParam NEW - The array of suppliers whose names should be removed from OLD
- * @returns A filtered array with suppliers whose names appear in NEW removed
+ * @returns OLD suppliers without matching names in NEW
  * @public
  */
 export type FilterSuppliers<
@@ -491,7 +430,6 @@ export type FilterSuppliers<
 /**
  * Checks if a supplier has a circular dependency by seeing if its name appears
  * in the transitive dependencies of its own suppliers.
- * This prevents infinite loops during dependency resolution.
  * @public
  */
 export type HasCircularDependency<

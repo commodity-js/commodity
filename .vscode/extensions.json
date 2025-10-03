@@ -2,7 +2,6 @@
     "recommendations": [
         "esbenp.prettier-vscode",
         "dbaeumer.vscode-eslint",
-        "vitest.explorer",
-        "mylesmurphy.prettify-ts"
+        "vitest.explorer"
     ]
 }

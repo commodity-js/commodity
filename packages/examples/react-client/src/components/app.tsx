@@ -10,7 +10,7 @@ import { useQuery } from "@tanstack/react-query"
 
 export const AppSupplier = market.offer("App").asProduct({
     suppliers: [userQuerySupplier],
-    justInTime: [ctx.sessionSupplier, SelectSessionSupplier, FeedSupplier],
+    assemblers: [SelectSessionSupplier, FeedSupplier],
     factory:
         ($, $$) =>
         ({ defaultUserId }: { defaultUserId: string }) => {
@@ -27,7 +27,7 @@ export const AppSupplier = market.offer("App").asProduct({
                 .with(SelectSessionSupplier)
                 .assemble(
                     index(
-                        $$[ctx.sessionSupplier.name].pack([
+                        ctx.sessionSupplier.pack([
                             session ?? defaultSession,
                             setSession
                         ])
