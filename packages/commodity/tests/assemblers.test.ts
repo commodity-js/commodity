@@ -2,21 +2,21 @@ import { describe, it, expect, vi } from "vitest"
 import { createMarket } from "#index"
 import { index } from "#utils"
 
-describe("JustInTime Feature", () => {
-    it("should pass justInTime to factory but not auto-assemble them", () => {
+describe("Assemblers Feature", () => {
+    it("should pass assemblers to factory but not auto-assemble them", () => {
         const market = createMarket()
-        const justInTimeMock = vi.fn().mockReturnValue("jit-value")
+        const factoryMock = vi.fn().mockReturnValue("value")
 
-        const justInTimeSupplier = market.offer("jit").asProduct({
-            factory: justInTimeMock
+        const assemblerSupplier = market.offer("assembler").asProduct({
+            factory: factoryMock
         })
 
         const mainSupplier = market.offer("main").asProduct({
-            justInTime: [justInTimeSupplier],
+            assemblers: [assemblerSupplier],
             factory: ($, $$) => {
-                // JustInTime are passed but not auto-assembled
-                expect($$[justInTimeSupplier.name]).toBe(justInTimeSupplier)
-                expect(justInTimeMock).not.toHaveBeenCalled()
+                // Assemblers are passed but not auto-assembled
+                expect($$[assemblerSupplier.name]).toBe(assemblerSupplier)
+                expect(factoryMock).not.toHaveBeenCalled()
 
                 return "main-result"
             }
@@ -24,30 +24,30 @@ describe("JustInTime Feature", () => {
 
         const result = mainSupplier.assemble({})
         expect(result.unpack()).toBe("main-result")
-        expect(justInTimeMock).not.toHaveBeenCalled()
+        expect(factoryMock).not.toHaveBeenCalled()
     })
 
-    it("should allow manual assembly of justInTime within factory", () => {
+    it("should allow manual assembly of assemblers within factory", () => {
         const market = createMarket()
-        const justInTimeFactoryMock = vi.fn().mockReturnValue("jit-value")
+        const factoryMock = vi.fn().mockReturnValue("value")
 
-        const justInTimeSupplier = market.offer("jit").asProduct({
-            factory: justInTimeFactoryMock
+        const assemblerSupplier = market.offer("assembler").asProduct({
+            factory: factoryMock
         })
 
         const mainSupplier = market.offer("main").asProduct({
-            justInTime: [justInTimeSupplier],
+            assemblers: [assemblerSupplier],
             factory: ($, $$) => {
-                // Manually assemble the justInTime
-                const jitProduct = $$[justInTimeSupplier.name].assemble({})
-                const value = jitProduct.unpack()
+                // Manually assemble the assembler
+                const assemblerProduct = $$[assemblerSupplier.name].assemble({})
+                const value = assemblerProduct.unpack()
 
-                expect(justInTimeFactoryMock).toHaveBeenCalledTimes(1)
-                expect(value).toBe("jit-value")
+                expect(factoryMock).toHaveBeenCalledTimes(1)
+                expect(value).toBe("value")
 
                 return {
                     main: "main-result",
-                    jit: value
+                    assembler: value
                 }
             }
         })
@@ -55,7 +55,7 @@ describe("JustInTime Feature", () => {
         const result = mainSupplier.assemble({})
         expect(result.unpack()).toEqual({
             main: "main-result",
-            jit: "jit-value"
+            assembler: "value"
         })
     })
 
@@ -74,14 +74,14 @@ describe("JustInTime Feature", () => {
             role: "admin"
         }>()
 
-        // Admin-only justInTime
+        // Admin-only assembler
         const adminServiceSupplier = market.offer("adminService").asProduct({
             //Even if unused, protects this function from being called by non-admins via Typescript
             suppliers: [adminSessionSupplier],
             factory: () => "sensitive-admin-data"
         })
 
-        // Regular user justInTime
+        // Regular user assembler
         const userServiceSupplier = market.offer("userService").asProduct({
             factory: () => "regular-user-data"
         })
@@ -89,7 +89,7 @@ describe("JustInTime Feature", () => {
         // Main service that conditionally assembles based on session
         const mainServiceSupplier = market.offer("mainService").asProduct({
             suppliers: [sessionSupplier, userServiceSupplier],
-            justInTime: [adminSessionSupplier, adminServiceSupplier],
+            assemblers: [adminServiceSupplier],
             factory: ($, $$) => {
                 const session = $(sessionSupplier)
                 const role = session.role
@@ -143,20 +143,20 @@ describe("JustInTime Feature", () => {
         })
     })
 
-    it("should handle justInTime errors gracefully", () => {
+    it("should handle assembler errors gracefully", () => {
         const market = createMarket()
 
         const failingSupplier = market.offer("failing").asProduct({
             factory: () => {
-                throw new Error("JustInTime failed")
+                throw new Error("Assembler failed")
                 return
             }
         })
 
         const mainServiceSupplier = market.offer("mainService").asProduct({
-            justInTime: [failingSupplier],
+            assemblers: [failingSupplier],
             factory: ($, $$) => {
-                // Try to assemble the failing justInTime
+                // Try to assemble the failing assembler
                 $$[failingSupplier.name].assemble({}).unpack()
                 return "main-service"
             }
@@ -166,14 +166,14 @@ describe("JustInTime Feature", () => {
 
         expect(() => {
             result.unpack()
-        }).toThrow("JustInTime failed")
+        }).toThrow("Assembler failed")
     })
 
-    it("should support justInTime in prototype() method", () => {
+    it("should support assembler in prototype() method", () => {
         const market = createMarket()
 
-        const justInTimeSupplier = market.offer("jit").asProduct({
-            factory: () => "jit-value"
+        const assemblerSupplier = market.offer("assembler").asProduct({
+            factory: () => "assembler-value"
         })
 
         const mainSupplier = market.offer("main").asProduct({
@@ -184,13 +184,13 @@ describe("JustInTime Feature", () => {
             factory: () => {
                 return "prototype-value"
             },
-            justInTime: [justInTimeSupplier]
+            assemblers: [assemblerSupplier]
         })
 
-        expect(prototypeSupplier.justInTime).toHaveLength(1)
+        expect(prototypeSupplier.assemblers).toHaveLength(1)
     })
 
-    it("should support complex justInTime dependency chains", () => {
+    it("should support complex assembler dependency chains", () => {
         const market = createMarket()
 
         // Base resource
@@ -198,7 +198,7 @@ describe("JustInTime Feature", () => {
             connectionString: string
         }>()
 
-        // JustInTime that depends on database
+        // Assembler that depends on database
         const repositorySupplier = market.offer("repository").asProduct({
             suppliers: [dbSupplier],
             factory: ($) => {
@@ -210,7 +210,7 @@ describe("JustInTime Feature", () => {
             }
         })
 
-        // Another justInTime that depends on repository
+        // Another assembler that depends on repository
         const serviceSupplier = market.offer("service").asProduct({
             suppliers: [repositorySupplier],
             factory: ($) => {
@@ -224,7 +224,7 @@ describe("JustInTime Feature", () => {
 
         // Main service that assembles the chain
         const mainServiceSupplier = market.offer("mainService").asProduct({
-            justInTime: [serviceSupplier],
+            assemblers: [serviceSupplier],
             factory: ($, $$) => {
                 // Assemble the service with its full dependency chain
                 const service = $$[serviceSupplier.name].assemble(
@@ -255,7 +255,7 @@ describe("JustInTime Feature", () => {
         })
     })
 
-    it("should handle justInTime reassembly correctly", () => {
+    it("should handle assembler reassembly correctly", () => {
         const market = createMarket()
 
         const numberSupplier = market.offer("number").asResource<number>()
@@ -270,7 +270,7 @@ describe("JustInTime Feature", () => {
 
         const mainSupplier = market.offer("main").asProduct({
             suppliers: [numberSupplier],
-            justInTime: [squarerSupplier],
+            assemblers: [squarerSupplier],
             factory: ($, $$) => {
                 const assembled = $$[squarerSupplier.name].assemble($)
                 const squared = assembled.unpack()
@@ -287,12 +287,12 @@ describe("JustInTime Feature", () => {
         mainSupplier.assemble(index(numberSupplier.pack(5)))
     })
 
-    it("should support prototypes with justInTime", () => {
+    it("should support prototypes with assembler", () => {
         const market = createMarket()
-        const justInTimeMock = vi.fn().mockReturnValue("jit-value")
+        const factoryMock = vi.fn().mockReturnValue("value")
 
-        const justInTimeSupplier = market.offer("jit").asProduct({
-            factory: justInTimeMock
+        const assemblerSupplier = market.offer("assembler").asProduct({
+            factory: factoryMock
         })
 
         const baseSupplier = market.offer("base").asProduct({
@@ -301,33 +301,33 @@ describe("JustInTime Feature", () => {
 
         const prototypeSupplier = baseSupplier.prototype({
             factory: ($, $$) => {
-                expect($$[justInTimeSupplier.name]).toBe(justInTimeSupplier)
+                expect($$[assemblerSupplier.name]).toBe(assemblerSupplier)
 
-                // Manually assemble the justInTime
-                const assembled = $$[justInTimeSupplier.name].assemble({})
+                // Manually assemble the assembler
+                const assembled = $$[assemblerSupplier.name].assemble({})
                 const value = assembled.unpack()
 
                 return `base-value-${value}`
             },
-            justInTime: [justInTimeSupplier]
+            assemblers: [assemblerSupplier]
         })
 
         const result = prototypeSupplier.assemble({})
-        expect(result.unpack()).toBe("base-value-jit-value")
-        expect(justInTimeMock).toHaveBeenCalledTimes(1)
+        expect(result.unpack()).toBe("base-value-value")
+        expect(factoryMock).toHaveBeenCalledTimes(1)
     })
 
-    it("should support prototypes with multiple justInTime", () => {
+    it("should support prototypes with multiple assembler", () => {
         const market = createMarket()
-        const justInTime1Mock = vi.fn().mockReturnValue("jit1")
-        const justInTime2Mock = vi.fn().mockReturnValue("jit2")
+        const factoryMock1 = vi.fn().mockReturnValue("value1")
+        const factoryMock2 = vi.fn().mockReturnValue("value2")
 
-        const justInTime1Supplier = market.offer("jit1").asProduct({
-            factory: justInTime1Mock
+        const assemblerSupplier1 = market.offer("assembler1").asProduct({
+            factory: factoryMock1
         })
 
-        const justInTime2Supplier = market.offer("jit2").asProduct({
-            factory: justInTime2Mock
+        const assemblerSupplier2 = market.offer("assembler2").asProduct({
+            factory: factoryMock2
         })
 
         const baseSupplier = market.offer("base").asProduct({
@@ -336,53 +336,53 @@ describe("JustInTime Feature", () => {
 
         const prototypeSupplier = baseSupplier.prototype({
             factory: ($, $$) => {
-                const jit1 = $$[justInTime1Supplier.name].assemble({})
-                const jit2 = $$[justInTime2Supplier.name].assemble({})
+                const assembler1 = $$[assemblerSupplier1.name].assemble({})
+                const assembler2 = $$[assemblerSupplier2.name].assemble({})
 
-                return `base-value-${jit1.unpack()}-${jit2.unpack()}`
+                return `base-value-${assembler1.unpack()}-${assembler2.unpack()}`
             },
-            justInTime: [justInTime1Supplier, justInTime2Supplier]
+            assemblers: [assemblerSupplier1, assemblerSupplier2]
         })
 
         const result = prototypeSupplier.assemble({})
-        expect(result.unpack()).toBe("base-value-jit1-jit2")
-        expect(justInTime1Mock).toHaveBeenCalledTimes(1)
-        expect(justInTime2Mock).toHaveBeenCalledTimes(1)
+        expect(result.unpack()).toBe("base-value-value1-value2")
+        expect(factoryMock1).toHaveBeenCalledTimes(1)
+        expect(factoryMock2).toHaveBeenCalledTimes(1)
     })
 
-    it("should support try() method with justInTime replacing original ones", () => {
+    it("should support try() method with assembler replacing original ones", () => {
         const market = createMarket()
-        const originalJustInTimeMock = vi.fn().mockReturnValue("original")
-        const triedJustInTimeMock = vi.fn().mockReturnValue("tried")
+        const originalFactoryMock = vi.fn().mockReturnValue("original")
+        const triedFactoryMock = vi.fn().mockReturnValue("tried")
 
-        const originalJustInTimeSupplier = market
-            .offer("originalJit")
+        const originalAssemblerSupplier = market
+            .offer("originalAssembler")
             .asProduct({
-                factory: originalJustInTimeMock
+                factory: originalFactoryMock
             })
 
-        const triedJustInTimeSupplier = originalJustInTimeSupplier.prototype({
-            factory: triedJustInTimeMock
+        const triedAssemblerSupplier = originalAssemblerSupplier.prototype({
+            factory: triedFactoryMock
         })
         const baseSupplier = market.offer("base").asProduct({
-            justInTime: [originalJustInTimeSupplier],
+            assemblers: [originalAssemblerSupplier],
             factory: ($, $$) => {
-                return $$[originalJustInTimeSupplier.name].assemble({}).unpack()
+                return $$[originalAssemblerSupplier.name].assemble({}).unpack()
             }
         })
 
         const triedSupplier = baseSupplier
-            .jitOnly()
-            .try(triedJustInTimeSupplier)
+            .assemblersOnly()
+            .try(triedAssemblerSupplier)
 
         const result = triedSupplier.assemble({}).unpack()
 
         expect(result).toBe("tried")
-        expect(originalJustInTimeMock).toHaveBeenCalledTimes(0)
-        expect(triedJustInTimeMock).toHaveBeenCalledTimes(1)
+        expect(originalFactoryMock).toHaveBeenCalledTimes(0)
+        expect(triedFactoryMock).toHaveBeenCalledTimes(1)
     })
 
-    it("should support empty justInTime in prototypes", () => {
+    it("should support empty assembler in prototypes", () => {
         const market = createMarket()
         const baseSupplier = market.offer("base").asProduct({
             factory: () => "base-value"
@@ -398,20 +398,20 @@ describe("JustInTime Feature", () => {
         expect(result.unpack()).toBe("prototype-value")
     })
 
-    it("should support empty justInTime in try() method", () => {
+    it("should support empty assembler in try() method", () => {
         const market = createMarket()
-        const originalJustInTimeMock = vi.fn().mockReturnValue("original")
+        const originalFactoryMock = vi.fn().mockReturnValue("original")
 
-        const originalJustInTimeSupplier = market
-            .offer("originalJit")
+        const originalAssemblerSupplier = market
+            .offer("originalAssembler")
             .asProduct({
-                factory: originalJustInTimeMock
+                factory: originalFactoryMock
             })
 
         const baseSupplier = market.offer("base").asProduct({
-            justInTime: [originalJustInTimeSupplier],
+            assemblers: [originalAssemblerSupplier],
             factory: ($, $$) => {
-                $$[originalJustInTimeSupplier.name].assemble({}).unpack()
+                $$[originalAssemblerSupplier.name].assemble({}).unpack()
                 return "base-value"
             }
         })
@@ -420,18 +420,20 @@ describe("JustInTime Feature", () => {
 
         const result = triedSupplier.assemble({})
         expect(result.unpack()).toBe("base-value")
-        expect(originalJustInTimeMock).toHaveBeenCalledTimes(1)
+        expect(originalFactoryMock).toHaveBeenCalledTimes(1)
     })
 
-    it("should handle justInTime errors in prototypes gracefully", () => {
+    it("should handle assembler errors in prototypes gracefully", () => {
         const market = createMarket()
-        const errorJustInTimeMock = vi.fn().mockImplementation(() => {
-            throw new Error("JustInTime error")
+        const errorFactoryMock = vi.fn().mockImplementation(() => {
+            throw new Error("Assembler error")
         })
 
-        const errorJustInTimeSupplier = market.offer("errorJit").asProduct({
-            factory: errorJustInTimeMock
-        })
+        const errorAssemblerSupplier = market
+            .offer("errorAssembler")
+            .asProduct({
+                factory: errorFactoryMock
+            })
 
         const baseSupplier = market.offer("base").asProduct({
             factory: () => "base-value"
@@ -440,49 +442,49 @@ describe("JustInTime Feature", () => {
         const prototypeSupplier = baseSupplier.prototype({
             factory: ($, $$) => {
                 expect(() => {
-                    $$[errorJustInTimeSupplier.name].assemble({}).unpack()
-                }).toThrow("JustInTime error")
+                    $$[errorAssemblerSupplier.name].assemble({}).unpack()
+                }).toThrow("Assembler error")
                 return "prototype-value"
             },
-            justInTime: [errorJustInTimeSupplier]
+            assemblers: [errorAssemblerSupplier]
         })
 
         const result = prototypeSupplier.assemble({})
         expect(result.unpack()).toBe("prototype-value")
     })
 
-    it("should handle justInTime errors in try() method gracefully", () => {
+    it("should handle assembler errors in try() method gracefully", () => {
         const market = createMarket()
-        const baseJustInTimeMock = vi.fn().mockReturnValue("base-jit")
-        const errorJustInTimeMock = vi.fn().mockImplementation(() => {
-            throw new Error("JustInTime error")
+        const baseFactoryMock = vi.fn().mockReturnValue("base-value")
+        const errorFactoryMock = vi.fn().mockImplementation(() => {
+            throw new Error("Assembler error")
         })
 
-        const baseJustInTimeSupplier = market.offer("baseJit").asProduct({
-            factory: baseJustInTimeMock
+        const baseAssemblerSupplier = market.offer("baseAssembler").asProduct({
+            factory: baseFactoryMock
         })
 
-        const errorJustInTimeSupplier = baseJustInTimeSupplier.prototype({
-            factory: errorJustInTimeMock
+        const errorAssemblerSupplier = baseAssemblerSupplier.prototype({
+            factory: errorFactoryMock
         })
 
         const baseSupplier = market.offer("base").asProduct({
-            justInTime: [baseJustInTimeSupplier],
+            assemblers: [baseAssemblerSupplier],
             factory: ($, $$) => {
                 expect(() => {
-                    $$[baseJustInTimeSupplier.name].assemble({}).unpack()
-                }).toThrow("JustInTime error")
+                    $$[baseAssemblerSupplier.name].assemble({}).unpack()
+                }).toThrow("Assembler error")
                 return "base-value"
             }
         })
 
-        const triedSupplier = baseSupplier.try(errorJustInTimeSupplier)
+        const triedSupplier = baseSupplier.try(errorAssemblerSupplier)
 
         const result = triedSupplier.assemble({})
         expect(result.unpack()).toBe("base-value")
     })
 
-    it("should support complex justInTime dependency chains in prototypes", () => {
+    it("should support complex assembler dependency chains in prototypes", () => {
         const market = createMarket()
         const dbMock = vi.fn().mockReturnValue({ connection: "test-db" })
         const serviceMock = vi.fn().mockReturnValue({ name: "TestService" })
@@ -511,14 +513,14 @@ describe("JustInTime Feature", () => {
 
                 return `base-value-${JSON.stringify(service.unpack())}`
             },
-            justInTime: [serviceSupplier]
+            assemblers: [serviceSupplier]
         })
 
         const result = prototypeSupplier.assemble({})
         expect(result.unpack()).toBe('base-value-{"name":"TestService"}')
     })
 
-    it("should support justInTime reassembly in prototypes", () => {
+    it("should support assembler reassembly in prototypes", () => {
         const market = createMarket()
         const numberSupplier = market.offer("number").asResource<number>()
         const squarerSupplier = market.offer("squarer").asProduct({
@@ -536,19 +538,19 @@ describe("JustInTime Feature", () => {
 
         const prototypeSupplier = baseSupplier.prototype({
             factory: ($, $$) => {
-                const jit = $$[squarerSupplier.name].assemble(
+                const assembler = $$[squarerSupplier.name].assemble(
                     index(numberSupplier.pack(5))
                 )
-                const squared = jit.unpack()
+                const squared = assembler.unpack()
 
-                const reassembled = jit.reassemble(
+                const reassembled = assembler.reassemble(
                     index(numberSupplier.pack(10))
                 )
                 const reassembledSquared = reassembled.unpack()
 
                 return `base-value-${squared}-${reassembledSquared}`
             },
-            justInTime: [squarerSupplier]
+            assemblers: [squarerSupplier]
         })
 
         const result = prototypeSupplier.assemble(index(numberSupplier.pack(5)))
@@ -556,7 +558,7 @@ describe("JustInTime Feature", () => {
         expect(result.unpack()).toBe("base-value-25-100")
     })
 
-    it("should support justInTime reassembly in try() method", () => {
+    it("should support assembler reassembly in try() method", () => {
         const market = createMarket()
         const numberSupplier = market.offer("number").asResource<number>()
         const squarerSupplier = market.offer("squarer").asProduct({
@@ -576,14 +578,14 @@ describe("JustInTime Feature", () => {
         })
 
         const baseSupplier = market.offer("base").asProduct({
-            justInTime: [squarerSupplier],
+            assemblers: [squarerSupplier],
             factory: ($, $$) => {
-                const jit = $$[squarerSupplier.name].assemble(
+                const assembler = $$[squarerSupplier.name].assemble(
                     index(numberSupplier.pack(5))
                 )
-                const result = jit.unpack()
+                const result = assembler.unpack()
                 expect(result).toBe(50)
-                const reassembled = jit.reassemble(
+                const reassembled = assembler.reassemble(
                     index(numberSupplier.pack(10))
                 )
                 const reassembledResult = reassembled.unpack()
@@ -599,7 +601,7 @@ describe("JustInTime Feature", () => {
         expect(result.unpack()).toBe(200)
     })
 
-    it("should handle duplicate justInTime names in try() method by overriding", () => {
+    it("should handle duplicate assembler names in try() method by overriding", () => {
         const market = createMarket()
         const originalMock = vi.fn().mockReturnValue("original")
         const overrideMock = vi.fn().mockReturnValue("override")
@@ -618,15 +620,15 @@ describe("JustInTime Feature", () => {
         })
 
         const baseSupplier = market.offer("base").asProduct({
-            justInTime: [originalSupplier],
+            assemblers: [originalSupplier],
             factory: ($, $$) => {
-                const jit = $$[originalSupplier.name].assemble({})
-                return jit.unpack()
+                const assembler = $$[originalSupplier.name].assemble({})
+                return assembler.unpack()
             }
         })
 
         const triedSupplier = baseSupplier
-            .jitOnly()
+            .assemblersOnly()
             .try(overrideSupplier, overrideSupplier2)
 
         const result = triedSupplier.assemble({})

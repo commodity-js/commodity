@@ -111,7 +111,7 @@ Here's an equivalence table to more classical, technical terms
 -   Shared context - Assemble the context once at the entry point, access everywhere without prop-drilling.
 -   Smart memoization - Dependencies injected once per assemble() context for optimal performance.
 -   Context switching - Override context anywhere in the call stack using reassemble().
--   Context enrichment - Add new context and products deep in the call stack by using just-in-time suppliers.
+-   Context enrichment - Add new context and products deep in the call stack by using assemblers.
 
 ⚡ Waterfall Management
 
@@ -127,7 +127,7 @@ Here's an equivalence table to more classical, technical terms
 
 -   Use `prototype()` to create alternative implementations of a product, that may depend on different suppliers than the original.
 -   Prototypes' factories must return values of the same type than the original product's factory.
--   Define prototype suppliers or just-in-time suppliers to `try()` at the entry-point of your app
+-   Define prototype suppliers or assemblers to `try()` at the entry-point of your app
 -   For example, you can easily try different versions of a UI component for A/B testing.
 
 ## Basic Usage
@@ -383,18 +383,21 @@ const sendMoneySupplier = market.offer("send-money").asProduct({
 })
 ```
 
-### 2. Enriching context using just-in-time suppliers
+### 2. Enriching context using assemblers
 
-Most of the time, all context is not known at the entry point of the app. A product supplier might read user input, or a condition might narrow a resource's type. In these cases, you need just-in-time suppliers. Best example is an admin dashboard reserved to admin sessions:
+Most of the time, all context is not known at the entry point of the app. A product supplier might read user input, or a condition might narrow a resource's type. In these cases, you need assemblers.
+
+Best example is an admin dashboard reserved to admin sessions. The session value is known at the entry point, but not its narrowest possible type, as you may want to validate if it's an admin session or not later, only when you need that info.
 
 ```tsx
 type Session = { user: User; now: Date }
+type AdminSession = Session & { user: User & { role: "admin" } }
 
 // Session resource can hold any object of type Session
 const sessionSupplier = market.offer("session").asResource<Session>()
 const adminSessionSupplier = market
     .offer("admin-session")
-    .asResource<Session & { user: User & { role: "admin" } }>()
+    .asResource<AdminSession>()
 
 const adminDashboardSupplier = market.offer("admin-dashboard").asProduct({
     suppliers: [adminSessionSupplier],
@@ -407,25 +410,40 @@ const adminDashboardSupplier = market.offer("admin-dashboard").asProduct({
 
 const AppSupplier = market.offer("app").asProduct({
     suppliers: [sessionSupplier],
-    // Put in justInTime[] all new context computed in this factory
-    // and all products dependent on that new context
-    justInTime: [adminSessionSupplier, adminDashboardSupplier]
-    // Factories receive just-in-time suppliers as 2nd argument
-    factory: ($, $$) => {
-        const role = $(sessionSupplier).user.role
+    // Put in assemblers[] all product suppliers depending on new context (resources) computed in this factory
+    assemblers: [adminDashboardSupplier]
+    // Factories receive assemblers as 2nd argument
+    factory: ($, $$) => () => {
+        const session = $(sessionSupplier)
+        const role = session.user.role
         if (role === "admin") {
-            //Just-in-time suppliers are not yet assembled, you need to assemble them with the new context.
+            //Assemblers are not yet assembled, you need to assemble them with the new context.
             return $$[adminDashboardSupplier].assemble(
                 {
                     ...$, // Keep all previous supplies
                     ...index(
-                        $$[adminSessionSupplier.name].pack({
-                            ...session,
-                            user: {
-                                ...session.user,
-                                role
-                            }
-                        })
+                        // Notice adminSessionSupplier is NOT listed either in suppliers nor assemblers.
+
+                        // It is not listed in suppliers because its value and type is not known before the
+                        // factory is called. You'd get a missing supply type error in assemble() call at the
+                        // entry point if you list in suppliers but don't provide a compatible value when you
+                        // assemble.
+
+                        // It is not listed in assemblers because only products benefit from being listed in
+                        // assemblers, to allow mocking them or trying different prototype implementations.
+                        // Resource suppliers can just be hard-coded via closure without losing any decoupling.
+                        adminSessionSupplier.pack(session as AdminSession)
+
+                        // Or rebuild the session for full type-safety without assertions now that role has been
+                        // type guarded.
+
+                        // adminSessionSupplier.pack({
+                        //     ...session,
+                        //     user: {
+                        //         ...session.user,
+                        //         role
+                        //     }
+                        // })
                     )
                 }
             )
@@ -436,7 +454,7 @@ const AppSupplier = market.offer("app").asProduct({
 })
 
 const session = ...//read session
-const res = appSupplier.assemble(index(sessionSupplier.pack(session))).unpack()
+const App = appSupplier.assemble(index(sessionSupplier.pack(session))).unpack()
 ```
 
 ## Design Philosophy: The Problem with Traditional DI
@@ -496,14 +514,14 @@ Creates a product supplier for services.
 
 ```ts
 const productSupplier = market.offer("service").asProduct({
-    suppliers: [dep1, dep2], // Dependencies
-    justInTime: [jit1, jit2], // Just-in-time suppliers
+    suppliers: [supply1, supply2], // Suppliers
+    assemblers: [assembler1,assembler2], // Assemblers
     lazy: boolean, // Eager (false) or lazy (true)
     init: (value, $)=>void // Run a function right after construction
-    factory: ($, $$?) => {
+    factory: ($, $$) => {
         // Factory function
         // $ = regular supplies
-        // $$ = just-in-time supplies (if any)
+        // $$ = assemblers (if any)
         return serviceImplementation
     }
 })
@@ -548,7 +566,7 @@ const alternativeSupplier = originalSupplier.prototype({
 
 ### `.try(prototype)`
 
-Use a prototype instead of the original when resolving a product's suppliers or justInTime suppliers.
+Use a prototype instead of the original when resolving a product's suppliers or assemblers.
 
 ```ts
 const modifiedSupplier = originalSupplier.try(prototypeSupplier)

@@ -26,8 +26,8 @@ The `asProduct` method accepts an options object with the following keys:
 | Key              | Description                                                                                                             |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | **`suppliers`**  | An array of other suppliers this product depends on.                                                                    |
-| **`justInTime`** | An array of suppliers that can be assembled later, on demand.                                                           |
-| **`factory`**    | The function that creates the product instance. It receives `$` (supplies) and `$$` (JIT supplies) as arguments.        |
+| **`assemblers`** | An array of suppliers that can be assembled later, on demand.                                                           |
+| **`factory`**    | The function that creates the product instance. It receives `$` (supplies) and `$$` (assemblers) as arguments.          |
 | **`lazy`**       | A boolean (`false` by default). If `true`, the product is lazy loaded on first access. Eager loading is the default.    |
 | **`init`**       | A function `(value, $) => void` that runs immediately after the product is created, for side-effects or initialization. |
 
@@ -76,4 +76,4 @@ The factory function is where your service logic lives. It receives two argument
 -   **`$` (Supplies)**: An object to access regular dependencies.
     -   `$(supplier)`: Unpacks the dependency's value directly.
     -   `$[supplier.name]`: Accesses the packed dependency instance, allowing you to call `.reassemble()` on it.
--   **`$$` (Just-in-Time Suppliers)**: An object containing JIT suppliers, which must be assembled manually.
+-   **`$$` (Assemblers)**: An object containing assemblers, which must be assembled manually.

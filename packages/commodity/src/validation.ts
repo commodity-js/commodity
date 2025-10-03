@@ -8,6 +8,7 @@
  * Validates that a value is a non-empty string.
  * @param value - The value to validate
  * @param paramName - The parameter name for error messages
+ * @internal
  * @throws TypeError if the value is not a non-empty string
  */
 export function validateNonEmptyString(
@@ -28,6 +29,7 @@ export function validateNonEmptyString(
  * Validates that a value is a plain object (not null, array, or other special object).
  * @param value - The value to validate
  * @param paramName - The parameter name for error messages
+ * @internal
  * @throws TypeError if the value is not a plain object
  */
 export function validatePlainObject(
@@ -50,6 +52,7 @@ export function validatePlainObject(
  * Validates that a value is defined (not null or undefined).
  * @param value - The value to validate
  * @param paramName - The parameter name for error messages
+ * @internal
  * @throws TypeError if the value is null or undefined
  */
 export function validateDefined<T>(
@@ -69,6 +72,7 @@ export function validateDefined<T>(
  * Validates that a value is a function.
  * @param value - The value to validate
  * @param paramName - The parameter name for error messages
+ * @internal
  * @throws TypeError if the value is not a function
  */
 export function validateFunction(
@@ -86,6 +90,7 @@ export function validateFunction(
  * Validates that a value is an array.
  * @param value - The value to validate
  * @param paramName - The parameter name for error messages
+ * @internal
  * @throws TypeError if the value is not an array
  */
 export function validateArray(
@@ -102,6 +107,7 @@ export function validateArray(
 /**
  * Validates the configuration object for asProduct.
  * @param config - The configuration object to validate
+ * @internal
  * @throws TypeError if the configuration is invalid
  */
 export function validateProductConfig(config: unknown): asserts config is {
@@ -157,6 +163,7 @@ export function validateProductConfig(config: unknown): asserts config is {
 /**
  * Validates the configuration object for prototype.
  * @param config - The configuration object to validate
+ * @internal
  * @throws TypeError if the configuration is invalid
  */
 export function validatePrototypeConfig(config: unknown): asserts config is {
@@ -202,6 +209,7 @@ export function validatePrototypeConfig(config: unknown): asserts config is {
  * Validates that all items in an array are valid suppliers.
  * @param suppliers - The suppliers array to validate
  * @param paramName - The parameter name for error messages
+ * @internal
  * @throws TypeError if any supplier is invalid
  */
 export function validateSuppliers(
