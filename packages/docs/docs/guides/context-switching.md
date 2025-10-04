@@ -2,9 +2,95 @@
 
 Commodity provides powerful, type-safe mechanisms for altering or adding to the dependency context at runtime.
 
-## Override Context with `reassemble()`
+## Enrich Context with Assemblers
 
-Any assembled **Product** can be `.reassemble()`'d with new resources. This is perfect for scenarios where you need to change context deep within your application, such as impersonating a user or switching tenants.
+Assemblers allow you to use product suppliers in your factory that can't be assembled at the application's entry point because they depend on a resource (i.e., a piece of context) that is only known or computed deeper in the dependency chain.
+
+A good example of this is an `AdminPanel`. An `AdminPanel` can't be built until the current session has been validated as having an "admin" role, which doesn't need to be known when the application starts. You might want to compute it lazily, only if the user requests to see the `AdminPanel`. Here's how to do it with assemblers:
+
+1.  **Define Assemblers**: In your product definition, list any assemblers in the `assemblers` array.
+2.  **Access in Factory**: The factory function receives a second argument (`$$`) containing the unresolved assemblers.
+3.  **Assemble When Needed**: When you're ready, call `.assemble()` on the assembler, providing any new context required.
+
+```tsx
+type Session = { user: User; now: Date }
+type AdminSession = Session & { user: User & { role: "admin" } }
+
+// Session resource can hold any object of type Session
+const sessionSupplier = market.offer("session").asResource<Session>()
+
+// Values of different types should be given different resources, even if in the end they might hold the same value.
+const adminSessionSupplier = market
+    .offer("admin-session")
+    .asResource<AdminSession>()
+
+const adminPanelSupplier = market.offer("admin-dashboard").asProduct({
+    suppliers: [adminSessionSupplier], // Depends on an admin session
+    factory: ($) => {
+        /* Non-admin users already guarded out at this point, no need for a runtime guard here*/
+        /* ... returns the admin dashboard ... */
+        return <div>Admin Panel</div>
+    }
+})
+
+const AppSupplier = market.offer("app").asProduct({
+    suppliers: [sessionSupplier],
+    // Put in assemblers[] all product suppliers depending on new context (resources) computed in this factory
+    assemblers: [adminPanelSupplier]
+    // Factories receive assemblers as 2nd argument
+    factory: ($, $$) => () => {
+        const session = $(sessionSupplier)
+        const role = session.user.role
+        if (role === "admin") {
+            //Assemblers are not yet assembled, you need to assemble them with the new context.
+            return $$[adminPanelSupplier].assemble(
+                {
+                    ...$, // Keep all previous supplies if needed
+                    ...index(
+                        // Notice adminSessionSupplier is NOT listed either in suppliers nor assemblers.
+
+                        // It is not listed in suppliers because its value and type is not known before the
+                        // factory is called. You'd get a missing supply type error in assemble() call at the
+                        // entry point if you list in suppliers but don't provide a compatible value when you
+                        // assemble.
+
+                        // It is not listed in assemblers because only products benefit from being listed in
+                        // assemblers, to allow mocking them or trying different prototype implementations.
+                        // Resource suppliers can just be hard-coded via closure without losing any decoupling.
+                        adminSessionSupplier.pack(session as AdminSession)
+
+                        // Or, even better, rebuild the session for full type-safety without assertions now that role has been
+                        // type guarded.
+
+                        // adminSessionSupplier.pack({
+                        //     ...session,
+                        //     user: {
+                        //         ...session.user,
+                        //         role
+                        //     }
+                        // })
+                    )
+                }
+            )
+        }
+
+        return <h1>User Panel - {session.user.name}</h1>
+    }
+})
+
+const session = ...//read session
+const App = appSupplier.assemble(index(sessionSupplier.pack(session))).unpack()
+```
+
+> **Analogy with React Context**
+>
+> If you're familiar with React, you can think of an `Assembler` as being similar to a ContextProvider.
+> Assemblers work similarly by allowing you to provide new dependencies that are only available to children
+> deeper in the call-stack.
+
+## Shorthand: `reassemble()`
+
+Sometimes, you don't need to build a new product from scratch based on new context, like in the `AdminPanel` example. Instead, you may just need to rebuild an _already assembled_ product with a different context. In that case, you don't need assemblers; you can just use `product.reassemble()`.
 
 When you reassemble, you only need to provide the resources you want to change. All other original dependencies from the initial `.assemble()` call are carried over automatically.
 
@@ -32,80 +118,92 @@ const sendMoneySupplier = market.offer("send-money").asProduct({
 })
 ```
 
-## Enrich Context with Assemblers
+> **Analogy with React Context**
+>
+> Continuing the React analogy, `.reassemble()` is like calling `<ContextProvider />` a second time on the same context
+> with a new value deeper in the call stack.
 
-Sometimes, a dependency is only needed _after_ some initial work is done, and it may require new context that wasn't available at the application's entry point. This is the use case for **Assemblers**.
+## Performance: Assembling Multiple Assemblers with `.with()` and `.supplies()`
 
-A common example is handling role-based access, where an admin-only service should only be accessible after a user's session has been validated as being an admin.
-
-1.  **Define Assemblers**: In your product definition, list any assemblers in the `assemblers` array.
-2.  **Access in Factory**: The factory function receives a second argument (`$$`) containing the unresolved assemblers.
-3.  **Assemble When Needed**: When you're ready, call `.assemble()` on the assembler, providing any new context required.
+Let's say you have multiple admin-only components to render now that you know the user is an admin.
 
 ```tsx
-type Session = { user: User; now: Date }
-type AdminSession = Session & { user: User & { role: "admin" } }
-
-// Session resource can hold any object of type Session
-const sessionSupplier = market.offer("session").asResource<Session>()
-const adminSessionSupplier = market
-    .offer("admin-session")
-    .asResource<AdminSession>()
-
-const adminDashboardSupplier = market.offer("admin-dashboard").asProduct({
-    suppliers: [adminSessionSupplier], // Depends on a specific admin session
-    factory: ($) => {
-        /* Non-admin users already guarded out at this point, no need for a runtime guard here*/
-        /* ... returns the admin dashboard ... */
-        return <div>Admin Dashboard</div>
-    }
-})
-
 const AppSupplier = market.offer("app").asProduct({
     suppliers: [sessionSupplier],
-    // Put in assemblers[] all product suppliers depending on new context (resources) computed in this factory
-    assemblers: [adminDashboardSupplier]
-    // Factories receive assemblers as 2nd argument
+    assemblers: [
+        adminPanelSupplier,
+        adminDashboardSupplier,
+        adminProfileSupplier
+    ],
     factory: ($, $$) => () => {
         const session = $(sessionSupplier)
         const role = session.user.role
         if (role === "admin") {
-            //Assemblers are not yet assembled, you need to assemble them with the new context.
-            return $$[adminDashboardSupplier].assemble(
-                {
-                    ...$, // Keep all previous supplies
-                    ...index(
-                        // Notice adminSessionSupplier is NOT listed either in suppliers nor assemblers.
+            const newSupplies = {
+                ...$,
+                ...index(adminSessionSupplier.pack(session as AdminSession))
+            }
 
-                        // It is not listed in suppliers because its value and type is not known before the
-                        // factory is called. You'd get a missing supply type error in assemble() call at the
-                        // entry point if you list in suppliers but don't provide a compatible value when you
-                        // assemble.
+            const Panel = $$[adminPanelSupplier].assemble(newSupplies)
+            const Dashboard = $$[adminDashboardSupplier].assemble(newSupplies)
+            const Profile = $$[adminProfileSupplier].assemble(newSupplies)
 
-                        // It is not listed in assemblers because only products benefit from being listed in
-                        // assemblers, to allow mocking them or trying different prototype implementations.
-                        // Resource suppliers can just be hard-coded via closure without losing any decoupling.
-                        adminSessionSupplier.pack(session as AdminSession)
-
-                        // Or rebuild the session for full type-safety without assertions now that role has been
-                        // type guarded.
-
-                        // adminSessionSupplier.pack({
-                        //     ...session,
-                        //     user: {
-                        //         ...session.user,
-                        //         role
-                        //     }
-                        // })
-                    )
-                }
+            return (
+                <>
+                    <Panel />
+                    <Dashboard />
+                    <Profile />
+                </>
             )
         }
 
-        return <h1>User Dashboard - {session.user.name}</h1>
+        return <h1>User Panel - {session.user.name}</h1>
     }
 })
+```
 
-const session = ...//read session
-const App = appSupplier.assemble(index(sessionSupplier.pack(session))).unpack()
+This is not efficient, as the assemble() context needs to be built three times independently. A better way is to use `with()`
+
+```tsx
+const AppSupplier = market.offer("app").asProduct({
+    suppliers: [sessionSupplier],
+    assemblers: [
+        adminPanelSupplier,
+        adminDashboardSupplier,
+        adminProfileSupplier
+    ],
+    factory: ($, $$) => () => {
+        const session = $(sessionSupplier)
+        const role = session.user.role
+        if (role === "admin") {
+            const Panel = $$[adminPanelSupplier]
+                .with(adminDashboardSupplier, adminProfileSupplier)
+                .assemble({
+                    ...$,
+                    ...index(
+                        adminSessionSupplier.pack(session as AdminSession)
+                        // + Other supplies required by any of the suppliers in the list.
+                        // The assemble() call is type-safe and will ensure all necessary
+                        // dependencies for all listed suppliers are provided.
+                    )
+                })
+
+            // Since they were built together, Dashboard and Profile are available in Panel's supplies even
+            // if Panel does not need them in their factory. product.supplies() is the same as $(), but for usage outside
+            // the factory, after the product has been built.
+            const Dashboard = Panel.supplies(adminDashboardSuppliers)
+            const Profile = Panel.supplies(adminProfileSupplier)
+
+            return (
+                <>
+                    <Panel />
+                    <Dashboard />
+                    <Profile />
+                </>
+            )
+        }
+
+        return <h1>User Panel - {session.user.name}</h1>
+    }
+})
 ```

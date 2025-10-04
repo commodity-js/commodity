@@ -6,6 +6,7 @@ import { CommentSupplier } from "@/components/comment"
 import { index } from "commodity"
 import { ctx } from "@/context"
 import { useQuery } from "@tanstack/react-query"
+import { SelectSessionSupplier } from "./session"
 
 export const PostSupplier = market.offer("Post").asProduct({
     suppliers: [
@@ -13,7 +14,8 @@ export const PostSupplier = market.offer("Post").asProduct({
         ctx.sessionSupplier,
         usersQuerySupplier,
         commentsQuerySupplier,
-        CommentSupplier
+        CommentSupplier,
+        SelectSessionSupplier
     ],
     factory: ($) => () => {
         const post = $(ctx.postSupplier)
@@ -26,10 +28,15 @@ export const PostSupplier = market.offer("Post").asProduct({
             return <div>Loading users or comments...</div>
         }
 
+        const sessionSupply = index(
+            ctx.sessionSupplier.pack([postSession, setPostSession])
+        )
         const Comment = $[CommentSupplier.name]
-            .reassemble(
-                index(ctx.sessionSupplier.pack([postSession, setPostSession]))
-            )
+            .reassemble(sessionSupply)
+            .unpack()
+
+        const SelectSession = $[SelectSessionSupplier.name]
+            .reassemble(sessionSupply)
             .unpack()
 
         return (
@@ -38,26 +45,7 @@ export const PostSupplier = market.offer("Post").asProduct({
                     <h3 className="text-lg font-semibold text-purple-300">
                         📝 Post: {post.id}
                     </h3>
-                    <div className="flex gap-2 items-center">
-                        <span className="text-xs text-gray-400">
-                            Post User: {postSession.id}
-                        </span>
-                        <div className="flex gap-1">
-                            {users.map((user) => (
-                                <button
-                                    key={user.id}
-                                    onClick={() => setPostSession(user)}
-                                    className={`px-2 py-1 rounded text-xs transition-colors ${
-                                        postSession.id === user.id
-                                            ? "bg-purple-600 text-white"
-                                            : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                                    }`}
-                                >
-                                    {user.id}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+                    <SelectSession inPost />
                 </div>
 
                 <div className="space-y-3">

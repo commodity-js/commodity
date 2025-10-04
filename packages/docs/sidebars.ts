@@ -38,7 +38,8 @@ const sidebars: SidebarsConfig = {
                 "guides/performance"
             ]
         },
-        "api-reference"
+        "api-reference",
+        "troubleshooting"
     ]
 }
 

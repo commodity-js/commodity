@@ -19,7 +19,7 @@ These methods are chained off `market.offer(name)`.
 | **`.asResource<T>()`**    | Defines the supplier as a simple data container.     |
 | **`.asProduct(options)`** | Defines the supplier as a service with dependencies. |
 
-### Product Options
+### asProduct Options
 
 The `asProduct` method accepts an options object with the following keys:
 
@@ -51,15 +51,16 @@ These methods are available on resource instances.
 
 These methods are available on product supplier instances.
 
-| Method                    | Description                                                  |
-| ------------------------- | ------------------------------------------------------------ |
-| **`.assemble(supplies)`** | Resolves all dependencies and creates a product instance.    |
-| **`.unpack()`**           | Retrieves the final value from an assembled product.         |
-| **`.prototype(options)`** | Creates an alternative implementation of a product supplier. |
-| **`.try(prototype)`**     | Swaps a product's dependency with a specified prototype.     |
-| **`.pack(value)`**        | Provides a concrete value to mock the product (for testing). |
+| Method                                          | Description                                                      |
+| ----------------------------------------------- | ---------------------------------------------------------------- |
+| **`.assemble(supplies)`**                       | Resolves all dependencies and creates a product instance.        |
+| **`.unpack()`**                                 | Retrieves the final value from an assembled product.             |
+| **`.prototype(options)`**                       | Creates an alternative implementation of a product supplier.     |
+| **`.try(prototype1, prototype2)`**              | Swaps a product's dependency with a specified prototype.         |
+| **`supplier1.with(supplier2, supplier3, ...)`** | Allows to assemble multiple suppliers' products at the same time |
+| **`.pack(value)`**                              | Provides a concrete value to mock the product (for testing).     |
 
-## Product Methods
+## Product Methods and Properties
 
 These methods are available on assembled product instances.
 
@@ -68,6 +69,7 @@ These methods are available on assembled product instances.
 | **`.unpack()`**                | Retrieves the final value from an assembled product.            |
 | **`.reassemble(newSupplies)`** | Creates a new product instance with different context/supplies. |
 | **`.pack(value)`**             | Provides a concrete value to mock the product (for testing).    |
+| **`.supplies`**                | Provides access to the supplies the product was built with.     |
 
 ## Factory Function (`factory`)
 
