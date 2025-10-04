@@ -63,7 +63,7 @@ jobs:
                   git config --local user.email "action@github.com"
                   git config --local user.name "GitHub Action"
 
-            - name: Manage latest-release tag (for stable releases)
+            - name: Manage latest-stable-release tag
               if: github.event.release.prerelease == 'false'
               run: |
                   git tag -d latest-release || true
@@ -72,8 +72,7 @@ jobs:
                   git tag latest-release
                   git push origin latest-release
 
-            - name: Manage latest-prerelease tag (for prereleases)
-              if: github.event.release.prerelease == 'true'
+            - name: Manage latest-release tag
               run: |
                   git tag -d latest-prerelease || true
                   git push origin :refs/tags/latest-prerelease || true
