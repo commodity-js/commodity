@@ -16,26 +16,6 @@
             "preview": {
                 "port": 3001
             }
-        },
-        "build": {
-            "name": "build",
-            "command": "pnpm build",
-            "runAtStart": false
-        },
-        "preview": {
-            "name": "preview",
-            "command": "pnpm preview",
-            "runAtStart": false
-        },
-        "test": {
-            "name": "test",
-            "command": "pnpm test",
-            "runAtStart": false
-        },
-        "test:ui": {
-            "name": "test:ui",
-            "command": "pnpm test:ui",
-            "runAtStart": false
         }
     }
 }

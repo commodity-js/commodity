@@ -1,6 +1,7 @@
 publicHoistPattern:
     - "*eslint*"
 linkWorkspacePackages: deep
+preferWorkspacePackages: true
 packages:
     - "packages/*"
     - "packages/examples/*"
