@@ -18,9 +18,14 @@ jobs:
             url: https://www.npmjs.com/package/commodity
         runs-on: ubuntu-latest
         permissions:
-            contents: read
+            contents: write # Required for managing tags
             id-token: write # Required for OIDC with npm
         steps:
+            - name: Checkout
+              uses: actions/checkout@v5
+              with:
+                  fetch-tags: true
+
             - name: Setup Node.js
               uses: actions/setup-node@v5
               with:
@@ -43,13 +48,38 @@ jobs:
 
             - name: Publish to Beta
               if: github.event.release.prerelease == 'true'
+              working-directory: ./packages/commodity
               run: |
                   npm publish --tag beta
 
             - name: Publish to Latest
               if: github.event.release.prerelease == 'false'
+              working-directory: ./packages/commodity
               run: |
                   npm publish --tag latest
+
+            - name: Configure Git
+              run: |
+                  git config --local user.email "action@github.com"
+                  git config --local user.name "GitHub Action"
+
+            - name: Manage latest-release tag (for stable releases)
+              if: github.event.release.prerelease == 'false'
+              run: |
+                  git tag -d latest-release || true
+                  git push origin :refs/tags/latest-release || true
+
+                  git tag latest-release
+                  git push origin latest-release
+
+            - name: Manage latest-prerelease tag (for prereleases)
+              if: github.event.release.prerelease == 'true'
+              run: |
+                  git tag -d latest-prerelease || true
+                  git push origin :refs/tags/latest-prerelease || true
+
+                  git tag latest-prerelease
+                  git push origin latest-prerelease
 
     deploy-pages:
         environment:

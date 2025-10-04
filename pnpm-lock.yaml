@@ -121,7 +121,7 @@ importers:
         specifier: ^2.0.0
         version: 2.1.1
       commodity:
-        specifier: ^0.0.1-beta.0
+        specifier: '*'
         version: link:../../commodity
       date-fns:
         specifier: ^2.30.0
