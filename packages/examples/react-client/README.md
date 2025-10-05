@@ -1,65 +1,64 @@
-# Commodity React Client Example
+# 🚀 Commodity + React (Client components) Demo
 
-A comprehensive React application demonstrating all features of the **Commodity** library - a functional, fully type-inferred, and stateless dependency injection system for TypeScript.
+This example showcases a basic social media wireframe built entirely with Commodity's dependency injection patterns, demonstrating how to eliminate prop-drilling while maintaining type safety and testability.
+
+A preview browser should automatically show up, but if it doesn't, simply click on the Terminal icon in the sidebar, then click on 3001 under PREVIEWS.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 
-## 🚀 Live Demo
+# Tips for using Commodity with React
 
-This example showcases a social media wireframe built entirely with Commodity's dependency injection patterns, demonstrating how to eliminate prop-drilling while maintaining type safety and testability.
+-   **Rules of Hooks** - Don't call hooks in the factory's function body! If you call hooks, either in a component or custon hooks, be sure to call it in a function **returned** by the factory, like so:
 
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Node.js 18+
-- pnpm (recommended) or npm
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/commodity-js/react-client.git
-cd react-client
-
-# Install dependencies
-pnpm install
-
-# Start development server
-pnpm dev
+```tsx
+{
+    factory: ($, $$) => () => {
+        // useXYZ() or $(useXYZ)() if hook part of supplies
+    }
+}
 ```
 
-The application will be available at `http://localhost:5173`
+-   **React Context alternative** - All you can achieve with React Context can be achieved using Commodity's API:
 
-### Building for Production
+    -   `createContext()` → define a new resource with `asResource()`
+    -   `useContext()` → access it through supplies with `$(someContextResourceSupplier)`
+    -   <Provider > → call `reassemble()` on already supplied products, or use assemblers otherwise.
 
-```bash
-# Build the application
-pnpm build
+    The current demo has been designed to showcase this, via a deeply nested component tree. See [Context Switching and Enrichment](https://commodity-js.github.io/commodity/docs/guides/context-switching) for full documentation.
 
-# Preview the production build
-pnpm preview
+-   **Elements** - If your component is pure and doesn't need to receive additional props (outside $ supplies) or call hooks, returning JSX elements from the factory directly works.
+
+-   **Preload pattern** - All factories are eagerly prerun in parallel by default, so preloading is very easy. To preload data, look at file src/api.ts in the demo to see how data prefetching has been achieved with react-query to avoid waterfall loading. To preload components, you can simply return JSX from the factory if possible (pure, no props, no hooks), or use the preload pattern like this:
+
+```tsx
+market.offer("Component").asProduct({
+    factory: ($, $$) =>
+        React.memo((props) => {
+            // return jsx
+        }),
+    // Init is always called right after the factory, no matter if lazy is true or false
+    init: (Component, $) => {
+        <Component props={propSetToPreload1} />
+        <Component props={propSetToPreload2} />
+        <Component props={propSetToPreload3} />
+    }
+    lazy: false // false is the default, so can be omitted
+})
 ```
 
-## ✨ Features Demonstrated
+-   **ESLint** - If you create hooks as products as described above, you'd call it like $(useXYZ)() which ESLint can't detect for the rules-of-hooks rule. You could store the hook in a temporary variable instead:
 
-### Core Commodity Features
-
-- **📦 Markets and Suppliers** - Organized dependency scopes
-- **🔄 Resources and Products** - Data and service containers
-- **🎯 Context Switching** - Dynamic dependency resolution with `reassemble()`
-- **⚡ Just-in-Time Suppliers** - Lazy loading and conditional assembly
-- **🧪 Mocking and Prototypes** - Testing with alternative implementations
-- **🔗 Deep Nesting** - No prop-drilling throughout the component tree
-
-### React Integration
-
-- **🎛️ Hook Supplier Pattern** - How to integrate hooks with Supplier
-- **🎯 React Query Integration** - Data fetching and preloading with dependency injection
-- **🎨 Context propagation and switching** - Impersonate another user down the component tree.
+```tsx
+{
+    factory: ($, $$) => () => {
+        const useXYZ = $(useXYZ)
+        useXYZ() // ESLint rules-of-hooks should work
+    }
+}
+```
 
 ## 🏗️ Architecture Overview
 
@@ -90,8 +89,8 @@ src/
 
 ## 📖 Related Documentation
 
-- [Commodity Core Library](https://github.com/commodity-js/commodity)
-- [Commodity Documentation](https://github.com/commodity-js/commodity#readme)
+-   [Commodity Core Library](https://github.com/commodity-js/commodity)
+-   [Commodity Documentation](https://github.com/commodity-js/commodity#readme)
 
 ## 🤝 Contributing
 
