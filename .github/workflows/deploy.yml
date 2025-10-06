@@ -49,6 +49,9 @@ jobs:
                   registry-url: "https://registry.npmjs.org"
                   package-manager-cache: false
 
+            - name: Update npm
+              run: npm install -g npm@latest
+
             - name: Download build artifacts
               uses: actions/download-artifact@v5
               with:
@@ -60,7 +63,9 @@ jobs:
               run: |
                   VERSION=${GITHUB_REF#refs/tags/}
                   VERSION=${VERSION#v}
+                  echo "Setting version to: $VERSION"
                   npm version $VERSION --no-git-tag-version
+                  echo "Package.json version is now: $(cat package.json | jq -r .version)"
 
             - name: Publish to Beta
               if: github.event.release.prerelease == true
