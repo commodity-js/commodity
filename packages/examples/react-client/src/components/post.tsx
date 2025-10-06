@@ -1,42 +1,40 @@
-import { commentsQuerySupplier, usersQuerySupplier } from "@/api"
+import { $$commentsQuery, $$usersQuery } from "@/api"
 import { market } from "@/market"
 import type { Comment } from "@/api"
 import { useState } from "react"
-import { CommentSupplier } from "@/components/comment"
+import { $$Comment } from "@/components/comment"
 import { index } from "commodity"
 import { ctx } from "@/context"
 import { useQuery } from "@tanstack/react-query"
-import { SelectSessionSupplier } from "./session"
+import { $$SelectSession } from "./session"
 
-export const PostSupplier = market.offer("Post").asProduct({
+export const $$Post = market.offer("Post").asProduct({
     suppliers: [
-        ctx.postSupplier,
-        ctx.sessionSupplier,
-        usersQuerySupplier,
-        commentsQuerySupplier,
-        CommentSupplier,
-        SelectSessionSupplier
+        ctx.$$post,
+        ctx.$$session,
+        $$usersQuery,
+        $$commentsQuery,
+        $$Comment,
+        $$SelectSession
     ],
     factory: ($) => () => {
-        const post = $(ctx.postSupplier)
-        const [session] = $(ctx.sessionSupplier)
-        const { data: users } = useQuery($(usersQuerySupplier))
-        const { data: comments } = useQuery($(commentsQuerySupplier)(post.id))
+        const post = $(ctx.$$post)
+        const [session] = $(ctx.$$session)
+        const { data: users } = useQuery($($$usersQuery))
+        const { data: comments } = useQuery($($$commentsQuery)(post.id))
         const [postSession, setPostSession] = useState(session)
 
         if (!users || !comments) {
             return <div>Loading users or comments...</div>
         }
 
-        const sessionSupply = index(
-            ctx.sessionSupplier.pack([postSession, setPostSession])
+        const sessionPack = index(
+            ctx.$$session.pack([postSession, setPostSession])
         )
-        const Comment = $[CommentSupplier.name]
-            .reassemble(sessionSupply)
-            .unpack()
+        const Comment = $[$$Comment.name].reassemble(sessionPack).unpack()
 
-        const SelectSession = $[SelectSessionSupplier.name]
-            .reassemble(sessionSupply)
+        const SelectSession = $[$$SelectSession.name]
+            .reassemble(sessionPack)
             .unpack()
 
         return (

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { AppSupplier } from "@/components/app"
+import { $$App } from "@/components/app"
 import { render, screen, waitFor } from "@testing-library/react"
 import { QueryClientProvider } from "@tanstack/react-query"
 import { queryClient } from "@/query"
@@ -7,7 +7,7 @@ import { StrictMode } from "react"
 
 describe("React Client", () => {
     it("should be able to render the app", async () => {
-        const App = AppSupplier.assemble({}).unpack()
+        const App = $$App.assemble({}).unpack()
         expect(App).toBeDefined()
         render(
             <StrictMode>

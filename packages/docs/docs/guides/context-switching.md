@@ -17,15 +17,15 @@ type Session = { user: User; now: Date }
 type AdminSession = Session & { user: User & { role: "admin" } }
 
 // Session resource can hold any object of type Session
-const sessionSupplier = market.offer("session").asResource<Session>()
+const $$session = market.offer("session").asResource<Session>()
 
 // Values of different types should be given different resources, even if in the end they might hold the same value.
-const adminSessionSupplier = market
+const $$adminSession = market
     .offer("admin-session")
     .asResource<AdminSession>()
 
-const adminPanelSupplier = market.offer("admin-dashboard").asProduct({
-    suppliers: [adminSessionSupplier], // Depends on an admin session
+const $$adminPanel = market.offer("admin-dashboard").asProduct({
+    suppliers: [$$adminSession], // Depends on an admin session
     factory: ($) => {
         /* Non-admin users already guarded out at this point, no need for a runtime guard here*/
         /* ... returns the admin dashboard ... */
@@ -33,21 +33,22 @@ const adminPanelSupplier = market.offer("admin-dashboard").asProduct({
     }
 })
 
-const AppSupplier = market.offer("app").asProduct({
-    suppliers: [sessionSupplier],
+//PascalCase convention for React component
+const $$App = market.offer("app").asProduct({
+    suppliers: [$$session],
     // Put in assemblers[] all product suppliers depending on new context (resources) computed in this factory
-    assemblers: [adminPanelSupplier]
+    assemblers: [$$adminPanel]
     // Factories receive assemblers as 2nd argument
     factory: ($, $$) => () => {
-        const session = $(sessionSupplier)
+        const session = $($$session)
         const role = session.user.role
         if (role === "admin") {
             //Assemblers are not yet assembled, you need to assemble them with the new context.
-            return $$[adminPanelSupplier].assemble(
+            return $$[$$adminPanel.name].assemble(
                 {
                     ...$, // Keep all previous supplies if needed
                     ...index(
-                        // Notice adminSessionSupplier is NOT listed either in suppliers nor assemblers.
+                        // Notice $$adminSession is NOT listed either in suppliers nor assemblers.
 
                         // It is not listed in suppliers because its value and type is not known before the
                         // factory is called. You'd get a missing supply type error in assemble() call at the
@@ -57,12 +58,12 @@ const AppSupplier = market.offer("app").asProduct({
                         // It is not listed in assemblers because only products benefit from being listed in
                         // assemblers, to allow mocking them or trying different prototype implementations.
                         // Resource suppliers can just be hard-coded via closure without losing any decoupling.
-                        adminSessionSupplier.pack(session as AdminSession)
+                        $$adminSession.pack(session as AdminSession)
 
                         // Or, even better, rebuild the session for full type-safety without assertions now that role has been
                         // type guarded.
 
-                        // adminSessionSupplier.pack({
+                        // $$adminSession.pack({
                         //     ...session,
                         //     user: {
                         //         ...session.user,
@@ -79,7 +80,7 @@ const AppSupplier = market.offer("app").asProduct({
 })
 
 const session = ...//read session
-const App = appSupplier.assemble(index(sessionSupplier.pack(session))).unpack()
+const App = $$app.assemble(index($$session.pack(session))).unpack()
 ```
 
 > **Analogy with React Context**
@@ -90,25 +91,25 @@ const App = appSupplier.assemble(index(sessionSupplier.pack(session))).unpack()
 
 ## Shorthand: `reassemble()`
 
-Sometimes, you don't need to build a new product from scratch based on new context, like in the `AdminPanel` example. Instead, you may just need to rebuild an _already assembled_ product with a different context. In that case, you don't need assemblers; you can just use `product.reassemble()`.
+Sometimes, you don't need to build a new product from scratch based on new context, like in the `AdminPanel` example. Instead, you may just need to rebuild an _already assembled_ product with a different context. In that case, you don't need assemblers; you can just use `$product.reassemble()`.
 
 When you reassemble, you only need to provide the resources you want to change. All other original dependencies from the initial `.assemble()` call are carried over automatically.
 
-Here is a classic problem `reassemble()` solves: how can a user safely send money to another user if the sender does not have access to the receiver's account, without having to bypass the receiver's access control layer? Just impersonate the receiver with `reassemble()`!
+Here is a classic problem `.reassemble()` solves: how can a user safely send money to another user if the sender does not have access to the receiver's account, without having to bypass the receiver's access control layer? Just impersonate the receiver with `.reassemble()`!
 
 ```typescript
-const sendMoneySupplier = market.offer("send-money").asProduct({
-    suppliers: [addWalletEntrySupplier, sessionSupplier],
+const $$sendMoney = market.offer("send-money").asProduct({
+    suppliers: [$$addWalletEntry, $$session],
     factory: ($) => {
         return (toUserId: string, amount: number) => {
-            const addWalletEntry = $(addWalletEntrySupplier)
+            const addWalletEntry = $($$addWalletEntry)
 
             // 1. Runs with the original session's account
             addWalletEntry(-amount)
 
             // 2. Reassemble the dependency with a new session context
-            const addTargetWalletEntry = $[addWalletEntrySupplier.name]
-                .reassemble(index(sessionSupplier.pack({ userId: toUserId })))
+            const addTargetWalletEntry = $[$$addWalletEntry.name]
+                .reassemble(index($$session.pack({ userId: toUserId })))
                 .unpack()
 
             // 3. Runs in the receiver's account context, so all security checks can still run.
@@ -128,25 +129,23 @@ const sendMoneySupplier = market.offer("send-money").asProduct({
 Let's say you have multiple admin-only components to render now that you know the user is an admin.
 
 ```tsx
-const AppSupplier = market.offer("app").asProduct({
-    suppliers: [sessionSupplier],
-    assemblers: [
-        adminPanelSupplier,
-        adminDashboardSupplier,
-        adminProfileSupplier
-    ],
+const $$App = market.offer("app").asProduct({
+    suppliers: [$$session],
+    assemblers: [$$adminPanel, $$adminDashboard, $$adminProfile],
     factory: ($, $$) => () => {
-        const session = $(sessionSupplier)
+        const session = $($$session)
         const role = session.user.role
         if (role === "admin") {
             const newSupplies = {
                 ...$,
-                ...index(adminSessionSupplier.pack(session as AdminSession))
+                ...index($$adminSession.pack(session as AdminSession))
             }
 
-            const Panel = $$[adminPanelSupplier].assemble(newSupplies)
-            const Dashboard = $$[adminDashboardSupplier].assemble(newSupplies)
-            const Profile = $$[adminProfileSupplier].assemble(newSupplies)
+            const Panel = $$[$$adminPanel].assemble(newSupplies).unpack()
+            const Dashboard = $$[$$adminDashboard]
+                .assemble(newSupplies)
+                .unpack()
+            const Profile = $$[$$adminProfile].assemble(newSupplies).unpack()
 
             return (
                 <>
@@ -165,34 +164,31 @@ const AppSupplier = market.offer("app").asProduct({
 This is not efficient, as the assemble() context needs to be built three times independently. A better way is to use `with()`
 
 ```tsx
-const AppSupplier = market.offer("app").asProduct({
-    suppliers: [sessionSupplier],
-    assemblers: [
-        adminPanelSupplier,
-        adminDashboardSupplier,
-        adminProfileSupplier
-    ],
+const $$App = market.offer("app").asProduct({
+    suppliers: [$$session],
+    assemblers: [$$adminPanel, $$adminDashboard, $$adminProfile],
     factory: ($, $$) => () => {
-        const session = $(sessionSupplier)
+        const session = $($$session)
         const role = session.user.role
         if (role === "admin") {
-            const Panel = $$[adminPanelSupplier]
-                .with(adminDashboardSupplier, adminProfileSupplier)
+            const $Panel = $$[$$adminPanel]
+                .with($$adminDashboard, $$adminProfile)
                 .assemble({
                     ...$,
                     ...index(
-                        adminSessionSupplier.pack(session as AdminSession)
+                        $$adminSession.pack(session as AdminSession)
                         // + Other supplies required by any of the suppliers in the list.
                         // The assemble() call is type-safe and will ensure all necessary
                         // dependencies for all listed suppliers are provided.
                     )
                 })
 
+            const Panel = $Panel.unpack()
             // Since they were built together, Dashboard and Profile are available in Panel's supplies even
             // if Panel does not need them in their factory. product.supplies() is the same as $(), but for usage outside
             // the factory, after the product has been built.
-            const Dashboard = Panel.supplies(adminDashboardSuppliers)
-            const Profile = Panel.supplies(adminProfileSupplier)
+            const Dashboard = $Panel.supplies($$adminDashboard)
+            const Profile = $Panel.supplies($$adminProfile)
 
             return (
                 <>

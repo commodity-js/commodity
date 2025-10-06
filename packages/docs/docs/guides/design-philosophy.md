@@ -14,14 +14,14 @@ Commodity's "Dependency Injection Supply Chain" (DISC) model can do everything c
 
 Commodity uses an intuitive supply chain metaphor to make dependency injection easier to understand. You create fully-decoupled, hyper-specialized **suppliers** that exchange **resources** and **products** in a free-market fashion to assemble new, more complex products.
 
-| Term                   | Classical DI Equivalent | Description                                                                     |
-| ---------------------- | ----------------------- | ------------------------------------------------------------------------------- |
-| **`createMarket()`**   | `createContainer()`     | A namespace/scope for all your suppliers.                                       |
-| **Resource**           | Value Service           | A simple container for data or configuration.                                   |
-| **Product**            | Factory Service         | A container for a value created via a factory function with dependencies.       |
-| **Supplier**           | Resolver                | Provides access to a resource or product to an application or another supplier. |
-| **`assemble()`**       | `resolve()`             | Build the product by aggregating and injecting all needed supplies.             |
-| **Supplies (or `$` )** | Container / Context     | The collection of resolved dependencies available at any point.                 |
+| Term                   | Classical DI Equivalent | Description                                                                                              |
+| ---------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------- |
+| **`createMarket()`**   | `createContainer()`     | A namespace/scope for all your suppliers.                                                                |
+| **Resource**           | Value Service           | A simple container for data or configuration.                                                            |
+| **Product**            | Factory Service         | A container for a value created via a factory function with dependencies.                                |
+| **Supplier**           | Resolver                | Provides access to a resource or product to an application or another supplier.                          |
+| **`assemble()`**       | `resolve()`             | Gather all requires supplies and inject in factories. Builds the product if supplier is eager. supplies. |
+| **Supplies (or `$` )** | Container / Context     | The collection of resolved dependencies available at any point.                                          |
 
 ## How it Works Under the Hood
 
@@ -41,4 +41,5 @@ const $ = {
 }
 ```
 
+The `assemble()` call buils the above $ object, each product now ready to be injected and built right away if eager, or on-demand if lazy.
 This functional approach avoids the complexity of traditional DI containers while providing the same power in a more elegant and understandable way.

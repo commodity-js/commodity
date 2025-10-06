@@ -13,40 +13,40 @@ const heroCode = `import { createMarket, index } from "commodity"
 
 // Create market and define suppliers
 const market = createMarket()
-const sessionSupplier = market.offer("session").asResource<{ userId: string }>()
-const apiSupplier = market.offer("api").asProduct({
-    suppliers: [sessionSupplier],
-    factory: ($) => new ApiClient($(sessionSupplier).userId)
+const $$session = market.offer("session").asResource<{ userId: string }>()
+const $$api = market.offer("api").asProduct({
+    suppliers: [$$session],
+    factory: ($) => new ApiClient($($$session).userId)
 })
 
 // Assemble with type safety
-const api = apiSupplier
-    .assemble(index(sessionSupplier.pack({ userId: "123" })))
+const api = $$api
+    .assemble(index($$session.pack({ userId: "123" })))
     .unpack()
 
 // Use it!
 const users = await api.getUsers()`
 
-const typeExample = `const configSupplier = market.offer("config").asResource<{
+const typeExample = `const $$config = market.offer("config").asResource<{
     api: { baseUrl: string };
 }>();
 
-const dbSupplier = market.offer("db").asProduct({
+const $$db = market.offer("db").asProduct({
     factory: () => new DatabaseClient() // Returns a DatabaseClient instance
 });
 
-const userServiceSupplier = market.offer("userService").asProduct({
-    suppliers: [configSupplier, dbSupplier],
+const $$userService = market.offer("userService").asProduct({
+    suppliers: [$$config, $$db],
     factory: ($) => {
         // No explicit types needed! They are all inferred.
 
-        const config = $(configSupplier);
+        const config = $($$config);
         //      ^? const config: { api: { baseUrl: string } }
         //         (Inferred from the .asResource<T>() definition)
 
-        const db = $(dbSupplier);
+        const db = $($$db);
         //    ^? const db: DatabaseClient
-        //       (Inferred from the dbSupplier's factory return type)
+        //       (Inferred from the $$db's factory return type)
 
         return {
             getUser: (id: string) => db.fetchUser(id, config.api.baseUrl)
@@ -55,7 +55,7 @@ const userServiceSupplier = market.offer("userService").asProduct({
 });`
 
 const performanceExample = `// An expensive service, lazy-loaded for on-demand performance.
-const reportGeneratorSupplier = market.offer("reporter").asProduct({
+const $$reportGenerator = market.offer("reporter").asProduct({
     factory: () => {
         // This expensive logic runs only ONCE, the first time it's needed.
         console.log("🚀 Initializing Report Generator...");
@@ -64,29 +64,29 @@ const reportGeneratorSupplier = market.offer("reporter").asProduct({
     lazy: true
 });
 
-const appSupplier = market.offer("app").asProduct({
-    suppliers: [reportGeneratorSupplier],
+const $$app = market.offer("app").asProduct({
+    suppliers: [$$reportGenerator],
     factory: ($) => (userAction: "view_dashboard" | "generate_report") => {
         if (userAction === "generate_report") {
             // The generator is created on the first call thanks to lazy loading.
             // Subsequent calls within the same context will reuse the
             // same, memoized instance without running the factory again.
-            const reporter = $(reportGeneratorSupplier);
+            const reporter = $($$reportGenerator);
             reporter.generate();
         }
     }
 });`
 
 const testingExample = `// A product that depends on a real database.
-const userProfileSupplier = market.offer("userProfile").asProduct({
-    suppliers: [dbSupplier],
+const $$userProfile = market.offer("userProfile").asProduct({
+    suppliers: [$$db],
     factory: ($) => ({
-        bio: $(dbSupplier).fetchBio()
+        bio: $($$db).fetchBio()
     })
 });
 
 // For tests, create a prototype with no dependencies.
-const mockUserProfile = userProfileSupplier.prototype({
+const mockUserProfile = $$userProfile.prototype({
     suppliers: [], // <-- No database needed!
     factory: () => ({
         bio: "This is a mock bio for testing."
@@ -94,14 +94,14 @@ const mockUserProfile = userProfileSupplier.prototype({
 });
 
 // The component we want to test.
-const appSupplier = market.offer("app").asProduct({
-    suppliers: [userProfileSupplier],
-    factory: ($) => \`<div>\${$(userProfileSupplier).bio}</div>\`
+const $$app = market.offer("app").asProduct({
+    suppliers: [$$userProfile],
+    factory: ($) => \`<div>\${$$(userProfile).bio}</div>\`
 });
 
 // In the test, just .try() the prototype.
 // No need to provide a database connection!
-const app = appSupplier.try(mockUserProfile).assemble().unpack();`
+const app = $$app.try(mockUserProfile).assemble().unpack();`
 
 function Hero() {
     const { siteConfig } = useDocusaurusContext()
@@ -119,10 +119,11 @@ function Hero() {
                         </Heading>
                         <p className={styles.heroSubtitle}>
                             The <span className={styles.highlight}>first</span>{" "}
-                            fully type-inferred and type-safe dependency
-                            injection library for TypeScript.
+                            fully type-inferred, type-safe and
+                            hyper-minimalistic DI solution for Typescript!
                             <br />
-                            No decorators. No reflection. Just{" "}
+                            No OOP, reflect-metadata, decorators, annotations or
+                            compiler magic, just{" "}
                             <span className={styles.highlight}>
                                 simple functions
                             </span>

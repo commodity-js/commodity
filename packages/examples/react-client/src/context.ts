@@ -2,8 +2,8 @@ import { market } from "@/market"
 import type { Post, User } from "@/api"
 
 export const ctx = {
-    sessionSupplier: market
+    $$session: market
         .offer("session")
         .asResource<[User, (user: User) => void]>(),
-    postSupplier: market.offer("post").asResource<Post>()
+    $$post: market.offer("post").asResource<Post>()
 }

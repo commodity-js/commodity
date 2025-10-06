@@ -1,13 +1,13 @@
 import { market } from "@/market"
 import { ctx } from "@/context"
 import type { Reply } from "@/api"
-export const ReplySupplier = market.offer("reply").asProduct({
-    suppliers: [ctx.postSupplier, ctx.sessionSupplier],
+export const $$Reply = market.offer("reply").asProduct({
+    suppliers: [ctx.$$post, ctx.$$session],
     factory:
         ($) =>
         ({ reply }: { reply: Reply }) => {
-            const [session] = $(ctx.sessionSupplier)
-            const post = $(ctx.postSupplier)
+            const [session] = $(ctx.$$session)
+            const post = $(ctx.$$post)
             return (
                 <div className="border-2 border-orange-500 rounded-lg p-2 bg-gray-800 ml-6">
                     <div className="flex justify-between items-center">

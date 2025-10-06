@@ -16,10 +16,10 @@ Commodity is designed for optimal performance, featuring a minimal bundle size, 
 
 ```typescript
 // ✅ Good: Factory called once, returns a function for multiple calls
-const createUserService = market.offer("createUserService").asProduct({
-    suppliers: [dbSupplier],
+const $$createUser = market.offer("createUser").asProduct({
+    suppliers: [$$db],
     factory: ($) => {
-        const db = $(dbSupplier)
+        const db = $($$db)
         // This setup code runs only once per assemble()
         const cache = new Map()
 
@@ -34,9 +34,7 @@ const createUserService = market.offer("createUserService").asProduct({
 })
 
 // Usage: createUserService() can be called multiple times
-const createUser = createUserService
-    .assemble(index(dbSupplier.pack(db)))
-    .unpack()
+const createUser = $$createUser.assemble(index($$db.pack(db))).unpack()
 const user1 = createUser("123") // Fresh call
 const user2 = createUser("123") // Cached result
 ```
@@ -49,14 +47,14 @@ By default, all products are constructed in parallel and cached as soon as `.ass
 
 ```typescript
 // Both of these services will be constructed immediately and in parallel
-const dbSupplier = market.offer("database").asProduct({
+const $$db = market.offer("db").asProduct({
     factory: async () => await db.connect()
 })
-const cacheSupplier = market.offer("cache").asProduct({
+const $$cache = market.offer("cache").asProduct({
     factory: () => new Map()
 })
 
-const app = appSupplier.assemble(supplies) // Starts constructing both at once
+const $app = $$app.assemble(supplies) // Starts constructing both at once
 ```
 
 ### Lazy Loading with `lazy: true`
@@ -64,11 +62,11 @@ const app = appSupplier.assemble(supplies) // Starts constructing both at once
 For expensive services that are only used in certain situations (e.g., an admin panel service or a PDF export tool), you can enable lazy loading by setting `lazy: true`. The product will only be constructed the first time its value is accessed via `$(...)` or `unpack()`.
 
 ```typescript
-const lazyServiceSupplier = market.offer("lazyService").asProduct({
-    suppliers: [dbSupplier],
-    // Will only be loaded when `$(lazyServiceSupplier)` is called in another service,
-    // or when `lazyServiceSupplier.assemble().unpack()` is called at the entry point.
-    factory: ($) => new ExpensiveService($(dbSupplier)),
+const $$lazy = market.offer("lazy").asProduct({
+    suppliers: [$$db],
+    // Will only be loaded when `$($$lazyService)` is called in another service,
+    // or when `$$lazyService.assemble().unpack()` is called at the entry point.
+    factory: ($) => new ExpensiveService($($$db)),
     lazy: true
 })
 ```
@@ -82,13 +80,13 @@ This is useful for pre-warming caches or running setup logic without cluttering 
 For example, you can easily implement the preload pattern:
 
 ```typescript
-const profileSupplier = market.offer("profileSupplier").asProduct({
-    suppliers: [currentUser]
+const $$profile = market.offer("profile").asProduct({
+    suppliers: [$$currentUser]
     factory: () => memo((userId) => db.profiles.get(userId))
     init: (getProfile, $) => {
         // Allows to preload the current logged in user's profile.
         // the memoization cache will be prepopulated with the current user's profile if requested later.
-        await getProfile($(currentUser).id)
+        await getProfile($($$currentUser).id)
     }
 })
 ```

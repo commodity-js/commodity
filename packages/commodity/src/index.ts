@@ -17,7 +17,7 @@ import {
 import { hire } from "#assemble"
 import { index, once } from "#utils"
 import {
-    validateNonEmptyString,
+    validateString,
     validatePlainObject,
     validateDefined,
     validateProductConfig,
@@ -58,7 +58,7 @@ export const createMarket = () => {
          * @public
          */
         offer<NAME extends string>(name: NAME) {
-            validateNonEmptyString(name, "name")
+            validateString(name, "name")
             if (names.has(name)) {
                 throw new Error(`Name ${name} already exists`)
             }

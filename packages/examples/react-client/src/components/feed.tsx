@@ -1,15 +1,15 @@
-import { postsQuerySupplier } from "@/api"
+import { $$postsQuery } from "@/api"
 import { market } from "@/market"
-import { PostSupplier } from "@/components/post"
+import { $$Post } from "@/components/post"
 import { ctx } from "@/context"
 import { index } from "commodity"
 import { useQuery } from "@tanstack/react-query"
 
-export const FeedSupplier = market.offer("Feed").asProduct({
-    suppliers: [postsQuerySupplier, ctx.sessionSupplier],
-    assemblers: [PostSupplier],
+export const $$Feed = market.offer("Feed").asProduct({
+    suppliers: [$$postsQuery, ctx.$$session],
+    assemblers: [$$Post],
     factory: ($, $$) => () => {
-        const { data: posts } = useQuery($(postsQuerySupplier))
+        const { data: posts } = useQuery($($$postsQuery))
         if (!posts) {
             return <div>Loading posts...</div>
         }
@@ -17,10 +17,10 @@ export const FeedSupplier = market.offer("Feed").asProduct({
         return (
             <div className="space-y-6">
                 {posts.map((post) => {
-                    const Post = $$[PostSupplier.name]
+                    const Post = $$[$$Post.name]
                         .assemble({
                             ...$,
-                            ...index(ctx.postSupplier.pack(post))
+                            ...index(ctx.$$post.pack(post))
                         })
                         .unpack()
                     return <Post key={post.id} />

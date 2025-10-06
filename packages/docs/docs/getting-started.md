@@ -26,13 +26,13 @@ Suppliers create your app's dependencies. **Resources** hold data (like config o
 
 ```typescript
 // A Resource supplier for the user session
-const sessionSupplier = market.offer("session").asResource<{ userId: string }>()
+const $$session = market.offer("session").asResource<{ userId: string }>()
 
 // A Product supplier that depends on the session
-const userServiceSupplier = market.offer("userService").asProduct({
-    suppliers: [sessionSupplier],
+const $$userService = market.offer("userService").asProduct({
+    suppliers: [$session],
     factory: ($) => {
-        const session = $(sessionSupplier) // Access the session data
+        const session = $($$session) // Access the session data
         return {
             id: session.userId,
             name: "Jane Doe"
@@ -51,8 +51,8 @@ import { index } from "commodity"
 const session = { userId: "user-123" }
 
 // Assemble the user service with a concrete session
-const userService = userServiceSupplier
-    .assemble(index(sessionSupplier.pack(session)))
+const userService = $$userService
+    .assemble(index($$session.pack(session)))
     .unpack()
 
 console.log(userService.id) // "user-123"
