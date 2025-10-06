@@ -1,75 +1,124 @@
 # API Reference
 
-A concise guide to the main functions and methods in Commodity.
+## API Reference
 
-## Core Functions
+### `createMarket()`
 
-| Function                 | Description                                                              |
-| ------------------------ | ------------------------------------------------------------------------ |
-| **`createMarket()`**     | Creates a new dependency injection scope.                                |
-| **`market.offer(name)`** | Starts the definition of a new named supplier.                           |
-| **`index(...supplies)`** | A utility to convert a list of supplies into an object for `assemble()`. |
+Creates a new dependency injection scope.
 
-## Defining Suppliers
+```ts
+const market = createMarket()
+```
 
-These methods are chained off `market.offer(name)`.
+### `market.offer(name)`
 
-| Method                    | Description                                          |
-| ------------------------- | ---------------------------------------------------- |
-| **`.asResource<T>()`**    | Defines the supplier as a simple data container.     |
-| **`.asProduct(options)`** | Defines the supplier as a service with dependencies. |
+Creates a new supplier with the given name.
 
-### asProduct Options
+```ts
+const $$supplier = market.offer("name")
+```
 
-The `asProduct` method accepts an options object with the following keys:
+### `offer.asResource<T>()`
 
-| Key              | Description                                                                                                             |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| **`suppliers`**  | An array of other suppliers this product depends on.                                                                    |
-| **`assemblers`** | An array of suppliers that can be assembled later, on demand.                                                           |
-| **`factory`**    | The function that creates the product instance. It receives `$` (supplies) and `$$` (assemblers) as arguments.          |
-| **`lazy`**       | A boolean (`false` by default). If `true`, the product is lazy loaded on first access. Eager loading is the default.    |
-| **`init`**       | A function `(value, $) => void` that runs immediately after the product is created, for side-effects or initialization. |
+Creates a resource supplier for data/configuration.
 
-## Resource Supplier Methods
+```ts
+const $resource = market.offer("config").asResource<Config>()
+```
 
-These methods are available on resource supplier instances.
+### `offer.asProduct(options)`
 
-| Method             | Description                                 |
-| ------------------ | ------------------------------------------- |
-| **`.pack(value)`** | Provides a concrete value for the resource. |
+Creates a product supplier.
 
-## Resource Methods
+```ts
+const $$product = market.offer("product").asProduct({
+    suppliers: [$$supplier1, $$supplier3], // Suppliers
+    assemblers: [$$assembler1, $$assembler2], // Assemblers
+    lazy: boolean, // Eager (false) or lazy (true)
+    init: (value, $)=>void // Run a function right after construction
+    factory: ($, $$) => {
+        // Factory function
+        // $ = regular supplies
+        // $$ = assemblers (if any)
+        return serviceImplementation
+    }
+})
+```
 
-These methods are available on resource instances.
+### `$$supplier.pack(value) or $resource.pack() $product.pack()`
 
-| Method             | Description                              |
-| ------------------ | ---------------------------------------- |
-| **`.pack(value)`** | Provides another value for the resource. |
+Provides a concrete value for a resource or product, bypassing the factory in the case of products.
 
-## Product Supplier Methods
+```ts
+const $resource = $$resource.pack(value)
+const $mock = $$product.pack(mockValue) // For testing
+const $newResource = $resource.pack(newValue)
+const $newMock = $mock.pack(newMockValue)
+```
 
-These methods are available on product supplier instances.
+### `$$supplier.assemble(supplies)`
 
-| Method                                          | Description                                                      |
-| ----------------------------------------------- | ---------------------------------------------------------------- |
-| **`.assemble(supplies)`**                       | Resolves all dependencies and creates a product instance.        |
-| **`.unpack()`**                                 | Retrieves the final value from an assembled product.             |
-| **`.prototype(options)`**                       | Creates an alternative implementation of a product supplier.     |
-| **`.try(prototype1, prototype2)`**              | Swaps a product's dependency with a specified prototype.         |
-| **`supplier1.with(supplier2, supplier3, ...)`** | Allows to assemble multiple suppliers' products at the same time |
-| **`.pack(value)`**                              | Provides a concrete value to mock the product (for testing).     |
+Resolves all dependencies and creates the product.
 
-## Product Methods and Properties
+```ts
+const $product = $$product.assemble(suppliesObject)
+const value = $product.unpack()
+```
 
-These methods are available on assembled product instances.
+### `$product.reassemble(newSupplies)`
 
-| Method                         | Description                                                     |
-| ------------------------------ | --------------------------------------------------------------- |
-| **`.unpack()`**                | Retrieves the final value from an assembled product.            |
-| **`.reassemble(newSupplies)`** | Creates a new product instance with different context/supplies. |
-| **`.pack(value)`**             | Provides a concrete value to mock the product (for testing).    |
-| **`.supplies`**                | Provides access to the supplies the product was built with.     |
+Creates a new context with different supplies.
+
+```ts
+const $newProduct = $existingProduct.reassemble(newSuppliesObject)
+```
+
+### `$$supplier.prototype(options)`
+
+Creates an alternative implementation.
+
+```ts
+const $$alternative = $$originalSupplier.prototype({
+    suppliers: [$$differentDeps],
+    factory: ($) => alternativeImplementation
+})
+```
+
+### `$$supplier.try(...$$prototypes)`
+
+Use a prototype instead of the original when resolving a product's suppliers or assemblers.
+
+```ts
+const $$modified = $$originalSupplier.try($$prototypeSupplier)
+```
+
+### `$$supplier.with(...$$suppliers)`
+
+Allows to assemble() multiple $$suppliers at the same time in a performant manner.
+
+```ts
+const $A = $$A.with($$B, $$C).assemble({})
+// All assembled products will be available in $A's supplies() (see below)
+const $B = $A.supplies($$B)
+const $C = $A.supplies($$C)
+```
+
+```ts
+const $$modified = $$originalSupplier.try($$prototypeSupplier)
+```
+
+### `$product.supplies()`
+
+Access a `$product`'s supplies (`$`to factory) but from outside a factory. See example above in`.with()` section.
+
+### `index(...$supplies)`
+
+Utility to convert supply array to indexed object.
+
+```ts
+const suppliesObject = index($supply1, $supply2, $supply3)
+// Equivalent to: { [$supply1.name]: $supply1, [$supply2.name]: $supply2, ... }
+```
 
 ## Factory Function (`factory`)
 

@@ -10,12 +10,12 @@ The simplest way to mock a dependency is to use `.pack()` on a **Product Supplie
 
 ```typescript
 // Production services
-const dbSupplier = market.offer("db").asProduct({
+const $$db = market.offer("db").asProduct({
     /* ... */
 })
-const userServiceSupplier = market.offer("userService").asProduct({
-    suppliers: [dbSupplier],
-    factory: ($) => new UserService($(dbSupplier))
+const $$userRepo = market.offer("userRepo").asProduct({
+    suppliers: [$$db],
+    factory: ($) => new UserRepo($($$db))
 })
 
 // In your test file
@@ -25,11 +25,9 @@ it("should return user data", async () => {
     }
 
     // Assemble the service, packing the mock db directly
-    const userService = userServiceSupplier
-        .assemble(index(dbSupplier.pack(mockDb)))
-        .unpack()
+    const userRepo = $$userRepo.assemble(index($$db.pack(mockDb))).unpack()
 
-    const user = await userService.getUser("user-123")
+    const user = await userRepo.getUser("user-123")
 
     expect(mockDb.findUser).toHaveBeenCalledWith("user-123")
     expect(user.name).toBe("John")
@@ -50,29 +48,29 @@ For more complex scenarios where your mock needs its own logic, state, or depend
 
 ```typescript
 // Production user supplier
-const userSupplier = market.offer("user").asProduct({
-    suppliers: [dbSupplier, sessionSupplier],
-    factory: ($) => $(dbSupplier).findUserById($(sessionSupplier).userId)
+const $$user = market.offer("user").asProduct({
+    suppliers: [$$db, $$session],
+    factory: ($) => $($$db).findUserById($($$session).userId)
 })
 
 // Create a prototype with a different factory and NO dependencies
-const userPrototype = userSupplier.prototype({
+const $$userPrototype = $$user.prototype({
     suppliers: [], // No dependencies for this mock
     factory: () => ({ name: "Mock John Doe" })
 })
 
 // The product spplier to test
-const profileSupplier = market.offer("profile").asProduct({
-    suppliers: [userSupplier],
-    factory: ($) => `<h1>Profile of ${$(userSupplier).name}</h1>`
+const $$profile = market.offer("profile").asProduct({
+    suppliers: [$$user],
+    factory: ($) => `<h1>Profile of ${$($$user).name}</h1>`
 })
 
-const profile = profileSupplier
-    .try(userPrototype) // Swaps the original userSupplier with the prototype
+const profile = $$profile
+    .try($$userPrototype) // Swaps the original $$user with the prototype
     .assemble() // No resources needed, as the prototype has no dependencies
     .unpack()
 
 // profile === "<h1>Profile of Mock John Doe</h1>"
 ```
 
-By using `.try(userPrototype)`, you instruct the `profileSupplier` to use the mock implementation instead of the real one. Because the prototype has no dependencies, the final `.assemble()` call is much simpler.
+By using `.try($$userPrototype)`, you instruct the `$$profile` to use the mock implementation instead of the real one. Because the prototype has no dependencies, the final `.assemble()` call is much simpler.

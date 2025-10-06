@@ -6,151 +6,133 @@ describe("Prototype Method", () => {
     it("should handle prototype with less suppliers", () => {
         const market = createMarket()
 
-        const someResourceSupplier = market
-            .offer("someResource")
-            .asResource<boolean>()
+        const $$resource = market.offer("resource").asResource<boolean>()
 
-        const baseSupplier = market.offer("base").asProduct({
-            suppliers: [someResourceSupplier],
-            factory: ($) => ({ base: $(someResourceSupplier) })
+        const $$base = market.offer("base").asProduct({
+            suppliers: [$$resource],
+            factory: ($) => ({ base: $($$resource) })
         })
 
-        const prototypedSupplier = baseSupplier.prototype({
+        const $$prototyped = $$base.prototype({
             factory: () => ({ base: true, enhanced: true }),
             suppliers: []
         })
 
-        const result = prototypedSupplier.assemble({})
+        const $result = $$prototyped.assemble({})
 
-        expect(result.unpack()).toEqual({
+        expect($result.unpack()).toEqual({
             base: true,
             enhanced: true
         })
     })
 
-    //NOTE: test type to move
     it("should not allow prototypes in suppliers array", () => {
         const market = createMarket()
 
-        const prototypeSupplier = market.offer("prototype").asProduct({
+        const $$prototype = market.offer("prototype").asProduct({
             factory: () => "base",
             isPrototype: true
         })
 
-        const nextSupplier = market.offer("next").asProduct({
+        const $$next = market.offer("next").asProduct({
             //@ts-expect-error - prototype supplier in suppliers array
-            suppliers: [prototypeSupplier],
+            suppliers: [$$prototype],
             factory: () => "base"
         })
     })
 
     it("should handle init setting in prototype", async () => {
         const market = createMarket()
-        const baseValueSpy = vi.fn().mockReturnValue("base")
-        const initedValueSpy = vi.fn().mockReturnValue("inited")
+        const baseSpy = vi.fn().mockReturnValue("base")
+        const initedSpy = vi.fn().mockReturnValue("inited")
 
-        const baseSupplier = market.offer("base").asProduct({
-            factory: () => baseValueSpy
+        const $$base = market.offer("base").asProduct({
+            factory: () => baseSpy
         })
 
-        const prototypedSupplier = baseSupplier.prototype({
-            factory: () => once(initedValueSpy) as Mock<any>,
+        const $$prototyped = $$base.prototype({
+            factory: () => once(initedSpy) as Mock<any>,
             init: (value) => value()
         })
 
-        const testSupplier = market.offer("test").asProduct({
-            suppliers: [baseSupplier],
-            factory: ($) => $(baseSupplier)()
+        const $$test = market.offer("test").asProduct({
+            suppliers: [$$base],
+            factory: ($) => $($$base)()
         })
 
-        const triedSupplier = testSupplier.try(prototypedSupplier)
+        const $$tried = $$test.try($$prototyped)
 
-        triedSupplier.assemble({})
-        testSupplier.assemble({})
+        $$tried.assemble({})
+        $$test.assemble({})
 
         await sleep(10)
 
-        expect(baseValueSpy).toHaveBeenCalledTimes(0)
-        expect(initedValueSpy).toHaveBeenCalledTimes(1)
+        expect(baseSpy).toHaveBeenCalledTimes(0)
+        expect(initedSpy).toHaveBeenCalledTimes(1)
     })
 
     it("should compute precise TOSUPPLY types with prototype", () => {
         const market = createMarket()
 
-        // Create resource suppliers that will need to be provided
-        const configResourceSupplier = market
-            .offer("config")
-            .asResource<{ env: string }>()
-        const apiKeyResourceSupplier = market
-            .offer("apiKey")
-            .asResource<string>()
+        const $$config = market.offer("config").asResource<string>()
+        const $$apiKey = market.offer("apiKey").asResource<string>()
 
-        // Create a product supplier that will be self-contained
-        const loggerProductSupplier = market.offer("logger").asProduct({
-            factory: () => ({ log: (msg: string) => msg })
+        const $$logger = market.offer("logger").asProduct({
+            factory: () => "logger"
         })
 
         // Base service - return compatible type that can be extended
-        const baseProductSupplier = market.offer("base").asProduct({
-            factory: () => ({ proto: false })
+        const $$base = market.offer("base").asProduct({
+            factory: () => "base"
         })
 
         // prototype with mixed resource and product suppliers
-        const prototypedService = baseProductSupplier.prototype({
-            suppliers: [
-                configResourceSupplier,
-                apiKeyResourceSupplier,
-                loggerProductSupplier
-            ],
-            factory: ($) => ({
-                proto: true // preserve base property
-            })
+        const $$prototyped = $$base.prototype({
+            suppliers: [$$config, $$apiKey, $$logger],
+            factory: ($) => "proto"
         })
 
-        const fail = prototypedService.assemble(
-            //@ts-expect-error - missing apiKeyResourceSupplier
-            index(configResourceSupplier.pack({ env: "test" }))
+        const $fail = $$prototyped.assemble(
+            //@ts-expect-error - missing $apiKeyResource
+            index($$config.pack("test"))
         )
 
-        const fail2 = prototypedService.assemble(
-            //@ts-expect-error - missing configResourceSupplier
-            index(apiKeyResourceSupplier.pack("secret-key"))
+        const $fail2 = $$prototyped.assemble(
+            //@ts-expect-error - missing $configResource
+            index($$apiKey.pack("secret-key"))
         )
 
         // The type system should now know exactly what needs to be supplied:
         // - config and apiKey (resources must be provided)
         // - logger should NOT need to be provided (it's a product supplier)
-        const result = prototypedService.assemble(
-            index(
-                configResourceSupplier.pack({ env: "test" }),
-                apiKeyResourceSupplier.pack("secret-key")
-            )
+        const $result = $$prototyped.assemble(
+            index($$config.pack("test"), $$apiKey.pack("secret-key"))
         )
 
-        const output = result.unpack()
-        expect(output.proto).toBe(true)
+        const output = $result.unpack()
+        expect(output).toBe("proto")
     })
 
     it("should detect circular dependencies in prototypes", () => {
         const market = createMarket()
 
-        const serviceASupplier = market.offer("serviceA").asProduct({
+        const $$A = market.offer("A").asProduct({
             factory: () => "serviceA"
         })
 
-        const serviceBSupplier = market.offer("serviceB").asProduct({
-            suppliers: [serviceASupplier],
-            factory: ($) => "serviceB uses " + $(serviceASupplier)
+        const $$B = market.offer("B").asProduct({
+            suppliers: [$$A],
+            factory: ($) => "serviceB uses " + $($$A)
         })
 
         // Try to create circular dependency through try using prototype
         // This should be caught by the circular dependency detection
-        const mockASupplier = serviceASupplier.prototype({
-            factory: ($) => "mockA uses " + $(serviceBSupplier),
-            suppliers: [serviceBSupplier] // This creates a potential circle
+        const $$mockA = $$A.prototype({
+            factory: ($) => "mockA uses " + $($$B),
+            suppliers: [$$B] // This creates a potential circle
         })
 
-        assertType<unknown>(mockASupplier)
+        assertType<unknown>($$mockA)
     })
 })
 
@@ -158,183 +140,170 @@ describe("Try Method", () => {
     it("should allow trying alternative suppliers for testing", () => {
         const market = createMarket()
         // Original suppliers
-        const dbSupplier = market.offer("db").asProduct({
-            factory: () => ({ type: "postgres", data: ["real", "data"] })
+        const $$db = market.offer("db").asProduct({
+            factory: () => "db"
         })
 
-        const cacheSupplier = market.offer("cache").asProduct({
-            factory: () => ({ type: "redis", cached: true })
+        const $$cache = market.offer("cache").asProduct({
+            factory: () => "cache"
         })
 
-        // Main service using these suppliers
-        const serviceSupplier = market.offer("service").asProduct({
-            suppliers: [dbSupplier, cacheSupplier],
-            factory: ($) => ({
-                db: $(dbSupplier),
-                cache: $(cacheSupplier),
-                result: "production"
-            })
+        // Main product using these suppliers
+        const $$main = market.offer("main").asProduct({
+            suppliers: [$$db, $$cache],
+            factory: ($) => "main-" + $($$db) + "-" + $($$cache)
         })
 
         // Mock suppliers for testing - create prototypes using prototype
-        const mockDbSupplier = dbSupplier.prototype({
-            factory: () => ({ type: "mock", data: ["mock", "data"] }),
+        const $$mockDb = $$db.prototype({
+            factory: () => "mock-db",
             suppliers: []
         })
 
         // Try with mock database
-        const testServiceSupplier = serviceSupplier.try(mockDbSupplier)
+        const $$test = $$main.try($$mockDb)
 
         // Assemble both versions
-        const prodService = serviceSupplier.assemble({})
-        const testService = testServiceSupplier.assemble({})
+        const $prod = $$main.assemble({})
+        const $test = $$test.assemble({})
 
-        expect(prodService.unpack().db.type).toBe("postgres")
-        expect(testService.unpack().db.type).toBe("mock")
-        expect(testService.unpack().cache.type).toBe("redis") // unchanged
+        expect($prod.unpack()).toBe("main-db-cache")
+        expect($test.unpack()).toBe("main-mock-db-cache")
+        expect($test.unpack()).toBe("main-mock-db-cache")
     })
 
     it("should handle multiple tried prototypes", () => {
         const market = createMarket()
 
-        const dbSupplier = market.offer("db").asProduct({
+        const $$db = market.offer("db").asProduct({
             factory: () => "real-db"
         })
 
-        const cacheSupplier = market.offer("cache").asProduct({
+        const $$cache = market.offer("cache").asProduct({
             factory: () => "real-cache"
         })
 
-        const loggerSupplier = market.offer("logger").asProduct({
+        const $$logger = market.offer("logger").asProduct({
             factory: () => "real-logger"
         })
 
-        const serviceSupplier = market.offer("service").asProduct({
-            suppliers: [dbSupplier, cacheSupplier, loggerSupplier],
+        const $$service = market.offer("service").asProduct({
+            suppliers: [$$db, $$cache, $$logger],
             factory: ($) => ({
-                db: $(dbSupplier),
-                cache: $(cacheSupplier),
-                logger: $(loggerSupplier)
+                db: $($$db),
+                cache: $($$cache),
+                logger: $($$logger)
             })
         })
 
         // Multiple mock suppliers using prototype
-        const mockDbSupplier = dbSupplier.prototype({
+        const $$mockDb = $$db.prototype({
             factory: () => "mock-db",
             suppliers: []
         })
 
-        const mockCacheSupplier = cacheSupplier.prototype({
+        const $$mockCache = $$cache.prototype({
             factory: () => "mock-cache",
             suppliers: []
         })
 
-        const testServiceSupplier = serviceSupplier.try(
-            mockDbSupplier,
-            mockCacheSupplier
-        )
-        const testService = testServiceSupplier.assemble({})
+        const $$test = $$service.try($$mockDb, $$mockCache)
+        const $test = $$test.assemble({})
 
-        expect(testService.unpack()).toEqual({
+        expect($test.unpack()).toEqual({
             db: "mock-db",
             cache: "mock-cache",
             logger: "real-logger" // unchanged
         })
     })
 
-    it("should handle trying suppliers that don't exist in original suppliers", () => {
+    it("should handle trying unused suppliers", () => {
         const market = createMarket()
 
-        const dbSupplier = market.offer("db").asProduct({
-            factory: () => "real-db"
+        const $$db = market.offer("db").asProduct({
+            factory: () => "db"
         })
 
-        const serviceSupplier = market.offer("service").asProduct({
-            suppliers: [dbSupplier],
-            factory: ($) => ({
-                db: $(dbSupplier)
-            })
+        const $$main = market.offer("main").asProduct({
+            suppliers: [$$db],
+            factory: ($) => "main-" + $($$db)
         })
 
         // Try with a supplier that doesn't exist in original - create new prototype
-        const baseExtraSupplier = market.offer("extra").asProduct({
+        const $$unused = market.offer("unused").asProduct({
             factory: () => "base-extra"
         })
 
-        const extraSupplier = baseExtraSupplier.prototype({
-            factory: () => "extra-service",
-            suppliers: []
+        const $$unusedProto = $$unused.prototype({
+            suppliers: [],
+            factory: () => "extra-service"
         })
 
-        const testServiceSupplier = serviceSupplier.try(extraSupplier)
-        const testService = testServiceSupplier.assemble({})
+        const $$test = $$main.try($$unusedProto)
+        const $test = $$test.assemble({})
 
         // The extra supplier is added to the suppliers list, but not to the result
-        expect(testService.unpack()).toEqual({
-            db: "real-db"
-        })
+        expect($test.unpack()).toEqual("main-db")
     })
 
     it("should handle empty try calls gracefully", () => {
         const market = createMarket()
 
-        const serviceSupplier = market.offer("service").asProduct({
-            factory: () => "service"
+        const $$main = market.offer("main").asProduct({
+            factory: () => "main"
         })
 
         // Try with no suppliers - should work fine
-        const testServiceSupplier = serviceSupplier.try()
-        const testService = testServiceSupplier.assemble({})
+        const $$test = $$main.try()
+        const $test = $$test.assemble({})
 
-        expect(testService.unpack()).toBe("service")
-        expect(testServiceSupplier._isPrototype).toBe(true)
+        expect($test.unpack()).toBe("main")
+        expect($$test._isPrototype).toBe(true)
     })
 
     it("should handle duplicate supplier names in try (last one wins)", () => {
         const market = createMarket()
 
-        const dbSupplier = market.offer("db").asProduct({
-            factory: () => "real-db"
+        const $$db = market.offer("db").asProduct({
+            factory: () => "db"
         })
 
-        const serviceSupplier = market.offer("service").asProduct({
-            suppliers: [dbSupplier],
-            factory: ($) => ({ db: $(dbSupplier) })
+        const $$main = market.offer("main").asProduct({
+            suppliers: [$$db],
+            factory: ($) => "main-" + $($$db)
         })
 
-        const mockDb1 = dbSupplier.prototype({
+        const $$mockDb1 = $$db.prototype({
             factory: () => "mock-db-1",
             suppliers: []
         })
 
-        const mockDb2 = dbSupplier.prototype({
+        const $$mockDb2 = $$db.prototype({
             factory: () => "mock-db-2",
             suppliers: []
         })
 
-        const mockedSupplier = serviceSupplier.try(mockDb1, mockDb2)
-        const test = mockedSupplier.suppliers
-        expect(test).toEqual([mockDb1, mockDb2])
-        const result = mockedSupplier.assemble({}).unpack()
-        expect(result).toEqual({
-            db: "mock-db-2"
-        })
+        const $$mocked = $$main.try($$mockDb1, $$mockDb2)
+        const test = $$mocked.suppliers
+        expect(test).toEqual([$$mockDb1, $$mockDb2])
+        const result = $$mocked.assemble({}).unpack()
+        expect(result).toEqual("main-mock-db-2")
     })
 
     it("should stop calling try with non-prototype suppliers", () => {
         const market = createMarket()
 
-        const baseSupplier = market.offer("base").asProduct({
+        const $$base = market.offer("base").asProduct({
             factory: () => "base"
         })
 
         // Non-prototype supplier for try
-        const nonPrototypeSupplier = market.offer("non-proto").asProduct({
+        const $$nonPrototype = market.offer("non-proto").asProduct({
             factory: () => "non-prototype",
             isPrototype: false
         })
 
         //@ts-expect-error - non-prototype supplier in try
-        const testSupplier = baseSupplier.try(nonPrototypeSupplier)
+        const $$test = $$base.try($$nonPrototype)
     })
 })

@@ -11,7 +11,7 @@
  * @internal
  * @throws TypeError if the value is not a non-empty string
  */
-export function validateNonEmptyString(
+export function validateString(
     value: unknown,
     paramName: string
 ): asserts value is string {
@@ -19,9 +19,6 @@ export function validateNonEmptyString(
         throw new TypeError(
             `${paramName} must be a string, got ${typeof value}`
         )
-    }
-    if (value.length === 0) {
-        throw new TypeError(`${paramName} cannot be an empty string`)
     }
 }
 
