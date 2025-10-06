@@ -23,8 +23,6 @@ jobs:
         steps:
             - name: Checkout
               uses: actions/checkout@v5
-              with:
-                  fetch-tags: true
 
             - name: Setup Node.js
               uses: actions/setup-node@v5
@@ -67,18 +65,14 @@ jobs:
               if: github.event.release.prerelease == 'false'
               run: |
                   git tag -d latest-release || true
-                  git push origin :refs/tags/latest-release || true
-
                   git tag latest-release
-                  git push origin latest-release
+                  git push origin --tags --force
 
             - name: Manage latest-release tag
               run: |
                   git tag -d latest-prerelease || true
-                  git push origin :refs/tags/latest-prerelease || true
-
                   git tag latest-prerelease
-                  git push origin latest-prerelease
+                  git push origin --tags --force
 
     deploy-pages:
         environment:
