@@ -70,7 +70,7 @@ jobs:
               uses: actions/configure-pages@v5
 
             - name: Upload artifact
-              if: github.event_name == 'workflow_call'
+              if: ${{ github.event_name == 'release' }}
               uses: actions/upload-pages-artifact@v4
               with:
                   path: ./packages/docs/build
@@ -100,7 +100,7 @@ jobs:
               run: pnpm run build --filter=commodity
 
             - name: Upload build artifacts
-              if: github.event_name == 'workflow_call'
+              if: ${{ github.event_name == 'release' }}
               uses: actions/upload-artifact@v4
               with:
                   name: commodity-build

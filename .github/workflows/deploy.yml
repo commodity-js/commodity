@@ -11,8 +11,26 @@ concurrency:
 jobs:
     build:
         uses: ./.github/workflows/build.yml
+
+    dry-run-check:
+        runs-on: ubuntu-latest
+        outputs:
+            dry_run: ${{ steps.dry-run.outputs.dry_run }}
+            is_dry_run: ${{ steps.dry-run.outputs.is_dry_run }}
+        steps:
+            - name: Set dry-run flag
+              id: dry-run
+              run: |
+                  if [[ "${{ github.event.release.tag_name }}" == *"dry-run"* ]]; then
+                      echo "dry_run=--dry-run" >> $GITHUB_OUTPUT
+                      echo "is_dry_run=true" >> $GITHUB_OUTPUT
+                  else
+                      echo "dry_run=" >> $GITHUB_OUTPUT
+                      echo "is_dry_run=false" >> $GITHUB_OUTPUT
+                  fi
+
     publish-pkg:
-        needs: build
+        needs: [build, dry-run-check]
         environment:
             name: npm-publish
             url: https://www.npmjs.com/package/commodity
@@ -45,16 +63,16 @@ jobs:
                   npm version $VERSION --no-git-tag-version
 
             - name: Publish to Beta
-              if: github.event.release.prerelease == 'true'
+              if: github.event.release.prerelease == true
               working-directory: ./packages/commodity
               run: |
-                  npm publish --tag beta
+                  npm publish --tag beta ${{ needs.dry-run-check.outputs.dry_run }}
 
             - name: Publish to Latest
-              if: github.event.release.prerelease == 'false'
+              if: github.event.release.prerelease == false
               working-directory: ./packages/commodity
               run: |
-                  npm publish --tag latest
+                  npm publish --tag latest ${{ needs.dry-run-check.outputs.dry_run }}
 
             - name: Configure Git
               run: |
@@ -62,16 +80,16 @@ jobs:
                   git config --local user.name "GitHub Action"
 
             - name: Manage latest-stable-release tag
-              if: github.event.release.prerelease == 'false'
+              if: github.event.release.prerelease == false
               run: |
-                  git tag -d latest-release || true
-                  git tag latest-release
+                  git tag -d latest-stable-release || true
+                  git tag latest-stable-release
                   git push origin --tags --force
 
             - name: Manage latest-release tag
               run: |
-                  git tag -d latest-prerelease || true
-                  git tag latest-prerelease
+                  git tag -d latest-release || true
+                  git tag latest-release
                   git push origin --tags --force
 
     deploy-pages:
@@ -82,10 +100,17 @@ jobs:
         needs:
             - build
             - publish-pkg
+            - dry-run-check
         permissions:
             contents: read
             pages: write # Required for deploying to GitHub Pages
         steps:
             - name: Deploy to GitHub Pages
+              if: needs.dry-run-check.outputs.is_dry_run == false
               id: deployment
               uses: actions/deploy-pages@v4
+
+            - name: Dry run - Skip GitHub Pages deployment
+              if: needs.dry-run-check.outputs.is_dry_run == true
+              run: |
+                  echo "🚫 Dry run: Skipping GitHub Pages deployment (release is draft)"
