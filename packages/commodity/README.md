@@ -188,7 +188,7 @@ const $$user = market.offer("user").asProduct({
 
 ```ts
 // ✅ Good: Factory called once, returns a function for multiple calls
-const $$$$createUserService = market.offer("$$createUserService").asProduct({
+const $$createUser = market.offer("createUser").asProduct({
     suppliers: [$$db],
     factory: ($) => {
         const db = $($$db)
@@ -205,8 +205,8 @@ const $$$$createUserService = market.offer("$$createUserService").asProduct({
     }
 })
 
-// Usage: $$createUserService() can be called multiple times
-const createUser = $$createUserService.assemble(index($$db.pack(db))).unpack()
+const createUser = $$createUser.assemble(index($$db.pack(db))).unpack()
+// Usage: createUser() can be called multiple times
 const user1 = createUser("123") // Fresh call
 const user2 = createUser("123") // Cached result
 ```
