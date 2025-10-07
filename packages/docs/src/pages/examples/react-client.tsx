@@ -9,7 +9,7 @@ export default function ExampleReactClient() {
             description="Functional, fully type-safe dependency injection for TypeScript. No decorators, no reflection - just pure functions and closures."
         >
             <iframe
-                src="https://codesandbox.io/p/sandbox/github/commodity-js/commodity/tree/latest-release/packages/examples/react-client?embed=1&file=%2FREADME.md"
+                src="https://codesandbox.io/p/sandbox/github/commodity-js/commodity/tree/latest-stable-release/packages/examples/react-client?embed=1&file=%2FREADME.md"
                 style={{
                     width: "100%",
                     height: "90vh",
