@@ -37,7 +37,7 @@ jobs:
             url: https://www.npmjs.com/package/commodity
         runs-on: ubuntu-latest
         permissions:
-            contents: write # Required for managing tags
+            contents: read # Required for checkout
             id-token: write # Required for OIDC with npm
         steps:
             - name: Checkout
@@ -58,11 +58,6 @@ jobs:
               with:
                   name: commodity-build
                   path: packages/commodity
-
-            - name: Configure Git
-              run: |
-                  git config --local user.email "action@github.com"
-                  git config --local user.name "GitHub Action"
 
             - name: Set version from release tag
               working-directory: ./packages/commodity
@@ -110,9 +105,6 @@ jobs:
               working-directory: ./packages/commodity
               run: |
                   npm publish --tag latest
-                  git tag -d latest-stable-release || true
-                  git tag latest-stable-release
-                  git push origin --tags --force
 
     deploy-pages:
         environment:
@@ -124,9 +116,25 @@ jobs:
             contains(github.event.release.tag_name, '-') == false
         needs: [build, validate-tag]
         permissions:
-            contents: read
+            contents: write
             pages: write # Required for deploying to GitHub Pages
         steps:
             - name: Deploy to GitHub Pages
               id: deploy-pages
               uses: actions/deploy-pages@v4
+
+            - name: Checkout
+              uses: actions/checkout@v5
+              with:
+                  token: ${{ secrets.PUSH_RESTRICTED_TAGS_TOKEN }}
+
+            - name: Configure Git
+              run: |
+                  git config --local user.email "action@github.com"
+                  git config --local user.name "GitHub Action"
+
+            - name: Set latest-stable-release tag
+              run: |
+                  git push --delete origin latest-stable-release || true
+                  git tag latest-stable-release
+                  git push origin --tags --force
