@@ -118,6 +118,7 @@ jobs:
         permissions:
             contents: write
             pages: write # Required for deploying to GitHub Pages
+            id-token: write # Required for OIDC with GitHub Pages
         steps:
             - name: Deploy to GitHub Pages
               id: deploy-pages
