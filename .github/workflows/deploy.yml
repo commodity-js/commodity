@@ -12,8 +12,26 @@ jobs:
     build:
         uses: ./.github/workflows/build.yml
 
+    validate-tag:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Validate tag
+              run: |
+                  TAG="${{ github.event.release.tag_name }}"
+                  echo "Validating tag: $TAG"
+
+                  # Check if tag matches the required pattern
+                  if ! echo "$TAG" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(-((dry|canary|alpha|beta|rc)\.[0-9]+))?$'; then
+                      echo "❌ Invalid tag format: $TAG"
+                      echo "Tag must start with v[MAJOR].[MINOR].[PATCH]"
+                      echo "Optional suffix: -[dry|canary|alpha|beta|rc].[NUMBER]"
+                      exit 1
+                  fi
+
+                  echo "✅ Tag is valid"
+
     publish-pkg:
-        needs: [build]
+        needs: [build, validate-tag]
         environment:
             name: npm-publish
             url: https://www.npmjs.com/package/commodity
@@ -88,11 +106,7 @@ jobs:
             - name: Publish to Latest
               if: |
                   github.event.release.prerelease == false &&
-                  contains(github.event.release.tag_name, 'dry') == false &&
-                  contains(github.event.release.tag_name, 'canary') == false &&
-                  contains(github.event.release.tag_name, 'alpha') == false &&
-                  contains(github.event.release.tag_name, 'beta') == false &&
-                  contains(github.event.release.tag_name, 'rc') == false
+                  contains(github.event.release.tag_name, '-') == false
               working-directory: ./packages/commodity
               run: |
                   npm publish --tag latest
@@ -105,19 +119,14 @@ jobs:
             name: github-pages
             url: ${{ steps.deploy-pages.outputs.page_url }}
         runs-on: ubuntu-latest
-        needs:
-            - build
+        if: |
+            github.event.release.prerelease == false &&
+            contains(github.event.release.tag_name, '-') == false
+        needs: [build, validate-tag]
         permissions:
             contents: read
             pages: write # Required for deploying to GitHub Pages
         steps:
             - name: Deploy to GitHub Pages
-              if: |
-                  github.event.release.prerelease == false &&
-                  contains(github.event.release.tag_name, 'dry') == false &&
-                  contains(github.event.release.tag_name, 'canary') == false &&
-                  contains(github.event.release.tag_name, 'alpha') == false &&
-                  contains(github.event.release.tag_name, 'beta') == false &&
-                  contains(github.event.release.tag_name, 'rc') == false
               id: deploy-pages
               uses: actions/deploy-pages@v4
