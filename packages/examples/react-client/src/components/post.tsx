@@ -28,13 +28,15 @@ export const $$Post = market.offer("Post").asProduct({
             return <div>Loading users or comments...</div>
         }
 
-        const sessionPack = index(
-            ctx.$$session.pack([postSession, setPostSession])
+        const newCtx = index(
+            ctx.$$session.pack([postSession, setPostSession]),
+            $[ctx.$$post.name]
         )
-        const Comment = $[$$Comment.name].reassemble(sessionPack).unpack()
+
+        const Comment = $[$$Comment.name].reassemble(newCtx).unpack()
 
         const SelectSession = $[$$SelectSession.name]
-            .reassemble(sessionPack)
+            .reassemble(newCtx)
             .unpack()
 
         return (
@@ -43,7 +45,7 @@ export const $$Post = market.offer("Post").asProduct({
                     <h3 className="text-lg font-semibold text-purple-300">
                         📝 Post: {post.id}
                     </h3>
-                    <SelectSession inPost />
+                    <SelectSession />
                 </div>
 
                 <div className="space-y-3">
