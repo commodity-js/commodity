@@ -116,7 +116,6 @@ jobs:
             contains(github.event.release.tag_name, '-') == false
         needs: [build, validate-tag, publish-pkg]
         permissions:
-            contents: write
             pages: write # Required for deploying to GitHub Pages
             id-token: write # Required for OIDC with GitHub Pages
         steps:
@@ -124,6 +123,16 @@ jobs:
               id: deploy-pages
               uses: actions/deploy-pages@v4
 
+    set-latest-stable-release:
+        needs: [publish-pkg]
+        environment:
+            name: latest-stable-release-branch
+        runs-on: ubuntu-latest
+        if: |
+            (github.event.release.prerelease == false &&
+            contains(github.event.release.tag_name, '-') == false) ||
+            contains(github.event.release.tag_name, 'dry')
+        steps:
             - name: Checkout
               uses: actions/checkout@v5
               with:
@@ -136,6 +145,6 @@ jobs:
 
             - name: Set latest-stable-release tag
               run: |
-                  git push --delete origin latest-stable-release || true
-                  git tag latest-stable-release
-                  git push origin --tags --force
+                  git fetch origin
+                  git branch -f latest-stable-release ${{ github.event.release.tag_name }}
+                  git push origin latest-stable-release --force
