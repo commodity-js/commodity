@@ -505,6 +505,7 @@ export const createMarket = () => {
                             init,
                             lazy = false
                         } = config
+
                         const supplier = {
                             name: this.name,
                             suppliers,

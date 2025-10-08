@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, assertType, type Mock } from "vitest"
+import { describe, it, expect, vi, type Mock, expectTypeOf } from "vitest"
 import { createMarket, index } from "#index"
 import { sleep, once } from "#utils"
 
@@ -125,14 +125,14 @@ describe("Prototype Method", () => {
             factory: ($) => "serviceB uses " + $($$A)
         })
 
-        // Try to create circular dependency through try using prototype
+        // Try to create circular dependency using prototype
         // This should be caught by the circular dependency detection
         const $$mockA = $$A.prototype({
             factory: ($) => "mockA uses " + $($$B),
             suppliers: [$$B] // This creates a potential circle
         })
 
-        assertType<unknown>($$mockA)
+        expectTypeOf($$mockA).not.toBeObject()
     })
 })
 
