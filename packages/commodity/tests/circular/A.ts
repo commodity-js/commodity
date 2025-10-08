@@ -1,5 +1,5 @@
 import { market } from "./market"
-import { $$D, $$H } from "./D"
+import { $$D, $$H, $$L } from "./D"
 
 // @ts-expect-error - circular dependency
 export const $$A = market.offer("A").asProduct({
@@ -7,7 +7,14 @@ export const $$A = market.offer("A").asProduct({
     factory: () => "A"
 })
 
+// @ts-expect-error - circular dependency
 export const $$E = market.offer("E").asProduct({
-    assemblers: [],
+    assemblers: [$$H],
     factory: () => "E"
+})
+
+// @ts-expect-error - circular dependency
+export const $$I = market.offer("I").asProduct({
+    suppliers: [$$L],
+    factory: () => "I"
 })
