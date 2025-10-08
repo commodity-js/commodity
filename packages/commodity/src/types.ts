@@ -97,7 +97,17 @@ export type Product<NAME extends string, VALUE, SUPPLIES extends SupplyMap> = {
 export type ProductSupplier<
     NAME extends string,
     VALUE,
-    SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[] = [],
+    SUPPLIERS extends Supplier<
+        string,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any
+    >[] = [],
+    OPTIONALS extends ResourceSupplier<string, any>[] = [],
     ASSEMBLERS extends ProductSupplier<
         string,
         any,
@@ -117,6 +127,8 @@ export type ProductSupplier<
     name: NAME
     /** Array of suppliers this product depends on */
     suppliers: SUPPLIERS
+    /** Array of optional suppliers this product may depend on */
+    optionals: OPTIONALS
     /** Array of assemblers (lazy unassembled suppliers) */
     assemblers: ASSEMBLERS
     /** Factory function that creates the product value from its dependencies */
@@ -127,16 +139,35 @@ export type ProductSupplier<
     pack: (value: VALUE) => Product<NAME, VALUE, Record<never, never>>
     /** Tries alternative implementations of suppliers */
     try?: (
-        ...suppliers: ProductSupplier<string, any, any, any, any, any, true>[]
-    ) => ProductSupplier<NAME, VALUE, any, any, any, any, true>
+        ...suppliers: ProductSupplier<
+            string,
+            any,
+            any,
+            any,
+            any,
+            any,
+            any,
+            true
+        >[]
+    ) => ProductSupplier<NAME, VALUE, any, any, any, any, any, true>
     /** Allows assembling multiple suppliers at once */
     with?: (
-        ...suppliers: ProductSupplier<string, any, any, any, any, any, false>[]
-    ) => ProductSupplier<NAME, VALUE, any, any, any, any, true>
+        ...suppliers: ProductSupplier<
+            string,
+            any,
+            any,
+            any,
+            any,
+            any,
+            any,
+            false
+        >[]
+    ) => ProductSupplier<NAME, VALUE, any, any, any, any, any, true>
     /** Flag for try method. will only replace assemblers, not suppliers, with provided prototype */
     assemblersOnly: () => ProductSupplier<
         NAME,
         VALUE,
+        any,
         any,
         any,
         any,
@@ -152,23 +183,33 @@ export type ProductSupplier<
         lazy
     }: {
         factory: (
-            supplies: $<Supplier<string, any, any, any, any, any, any>[]>,
+            supplies: $<Supplier<string, any, any, any, any, any, any, any>[]>,
             assemblers: MapFromList<
-                ProductSupplier<string, any, any, any, any, any, any>[]
+                ProductSupplier<string, any, any, any, any, any, any, any>[]
             >
         ) => VALUE
-        suppliers?: Supplier<string, any, any, any, any, any, any>[]
-        assemblers?: ProductSupplier<string, any, any, any, any, any, any>[]
+        suppliers?: Supplier<string, any, any, any, any, any, any, any>[]
+        assemblers?: ProductSupplier<
+            string,
+            any,
+            any,
+            any,
+            any,
+            any,
+            any,
+            any
+        >[]
         init?: (
             value: VALUE,
-            supplies: $<Supplier<string, any, any, any, any, any, any>[]>
+            supplies: $<Supplier<string, any, any, any, any, any, any, any>[]>
         ) => void
         lazy?: boolean
     }) => ProductSupplier<
         NAME,
         VALUE,
-        Supplier<string, any, any, any, any, any, any>[],
-        ProductSupplier<string, any, any, any, any, any, any>[],
+        Supplier<string, any, any, any, any, any, any, any>[],
+        ResourceSupplier<string, any>[],
+        ProductSupplier<string, any, any, any, any, any, any, any>[],
         any,
         any,
         true
@@ -201,8 +242,18 @@ export type ProductSupplier<
 export type Supplier<
     NAME extends string,
     VALUE,
-    SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[],
-    ASSEMBLERS extends ProductSupplier<string, any, any, any, any, any, any>[],
+    SUPPLIERS extends Supplier<string, any, any, any, any, any, any, any>[],
+    OPTIONALS extends ResourceSupplier<string, any>[],
+    ASSEMBLERS extends ProductSupplier<
+        string,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any
+    >[],
     SUPPLIES extends $<SUPPLIERS>,
     ASSEMBLERS_MAP extends MapFromList<[...ASSEMBLERS]>,
     IS_PROTOTYPE extends boolean
@@ -211,6 +262,7 @@ export type Supplier<
           NAME,
           VALUE,
           SUPPLIERS,
+          OPTIONALS,
           ASSEMBLERS,
           SUPPLIES,
           ASSEMBLERS_MAP,
@@ -254,11 +306,12 @@ export type SupplyMap = Record<
  * @public
  */
 export type SupplyMapFromSuppliers<
-    SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[]
+    SUPPLIERS extends Supplier<string, any, any, any, any, any, any, any>[]
 > = {
     [SUPPLIER in SUPPLIERS[number] as SUPPLIER["name"]]: SUPPLIER extends ProductSupplier<
         infer NAME,
         infer VALUE,
+        any,
         any,
         any,
         infer SUPPLIES,
@@ -280,7 +333,7 @@ export type SupplyMapFromSuppliers<
  * @public
  */
 export type $<
-    SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[]
+    SUPPLIERS extends Supplier<string, any, any, any, any, any, any, any>[]
 > = (<NAME extends keyof SupplyMapFromSuppliers<SUPPLIERS>>(supplier: {
     name: NAME
 }) => SupplyMapFromSuppliers<SUPPLIERS>[NAME] extends {
@@ -301,16 +354,16 @@ export type $<
  * @public
  */
 export type ExcludeSuppliersType<
-    SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[],
+    SUPPLIERS extends Supplier<string, any, any, any, any, any, any, any>[],
     TYPE extends
-        | ProductSupplier<string, any, any, any, any, any>
+        | ProductSupplier<string, any, any, any, any, any, any, any>
         | ResourceSupplier<string, any>
 > = SUPPLIERS extends readonly [infer Head, ...infer Tail]
     ? Head extends TYPE
-        ? Tail extends Supplier<string, any, any, any, any, any, any>[]
+        ? Tail extends Supplier<string, any, any, any, any, any, any, any>[]
             ? ExcludeSuppliersType<Tail, TYPE>
             : []
-        : Tail extends Supplier<string, any, any, any, any, any, any>[]
+        : Tail extends Supplier<string, any, any, any, any, any, any, any>[]
         ? [Head, ...ExcludeSuppliersType<Tail, TYPE>]
         : [Head]
     : []
@@ -326,7 +379,7 @@ export type ExcludeSuppliersType<
  * @public
  */
 export type TransitiveSuppliers<
-    SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[]
+    SUPPLIERS extends Supplier<string, any, any, any, any, any, any, any>[]
 > = SUPPLIERS extends [infer FIRST, ...infer REST]
     ? FIRST extends ProductSupplier<
           string,
@@ -341,7 +394,16 @@ export type TransitiveSuppliers<
               FIRST,
               ...TransitiveSuppliers<CHILD_SUPPLIERS>,
               ...TransitiveSuppliers<
-                  REST extends Supplier<string, any, any, any, any, any, any>[]
+                  REST extends Supplier<
+                      string,
+                      any,
+                      any,
+                      any,
+                      any,
+                      any,
+                      any,
+                      any
+                  >[]
                       ? REST
                       : []
               >
@@ -350,7 +412,16 @@ export type TransitiveSuppliers<
         ? [
               FIRST,
               ...TransitiveSuppliers<
-                  REST extends Supplier<string, any, any, any, any, any, any>[]
+                  REST extends Supplier<
+                      string,
+                      any,
+                      any,
+                      any,
+                      any,
+                      any,
+                      any,
+                      any
+                  >[]
                       ? REST
                       : []
               >
@@ -369,11 +440,11 @@ export type TransitiveSuppliers<
  * @public
  */
 export type ToSupply<
-    SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[]
+    SUPPLIERS extends Supplier<string, any, any, any, any, any, any, any>[]
 > = SupplyMapFromSuppliers<
     ExcludeSuppliersType<
         TransitiveSuppliers<SUPPLIERS>,
-        ProductSupplier<string, any, any, any, any, any, any>
+        ProductSupplier<string, any, any, any, any, any, any, any>
     >
 >
 
@@ -387,10 +458,10 @@ export type ToSupply<
  * @public
  */
 export type TrySuppliers<
-    OLD extends Supplier<string, any, any, any, any, any, any>[],
+    OLD extends Supplier<string, any, any, any, any, any, any, any>[],
     NEW extends ProductSupplier<string, any, any, any, any, any, any>[]
 > = OLD extends [infer Head, ...infer Tail]
-    ? Tail extends Supplier<string, any, any, any, any, any, any>[]
+    ? Tail extends Supplier<string, any, any, any, any, any, any, any>[]
         ? Head extends { name: NEW[number]["name"] }
             ? // Head matches a NEW supplier, use the NEW one
               [
@@ -415,10 +486,10 @@ export type TrySuppliers<
  * @public
  */
 export type FilterSuppliers<
-    OLD extends Supplier<string, any, any, any, any, any, any>[],
+    OLD extends Supplier<string, any, any, any, any, any, any, any>[],
     NEW extends ProductSupplier<string, any, any, any, any, any, any>[]
 > = OLD extends [infer Head, ...infer Tail]
-    ? Tail extends Supplier<string, any, any, any, any, any, any>[]
+    ? Tail extends Supplier<string, any, any, any, any, any, any, any>[]
         ? Head extends { name: NEW[number]["name"] }
             ? FilterSuppliers<Tail, NEW>
             : [Head, ...FilterSuppliers<Tail, NEW>]
@@ -434,12 +505,12 @@ export type FilterSuppliers<
  */
 export type HasCircularDependency<
     SUPPLIER extends Pick<
-        ProductSupplier<string, any, any, any, any, any, any>,
+        ProductSupplier<string, any, any, any, any, any, any, any>,
         "name" | "suppliers"
     >
 > = SUPPLIER["name"] extends (
     TransitiveSuppliers<SUPPLIER["suppliers"]>[number] extends infer S
-        ? S extends Supplier<string, any, any, any, any, any, any>
+        ? S extends Supplier<string, any, any, any, any, any, any, any>
             ? S["name"]
             : never
         : never
