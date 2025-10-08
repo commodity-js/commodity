@@ -1,8 +1,8 @@
 import { market } from "./market"
-import { serviceCSupplier } from "./C"
+import { $$C } from "./C"
 
 // @ts-expect-error - circular dependency
-export const serviceDSupplier = market.offer("serviceD").asProduct({
-    suppliers: [serviceCSupplier],
-    factory: () => "serviceD"
+export const $$D = market.offer("D").asProduct({
+    suppliers: [$$C],
+    factory: () => "D"
 })
