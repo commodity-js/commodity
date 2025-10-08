@@ -21,7 +21,7 @@ export function hire(suppliers: ProductSupplier<string, any, any, any>[]) {
             const $: any = (supplier: { name: string }) => {
                 const supply = $[supplier.name]
                 if (!supply?.unpack) {
-                    throw new Error(`Unsatisfied dependency: ${supplier.name}`)
+                    return undefined
                 }
                 return supply.unpack()
             }

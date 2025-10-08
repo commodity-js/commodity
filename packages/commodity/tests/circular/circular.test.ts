@@ -1,8 +1,8 @@
 import { describe, it, assertType } from "vitest"
-import { serviceASupplier } from "./A"
+import { $$A } from "./A"
 
 describe("Circular Dependencies", () => {
     it("should detect circular dependencies", () => {
-        assertType<unknown>(serviceASupplier)
+        assertType<unknown>($$A)
     })
 })
