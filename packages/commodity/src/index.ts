@@ -274,17 +274,17 @@ export const createMarket = () => {
                             ) {
                                 validatePlainObject(overrides, "overrides")
 
-                                const unassembled: SupplyMap = {}
+                                const unassembled: SupplyMap = overrides
 
                                 // Loop over all supplies and check if they need resupplying
                                 for (const [name, supply] of Object.entries<
                                     SupplyMap[keyof SupplyMap]
                                 >(this.supplies)) {
                                     if (name in overrides) {
-                                        unassembled[name] = overrides[name]
                                         continue
                                     }
 
+                                    // Save the old value if it doesn't depend on any of the overrides
                                     if (
                                         !isProduct(supply) ||
                                         !supply._dependsOnOneOf(overrides)
