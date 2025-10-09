@@ -10,7 +10,6 @@ import {
     type HasCircularDependency,
     type ExcludeSuppliersType,
     type MapFromList,
-    type TrySuppliers,
     type FilterSuppliers
 } from "#types"
 
@@ -122,7 +121,6 @@ export const createMarket = () => {
                  * @param config.factory - Factory function that creates the product value from its dependencies
                  * @param config.init - Optional initialization function for the product
                  * @param config.lazy - Whether the product should be lazily evaluated
-                 * @param config.isPrototype - Whether this is a prototype supplier
                  *
                  * @returns A product supplier configuration object with methods like assemble, pack, try, with, etc.
                  * @public
@@ -136,8 +134,7 @@ export const createMarket = () => {
                         any,
                         any,
                         any,
-                        any,
-                        IS_PROTOTYPE extends false ? false : boolean
+                        any
                     >[] = [],
                     OPTIONALS extends ResourceSupplier<string, any>[] = [],
                     ASSEMBLERS extends ProductSupplier<
@@ -147,10 +144,8 @@ export const createMarket = () => {
                         any,
                         any,
                         any,
-                        any,
-                        IS_PROTOTYPE extends false ? false : boolean
-                    >[] = [],
-                    IS_PROTOTYPE extends boolean = false
+                        any
+                    >[] = []
                 >(config: {
                     suppliers?: [...SUPPLIERS]
                     optionals?: [...OPTIONALS]
@@ -164,7 +159,6 @@ export const createMarket = () => {
                         supplies: $<SUPPLIERS, OPTIONALS>
                     ) => void
                     lazy?: boolean
-                    isPrototype?: IS_PROTOTYPE
                 }) => {
                     validateProductConfig(config)
                     const {
@@ -173,8 +167,7 @@ export const createMarket = () => {
                         assemblers = [] as unknown as ASSEMBLERS,
                         factory,
                         init,
-                        lazy = false,
-                        isPrototype = false as IS_PROTOTYPE
+                        lazy = false
                     } = config
                     const productSupplier = {
                         name,
@@ -186,11 +179,8 @@ export const createMarket = () => {
                         init,
                         pack,
                         assemble,
-                        try: _try,
                         with: _with,
-                        assemblersOnly,
                         prototype,
-                        _isPrototype: isPrototype,
                         _product: true as const
                     }
 
@@ -208,18 +198,8 @@ export const createMarket = () => {
                         THIS extends ProductSupplier<
                             NAME,
                             VALUE,
-                            Supplier<
-                                string,
-                                any,
-                                any,
-                                any,
-                                any,
-                                any,
-                                any,
-                                any
-                            >[],
+                            Supplier<string, any, any, any, any, any, any>[],
                             ResourceSupplier<string, any>[],
-                            any,
                             any,
                             any,
                             any
@@ -429,7 +409,7 @@ export const createMarket = () => {
                      * @param config.assemblers - Assemblers for the prototype
                      * @param config.init - Optional initialization function for the prototype
                      * @param config.lazy - Whether the prototype should be lazily evaluated
-                     * @returns A prototype product supplier marked as IS_PROTOTYPE = true
+                     * @returns A prototype product supplier
                      * @public
                      * @example
                      */
@@ -437,7 +417,6 @@ export const createMarket = () => {
                         THIS extends ProductSupplier<
                             NAME,
                             VALUE,
-                            any,
                             any,
                             any,
                             any,
@@ -451,8 +430,7 @@ export const createMarket = () => {
                             any,
                             any,
                             any,
-                            any,
-                            false
+                            any
                         >[] = [],
                         OPTIONALS_OF_PROTOTYPE extends ResourceSupplier<
                             string,
@@ -465,8 +443,7 @@ export const createMarket = () => {
                             any,
                             any,
                             any,
-                            any,
-                            false
+                            any
                         >[] = []
                     >(
                         this: THIS,
@@ -516,8 +493,6 @@ export const createMarket = () => {
                             lazy,
                             pack,
                             assemble,
-                            assemblersOnly,
-                            _isPrototype: true as const,
                             _product: true as const
                         }
                         return supplier as HasCircularDependency<
@@ -539,7 +514,7 @@ export const createMarket = () => {
                      * @returns A new product supplier with merged dependencies marked as prototype
                      * @public
                      */
-                    function _try<
+                    function _with<
                         THIS extends ProductSupplier<
                             NAME,
                             VALUE,
@@ -547,12 +522,9 @@ export const createMarket = () => {
                             OPTIONALS,
                             ASSEMBLERS,
                             any,
-                            any,
                             any
-                        > & {
-                            _assemblersOnly?: true
-                        },
-                        SUPPLIERS extends ProductSupplier<
+                        >,
+                        SUPPLIERS extends Supplier<
                             string,
                             any,
                             any,
@@ -568,100 +540,6 @@ export const createMarket = () => {
                             any,
                             any,
                             any,
-                            any,
-                            any
-                        >[],
-                        TRIED_SUPPLIERS extends ProductSupplier<
-                            string,
-                            any,
-                            any,
-                            any,
-                            any,
-                            any,
-                            any,
-                            true
-                        >[]
-                    >(this: THIS, ...suppliers: [...TRIED_SUPPLIERS]) {
-                        validateSuppliers(suppliers, "suppliers")
-                        type MERGED_SUPPLIERS = TrySuppliers<
-                            THIS["suppliers"],
-                            TRIED_SUPPLIERS
-                        >
-
-                        type MERGED_ASSEMBLERS = TrySuppliers<
-                            THIS["assemblers"],
-                            TRIED_SUPPLIERS
-                        >
-
-                        const newSupplier = {
-                            name: this.name,
-                            suppliers: this._assemblersOnly
-                                ? this.suppliers
-                                : ([
-                                      ...suppliers,
-                                      ...this.suppliers.filter(
-                                          (oldSupplier) =>
-                                              !suppliers.some(
-                                                  (newSupplier) =>
-                                                      newSupplier.name ===
-                                                      oldSupplier.name
-                                              )
-                                      )
-                                  ] as unknown as MERGED_SUPPLIERS),
-                            optionals: [],
-                            assemblers: [
-                                ...suppliers,
-                                ...this.assemblers.filter(
-                                    (oldSupplier) =>
-                                        !suppliers.some(
-                                            (newSupplier) =>
-                                                newSupplier.name ===
-                                                oldSupplier.name
-                                        )
-                                )
-                            ] as unknown as MERGED_ASSEMBLERS,
-                            factory: this.factory,
-                            init: this.init,
-                            lazy: this.lazy,
-                            pack,
-                            assemble,
-                            assemblersOnly,
-                            _isPrototype: true as const,
-                            _product: true as const
-                        }
-
-                        return newSupplier as HasCircularDependency<
-                            typeof newSupplier
-                        > extends true
-                            ? unknown
-                            : typeof newSupplier
-                    }
-
-                    /**
-                     * Method designed to allow assembling multiple suppliers at once.
-                     * @param suppliers - suppliers to assemble alongside `this` supplier
-                     * @returns A new product supplier whose assemble() method requires all resources needed by all suppliers.
-                     * @public
-                     */
-                    function _with<
-                        THIS extends ProductSupplier<
-                            NAME,
-                            VALUE,
-                            SUPPLIERS,
-                            any,
-                            any,
-                            any,
-                            any,
-                            any
-                        >,
-                        SUPPLIERS extends Supplier<
-                            string,
-                            any,
-                            any,
-                            any,
-                            any,
-                            any,
-                            any,
                             any
                         >[],
                         WITH_SUPPLIERS extends ProductSupplier<
@@ -671,41 +549,56 @@ export const createMarket = () => {
                             any,
                             any,
                             any,
-                            any,
                             any
                         >[]
                     >(this: THIS, ...suppliers: [...WITH_SUPPLIERS]) {
                         validateSuppliers(suppliers, "suppliers")
-                        type FILTERED_SUPPLIERS = FilterSuppliers<
-                            THIS["suppliers"],
-                            WITH_SUPPLIERS
-                        >
+                        type MERGED_SUPPLIERS = [
+                            ...FilterSuppliers<
+                                THIS["suppliers"],
+                                WITH_SUPPLIERS
+                            >,
+                            ...WITH_SUPPLIERS
+                        ]
 
-                        const oldSuppliers = this.suppliers.filter(
-                            (supplier) =>
-                                !suppliers.some(
-                                    (newSupplier) =>
-                                        newSupplier.name === supplier.name
-                                )
-                        )
+                        type MERGED_ASSEMBLERS = [
+                            ...FilterSuppliers<
+                                THIS["assemblers"],
+                                WITH_SUPPLIERS
+                            >,
+                            ...WITH_SUPPLIERS
+                        ]
+
                         const newSupplier = {
                             name: this.name,
                             suppliers: [
-                                ...oldSuppliers,
+                                ...this.suppliers.filter(
+                                    (oldSupplier) =>
+                                        !suppliers.some(
+                                            (newSupplier) =>
+                                                newSupplier.name ===
+                                                oldSupplier.name
+                                        )
+                                ),
                                 ...suppliers
-                            ] as unknown as [
-                                ...FILTERED_SUPPLIERS,
-                                ...WITH_SUPPLIERS
-                            ],
+                            ] as unknown as MERGED_SUPPLIERS,
                             optionals: [],
-                            assemblers: this.assemblers,
+                            assemblers: [
+                                ...this.assemblers.filter(
+                                    (oldSupplier) =>
+                                        !suppliers.some(
+                                            (newSupplier) =>
+                                                newSupplier.name ===
+                                                oldSupplier.name
+                                        )
+                                ),
+                                ...suppliers
+                            ] as unknown as MERGED_ASSEMBLERS,
                             factory: this.factory,
                             init: this.init,
                             lazy: this.lazy,
                             pack,
                             assemble,
-                            assemblersOnly,
-                            _isPrototype: this._isPrototype,
                             _product: true as const
                         }
 
@@ -714,21 +607,6 @@ export const createMarket = () => {
                         > extends true
                             ? unknown
                             : typeof newSupplier
-                    }
-
-                    /**
-                     * Sets a flag for the try method() to only replace assemblers, not suppliers,
-                     * with the provided prototype,
-                     *
-                     * @returns A product supplier marked as assemblersOnly with _assemblersOnly flag
-                     * @public
-                     */
-                    function assemblersOnly<THIS>(this: THIS) {
-                        // Set the flag and return this for chaining
-                        return {
-                            ...this,
-                            _assemblersOnly: true as const
-                        }
                     }
 
                     return productSupplier as HasCircularDependency<

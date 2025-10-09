@@ -308,7 +308,7 @@ describe("Assemblers Feature", () => {
         expect(BSpy).toHaveBeenCalledTimes(1)
     })
 
-    it("should support try() method with assembler replacing original ones", () => {
+    it("should support with() method with assembler replacing original ones", () => {
         const market = createMarket()
         const originalSpy = vi.fn().mockReturnValue("original")
         const triedSpy = vi.fn().mockReturnValue("tried")
@@ -317,7 +317,7 @@ describe("Assemblers Feature", () => {
             factory: originalSpy
         })
 
-        const $$triedAssembler = $$originalAssembler.prototype({
+        const $$originalAssemblerPrototype = $$originalAssembler.prototype({
             factory: triedSpy
         })
         const $$base = market.offer("base").asProduct({
@@ -327,13 +327,13 @@ describe("Assemblers Feature", () => {
             }
         })
 
-        const $$tried = $$base.assemblersOnly().try($$triedAssembler)
+        const $$tried = $$base.with($$originalAssemblerPrototype)
 
         const result = $$tried.assemble({}).unpack()
 
         expect(result).toBe("tried")
         expect(originalSpy).toHaveBeenCalledTimes(0)
-        expect(triedSpy).toHaveBeenCalledTimes(1)
+        expect(triedSpy).toHaveBeenCalledTimes(2)
     })
 
     it("should support empty assembler in prototypes", () => {
@@ -350,29 +350,6 @@ describe("Assemblers Feature", () => {
 
         const $result = $$prototype.assemble({})
         expect($result.unpack()).toBe("prototype-value")
-    })
-
-    it("should support empty assembler in try() method", () => {
-        const market = createMarket()
-        const originalSpy = vi.fn().mockReturnValue("original")
-
-        const $$originalAssembler = market.offer("original").asProduct({
-            factory: originalSpy
-        })
-
-        const $$base = market.offer("base").asProduct({
-            assemblers: [$$originalAssembler],
-            factory: ($, $$) => {
-                $$[$$originalAssembler.name].assemble({}).unpack()
-                return "base-value"
-            }
-        })
-
-        const $$tried = $$base.try()
-
-        const result = $$tried.assemble({})
-        expect(result.unpack()).toBe("base-value")
-        expect(originalSpy).toHaveBeenCalledTimes(1)
     })
 
     it("should handle assembler errors in prototypes gracefully", () => {
@@ -403,7 +380,7 @@ describe("Assemblers Feature", () => {
         expect($result.unpack()).toBe("prototype-value")
     })
 
-    it("should handle assembler errors in try() method gracefully", () => {
+    it("should handle assembler errors in with() method gracefully", () => {
         const market = createMarket()
         const baseSpy = vi.fn().mockReturnValue("base")
         const errorSpy = vi.fn().mockImplementation(() => {
@@ -428,7 +405,7 @@ describe("Assemblers Feature", () => {
             }
         })
 
-        const $$tried = $$main.try($$error)
+        const $$tried = $$main.with($$error)
 
         const $result = $$tried.assemble({})
         expect($result.unpack()).toBe("main")
@@ -505,7 +482,7 @@ describe("Assemblers Feature", () => {
         expect($result.unpack()).toBe("base-value-25-100")
     })
 
-    it("should support assembler reassembly in try() method", () => {
+    it("should support assembler reassembly in with() method", () => {
         const market = createMarket()
         const $$number = market.offer("number").asResource<number>()
         const $$squarer = market.offer("squarer").asProduct({
@@ -541,12 +518,12 @@ describe("Assemblers Feature", () => {
             }
         })
 
-        const $$tried = $$base.try($$triedSquarer)
+        const $$tried = $$base.with($$triedSquarer)
         const $result = $$tried.assemble(index($$number.pack(5)))
         expect($result.unpack()).toBe(200)
     })
 
-    it("should handle duplicate assembler names in try() method by overriding", () => {
+    it("should handle duplicate assembler names in with() method by overriding", () => {
         const market = createMarket()
         const originalSpy = vi.fn().mockReturnValue("original")
         const overrideSpy = vi.fn().mockReturnValue("override")
@@ -567,179 +544,16 @@ describe("Assemblers Feature", () => {
         const $$base = market.offer("base").asProduct({
             assemblers: [$$original],
             factory: ($, $$) => {
-                const assembler = $$[$$original.name].assemble({})
-                return assembler.unpack()
+                return $$[$$original.name].assemble({}).unpack()
             }
         })
 
-        const $$tried = $$base.assemblersOnly().try($$override, $$override2)
+        const $$tried = $$base.with($$override, $$override2)
 
         const $result = $$tried.assemble({})
         expect($result.unpack()).toBe("override2")
         expect(originalSpy).toHaveBeenCalledTimes(0)
         expect(overrideSpy).toHaveBeenCalledTimes(0)
-        expect(overrideSpy2).toHaveBeenCalledTimes(1)
-    })
-})
-
-describe("with() method", () => {
-    it("should allow assembling multiple suppliers together", () => {
-        const market = createMarket()
-
-        const $$config = market.offer("config").asResource<string>()
-
-        const $$user = market.offer("user").asProduct({
-            suppliers: [$$config],
-            factory: ($) => {
-                const config = $($$config)
-                return "user-" + config
-            }
-        })
-
-        const $$order = market.offer("order").asProduct({
-            suppliers: [$$config],
-            factory: ($) => {
-                const config = $($$config)
-                return "order-" + config
-            }
-        })
-
-        const $$combined = $$user.with($$order)
-        const config = $$config.pack("config")
-        const $result = $$combined.assemble(index(config))
-
-        expect($result.unpack()).toEqual("user-config")
-        const orderResult = $result.supplies($$order)
-        expect(orderResult).toEqual("order-config")
-    })
-
-    it("should type check that all required resources are provided", () => {
-        const market = createMarket()
-
-        const $$db = market.offer("db").asResource<string>()
-        const $$cache = market.offer("cache").asResource<string>()
-
-        const $$user = market.offer("user").asProduct({
-            suppliers: [$$db],
-            factory: ($) => {
-                const db = $($$db)
-                return "user-" + db
-            }
-        })
-
-        const $$session = market.offer("session").asProduct({
-            suppliers: [$$cache],
-            factory: ($) => {
-                const cache = $($$cache)
-                return "session-" + cache
-            }
-        })
-
-        const $$combined = $$user.with($$session)
-
-        const db = $$db.pack("postgresql://localhost:5432/db")
-        const cache = $$cache.pack("redis://localhost:6379")
-
-        // @ts-expect-error - cache is missing
-        const $fail = $$combined.assemble(index(db))
-        const $result = $$combined.assemble(index(db, cache))
-
-        expect($result.unpack()).toEqual("user-postgresql://localhost:5432/db")
-
-        const sessionResult = $result.supplies($$session)
-        expect(sessionResult).toEqual("session-redis://localhost:6379")
-    })
-
-    it("should work with suppliers that have overlapping dependencies", () => {
-        const market = createMarket()
-
-        const $$shared = market.offer("shared").asResource<string>()
-        const $$unique = market.offer("unique").asResource<number>()
-
-        const $$A = market.offer("A").asProduct({
-            suppliers: [$$shared],
-            factory: ($) => {
-                const shared = $($$shared)
-                return "A-" + shared
-            }
-        })
-
-        const $$B = market.offer("B").asProduct({
-            suppliers: [$$shared, $$unique],
-            factory: ($) => {
-                const shared = $($$shared)
-                const unique = $($$unique)
-                return "B-" + shared + "-" + unique
-            }
-        })
-
-        const $result = $$A
-            .with($$B)
-            .assemble(index($$shared.pack("shared-data"), $$unique.pack(123)))
-
-        expect($result.unpack()).toEqual("A-shared-data")
-        const BResult = $result.supplies($$B)
-        expect(BResult).toEqual("B-shared-data-123")
-    })
-
-    it("should handle reassembly correctly with with() method", () => {
-        const market = createMarket()
-
-        const $$number = market.offer("number").asResource<number>()
-
-        const $$doubler = market.offer("doubler").asProduct({
-            suppliers: [$$number],
-            factory: ($) => $($$number) * 2
-        })
-
-        const $$tripler = market.offer("tripler").asProduct({
-            suppliers: [$$number],
-            factory: ($) => $($$number) * 3
-        })
-
-        const $result = $$doubler
-            .with($$tripler)
-            .assemble(index($$number.pack(5)))
-
-        expect($result.unpack()).toBe(10) // 5 * 2
-        expect($result.supplies($$tripler)).toBe(15) // 5 * 3
-
-        const $reassembled = $result.reassemble(index($$number.pack(10)))
-        expect($reassembled.unpack()).toBe(20) // 10 * 2
-        expect($reassembled.supplies($$tripler)).toBe(30) // 10 * 3
-    })
-
-    it("should support empty suppliers list in with() method", () => {
-        const market = createMarket()
-
-        const $$simple = market.offer("simple").asProduct({
-            factory: () => "simple-value"
-        })
-
-        const $$combined = $$simple.with()
-        const result = $$combined.assemble({})
-
-        expect(result.unpack()).toBe("simple-value")
-    })
-
-    it("should handle errors in with() method gracefully", () => {
-        const market = createMarket()
-
-        const $$working = market.offer("working").asProduct({
-            factory: () => "working-value"
-        })
-
-        const $$failing = market.offer("failing").asProduct({
-            factory: () => {
-                throw new Error("Supplier failed")
-                return
-            }
-        })
-
-        const $result = $$working.with($$failing).assemble({})
-        expect($result.unpack()).toBe("working-value")
-        expect(() => {
-            $result.supplies($$failing)
-        }).toThrow("Supplier failed")
+        expect(overrideSpy2).toHaveBeenCalledTimes(2)
     })
 })
