@@ -26,19 +26,24 @@ describe("Prototype Method", () => {
         })
     })
 
-    it("should not allow prototypes in suppliers array", () => {
+    it("should allow prototypes in suppliers array", () => {
         const market = createMarket()
 
-        const $$prototype = market.offer("prototype").asProduct({
-            factory: () => "base",
-            isPrototype: true
+        const $$base = market.offer("prototype").asProduct({
+            factory: () => "base"
+        })
+
+        const $$prototype = $$base.prototype({
+            suppliers: [],
+            factory: () => "prototype"
         })
 
         const $$next = market.offer("next").asProduct({
-            //@ts-expect-error - prototype supplier in suppliers array
             suppliers: [$$prototype],
-            factory: () => "base"
+            factory: ($) => $($$prototype)
         })
+
+        expect($$next.assemble({}).unpack()).toEqual("prototype")
     })
 
     it("should handle init setting in prototype", async () => {
@@ -60,7 +65,7 @@ describe("Prototype Method", () => {
             factory: ($) => $($$base)()
         })
 
-        const $$tried = $$test.try($$prototyped)
+        const $$tried = $$test.with($$prototyped)
 
         $$tried.assemble({})
         $$test.assemble({})
@@ -136,43 +141,8 @@ describe("Prototype Method", () => {
     })
 })
 
-describe("Try Method", () => {
+describe("With Method", () => {
     it("should allow trying alternative suppliers for testing", () => {
-        const market = createMarket()
-        // Original suppliers
-        const $$db = market.offer("db").asProduct({
-            factory: () => "db"
-        })
-
-        const $$cache = market.offer("cache").asProduct({
-            factory: () => "cache"
-        })
-
-        // Main product using these suppliers
-        const $$main = market.offer("main").asProduct({
-            suppliers: [$$db, $$cache],
-            factory: ($) => "main-" + $($$db) + "-" + $($$cache)
-        })
-
-        // Mock suppliers for testing - create prototypes using prototype
-        const $$mockDb = $$db.prototype({
-            factory: () => "mock-db",
-            suppliers: []
-        })
-
-        // Try with mock database
-        const $$test = $$main.try($$mockDb)
-
-        // Assemble both versions
-        const $prod = $$main.assemble({})
-        const $test = $$test.assemble({})
-
-        expect($prod.unpack()).toBe("main-db-cache")
-        expect($test.unpack()).toBe("main-mock-db-cache")
-        expect($test.unpack()).toBe("main-mock-db-cache")
-    })
-
-    it("should handle multiple tried prototypes", () => {
         const market = createMarket()
 
         const $$db = market.offer("db").asProduct({
@@ -207,7 +177,7 @@ describe("Try Method", () => {
             suppliers: []
         })
 
-        const $$test = $$service.try($$mockDb, $$mockCache)
+        const $$test = $$service.with($$mockDb, $$mockCache)
         const $test = $$test.assemble({})
 
         expect($test.unpack()).toEqual({
@@ -229,7 +199,6 @@ describe("Try Method", () => {
             factory: ($) => "main-" + $($$db)
         })
 
-        // Try with a supplier that doesn't exist in original - create new prototype
         const $$unused = market.offer("unused").asProduct({
             factory: () => "base-extra"
         })
@@ -239,29 +208,28 @@ describe("Try Method", () => {
             factory: () => "extra-service"
         })
 
-        const $$test = $$main.try($$unusedProto)
+        const $$test = $$main.with($$unusedProto)
         const $test = $$test.assemble({})
 
         // The extra supplier is added to the suppliers list, but not to the result
         expect($test.unpack()).toEqual("main-db")
     })
 
-    it("should handle empty try calls gracefully", () => {
+    it("should handle empty with calls gracefully", () => {
         const market = createMarket()
 
         const $$main = market.offer("main").asProduct({
             factory: () => "main"
         })
 
-        // Try with no suppliers - should work fine
-        const $$test = $$main.try()
+        // With with no suppliers - should work fine
+        const $$test = $$main.with()
         const $test = $$test.assemble({})
 
         expect($test.unpack()).toBe("main")
-        expect($$test._isPrototype).toBe(true)
     })
 
-    it("should handle duplicate supplier names in try (last one wins)", () => {
+    it("should handle duplicate supplier names in with (last one wins)", () => {
         const market = createMarket()
 
         const $$db = market.offer("db").asProduct({
@@ -283,27 +251,127 @@ describe("Try Method", () => {
             suppliers: []
         })
 
-        const $$mocked = $$main.try($$mockDb1, $$mockDb2)
+        const $$mocked = $$main.with($$mockDb1, $$mockDb2)
         const test = $$mocked.suppliers
         expect(test).toEqual([$$mockDb1, $$mockDb2])
         const result = $$mocked.assemble({}).unpack()
         expect(result).toEqual("main-mock-db-2")
     })
 
-    it("should stop calling try with non-prototype suppliers", () => {
+    it("should allow assembling multiple suppliers together", () => {
         const market = createMarket()
 
-        const $$base = market.offer("base").asProduct({
-            factory: () => "base"
+        const $$shared = market.offer("shared").asResource<string>()
+        const $$unique = market.offer("unique").asResource<number>()
+
+        const $$A = market.offer("A").asProduct({
+            suppliers: [$$shared],
+            factory: ($) => {
+                const shared = $($$shared)
+                return "A-" + shared
+            }
         })
 
-        // Non-prototype supplier for try
-        const $$nonPrototype = market.offer("non-proto").asProduct({
-            factory: () => "non-prototype",
-            isPrototype: false
+        const $$B = market.offer("B").asProduct({
+            suppliers: [$$shared, $$unique],
+            factory: ($) => {
+                const shared = $($$shared)
+                const unique = $($$unique)
+                return "B-" + shared + "-" + unique
+            }
         })
 
-        //@ts-expect-error - non-prototype supplier in try
-        const $$test = $$base.try($$nonPrototype)
+        const $result = $$A
+            .with($$B)
+            .assemble(index($$shared.pack("shared-data"), $$unique.pack(123)))
+
+        expect($result.unpack()).toEqual("A-shared-data")
+        const BResult = $result.supplies($$B)
+        expect(BResult).toEqual("B-shared-data-123")
+    })
+
+    it("should type check that all required resources are provided", () => {
+        const market = createMarket()
+
+        const $$db = market.offer("db").asResource<string>()
+        const $$cache = market.offer("cache").asResource<string>()
+
+        const $$user = market.offer("user").asProduct({
+            suppliers: [$$db],
+            factory: ($) => {
+                const db = $($$db)
+                return "user-" + db
+            }
+        })
+
+        const $$session = market.offer("session").asProduct({
+            suppliers: [$$cache],
+            factory: ($) => {
+                const cache = $($$cache)
+                return "session-" + cache
+            }
+        })
+
+        const $$combined = $$user.with($$session)
+
+        const db = $$db.pack("postgresql://localhost:5432/db")
+        const cache = $$cache.pack("redis://localhost:6379")
+
+        // @ts-expect-error - cache is missing
+        const $fail = $$combined.assemble(index(db))
+        const $result = $$combined.assemble(index(db, cache))
+
+        expect($result.unpack()).toEqual("user-postgresql://localhost:5432/db")
+
+        const sessionResult = $result.supplies($$session)
+        expect(sessionResult).toEqual("session-redis://localhost:6379")
+    })
+
+    it("should handle reassembly correctly with with() method", () => {
+        const market = createMarket()
+
+        const $$number = market.offer("number").asResource<number>()
+
+        const $$doubler = market.offer("doubler").asProduct({
+            suppliers: [$$number],
+            factory: ($) => $($$number) * 2
+        })
+
+        const $$tripler = market.offer("tripler").asProduct({
+            suppliers: [$$number],
+            factory: ($) => $($$number) * 3
+        })
+
+        const $result = $$doubler
+            .with($$tripler)
+            .assemble(index($$number.pack(5)))
+
+        expect($result.unpack()).toBe(10) // 5 * 2
+        expect($result.supplies($$tripler)).toBe(15) // 5 * 3
+
+        const $reassembled = $result.reassemble(index($$number.pack(10)))
+        expect($reassembled.unpack()).toBe(20) // 10 * 2
+        expect($reassembled.supplies($$tripler)).toBe(30) // 10 * 3
+    })
+
+    it("should handle errors in with() method gracefully", () => {
+        const market = createMarket()
+
+        const $$working = market.offer("working").asProduct({
+            factory: () => "working-value"
+        })
+
+        const $$failing = market.offer("failing").asProduct({
+            factory: () => {
+                throw new Error("Supplier failed")
+                return
+            }
+        })
+
+        const $result = $$working.with($$failing).assemble({})
+        expect($result.unpack()).toBe("working-value")
+        expect(() => {
+            $result.supplies($$failing)
+        }).toThrow("Supplier failed")
     })
 })

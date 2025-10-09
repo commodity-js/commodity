@@ -778,7 +778,7 @@ describe("commodity", () => {
                 }
             })
 
-            const $main = $$main.try($$prototype).assemble({})
+            const $main = $$main.with($$prototype).assemble({})
 
             // Neither factory should be called during assemble
             expect(originalSpy).toHaveBeenCalledTimes(0)

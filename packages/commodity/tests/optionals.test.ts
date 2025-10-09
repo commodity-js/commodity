@@ -293,7 +293,7 @@ describe("Optionals Feature", () => {
             })
         })
 
-        it("should handle optionals with try method", () => {
+        it("should handle optionals with with method", () => {
             const market = createMarket()
             const $$config = market.offer("config").asResource<string>()
             const $$optional = market.offer("optional").asResource<number>()
@@ -316,7 +316,7 @@ describe("Optionals Feature", () => {
                 factory: () => 100
             })
 
-            const $$tried = $$main.try($$mockDep)
+            const $$tried = $$main.with($$mockDep)
 
             const $result = $$tried.assemble({})
             expect($result.unpack()).toBe(100)

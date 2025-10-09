@@ -170,14 +170,14 @@ describe("Runtime Validation", () => {
         })
     })
 
-    describe("productSupplier.try()", () => {
+    describe("productSupplier.with()", () => {
         it("should throw TypeError when suppliers contain invalid items", () => {
             const market = createMarket()
             const $$product = market.offer("A").asProduct({
                 factory: () => ({})
             })
-            expect(() => $$product.try(null as any)).toThrow(TypeError)
-            expect(() => $$product.try(null as any)).toThrow(
+            expect(() => $$product.with(null as any)).toThrow(TypeError)
+            expect(() => $$product.with(null as any)).toThrow(
                 "suppliers[0] must be a supplier object, got null"
             )
         })
@@ -187,8 +187,8 @@ describe("Runtime Validation", () => {
             const $$product = market.offer("A").asProduct({
                 factory: () => ({})
             })
-            expect(() => $$product.try({} as any)).toThrow(TypeError)
-            expect(() => $$product.try({} as any)).toThrow(
+            expect(() => $$product.with({} as any)).toThrow(TypeError)
+            expect(() => $$product.with({} as any)).toThrow(
                 "suppliers[0] must have a 'name' property of type string"
             )
         })
