@@ -34,6 +34,9 @@ import {
 function isProduct(
     supply: SupplyMap[keyof SupplyMap]
 ): supply is Product<string, any, any> {
+    if (supply === undefined) {
+        return false
+    }
     return "_product" in supply
 }
 
@@ -110,6 +113,7 @@ export const createMarket = () => {
                  *
                  * @typeParam VALUE - The type of value this product produces
                  * @typeParam SUPPLIERS - Array of suppliers this product depends on
+                 * @typeParam OPTIONALS - Array of optional suppliers this product may depend on
                  * @typeParam ASSEMBLERS - Array of assemblers (lazy suppliers)
                  * @typeParam IS_PROTOTYPE - Whether this is a prototype supplier
                  * @param config - Configuration object for the product
@@ -132,10 +136,13 @@ export const createMarket = () => {
                         any,
                         any,
                         any,
+                        any,
                         IS_PROTOTYPE extends false ? false : boolean
                     >[] = [],
+                    OPTIONALS extends ResourceSupplier<string, any>[] = [],
                     ASSEMBLERS extends ProductSupplier<
                         string,
+                        any,
                         any,
                         any,
                         any,
@@ -146,18 +153,23 @@ export const createMarket = () => {
                     IS_PROTOTYPE extends boolean = false
                 >(config: {
                     suppliers?: [...SUPPLIERS]
+                    optionals?: [...OPTIONALS]
                     assemblers?: [...ASSEMBLERS]
                     factory: (
-                        supplies: $<SUPPLIERS>,
-                        assemblers: MapFromList<[...ASSEMBLERS]>
+                        supplies: $<SUPPLIERS, OPTIONALS>,
+                        assemblers: MapFromList<[...ASSEMBLERS, ...OPTIONALS]>
                     ) => VALUE
-                    init?: (value: VALUE, supplies: $<SUPPLIERS>) => void
+                    init?: (
+                        value: VALUE,
+                        supplies: $<SUPPLIERS, OPTIONALS>
+                    ) => void
                     lazy?: boolean
                     isPrototype?: IS_PROTOTYPE
                 }) => {
                     validateProductConfig(config)
                     const {
                         suppliers = [] as unknown as SUPPLIERS,
+                        optionals = [] as unknown as OPTIONALS,
                         assemblers = [] as unknown as ASSEMBLERS,
                         factory,
                         init,
@@ -167,6 +179,7 @@ export const createMarket = () => {
                     const productSupplier = {
                         name,
                         suppliers,
+                        optionals,
                         assemblers,
                         factory,
                         lazy,
@@ -195,13 +208,26 @@ export const createMarket = () => {
                         THIS extends ProductSupplier<
                             NAME,
                             VALUE,
-                            Supplier<string, any, any, any, any, any, any>[],
+                            Supplier<
+                                string,
+                                any,
+                                any,
+                                any,
+                                any,
+                                any,
+                                any,
+                                any
+                            >[],
+                            ResourceSupplier<string, any>[],
                             any,
                             any,
                             any,
                             any
                         >
-                    >(this: THIS, toSupply: ToSupply<THIS["suppliers"]>) {
+                    >(
+                        this: THIS,
+                        toSupply: ToSupply<THIS["suppliers"], THIS["optionals"]>
+                    ) {
                         // Only validate if it's not the internal $ callable object
                         if (typeof toSupply !== "function") {
                             validatePlainObject(toSupply, "toSupply")
@@ -216,18 +242,19 @@ export const createMarket = () => {
 
                         const assemble = (toSupply: SupplyMap) =>
                             hire(team).assemble(toSupply) as unknown as $<
-                                THIS["suppliers"]
+                                THIS["suppliers"],
+                                THIS["optionals"]
                             >
 
                         const supplies = assemble(toSupply)
 
                         const buildUnpack = (
-                            supplies: $<THIS["suppliers"]>
+                            supplies: $<THIS["suppliers"], THIS["optionals"]>
                         ) => {
                             return once(() => {
                                 const value = this.factory(
                                     supplies,
-                                    index(...this.assemblers)
+                                    index(...this.assemblers, ...this.optionals)
                                 ) as ReturnType<THIS["factory"]>
                                 if (this.init) {
                                     this.init(value, supplies)
@@ -253,7 +280,7 @@ export const createMarket = () => {
                                 for (const [name, supply] of Object.entries<
                                     SupplyMap[keyof SupplyMap]
                                 >(this.supplies)) {
-                                    if (name in overrides && overrides[name]) {
+                                    if (name in overrides) {
                                         unassembled[name] = overrides[name]
                                         continue
                                     }
@@ -286,7 +313,10 @@ export const createMarket = () => {
 
                                     const supply =
                                         this.supplies[
-                                            supplier.name as keyof $<SUPPLIERS>
+                                            supplier.name as keyof $<
+                                                SUPPLIERS,
+                                                OPTIONALS
+                                            >
                                         ]
 
                                     if (
@@ -314,7 +344,11 @@ export const createMarket = () => {
                      * @internal
                      */
                     function productPack<
-                        THIS extends Product<NAME, VALUE, $<SUPPLIERS>>,
+                        THIS extends Product<
+                            NAME,
+                            VALUE,
+                            $<SUPPLIERS, OPTIONALS>
+                        >,
                         NEW_VALUE extends VALUE
                     >(this: THIS, value: NEW_VALUE) {
                         return {
@@ -326,7 +360,7 @@ export const createMarket = () => {
                                 THIS extends Product<
                                     NAME,
                                     NEW_VALUE,
-                                    $<SUPPLIERS>
+                                    $<SUPPLIERS, OPTIONALS>
                                 >
                             >(this: THIS) {
                                 return this
@@ -370,7 +404,7 @@ export const createMarket = () => {
                                 THIS extends Product<
                                     NAME,
                                     NEW_VALUE,
-                                    $<SUPPLIERS>
+                                    $<SUPPLIERS, OPTIONALS>
                                 >
                             >(this: THIS) {
                                 return this
@@ -407,6 +441,7 @@ export const createMarket = () => {
                             any,
                             any,
                             any,
+                            any,
                             any
                         >,
                         SUPPLIERS_OF_PROTOTYPE extends Supplier<
@@ -416,10 +451,16 @@ export const createMarket = () => {
                             any,
                             any,
                             any,
+                            any,
                             false
+                        >[] = [],
+                        OPTIONALS_OF_PROTOTYPE extends ResourceSupplier<
+                            string,
+                            any
                         >[] = [],
                         ASSEMBLERS_OF_PROTOTYPE extends ProductSupplier<
                             string,
+                            any,
                             any,
                             any,
                             any,
@@ -431,16 +472,26 @@ export const createMarket = () => {
                         this: THIS,
                         config: {
                             factory: (
-                                supplies: $<SUPPLIERS_OF_PROTOTYPE>,
-                                assemblers: MapFromList<
-                                    [...ASSEMBLERS_OF_PROTOTYPE]
+                                supplies: $<
+                                    SUPPLIERS_OF_PROTOTYPE,
+                                    OPTIONALS_OF_PROTOTYPE
+                                >,
+                                $$: MapFromList<
+                                    [
+                                        ...ASSEMBLERS_OF_PROTOTYPE,
+                                        ...OPTIONALS_OF_PROTOTYPE
+                                    ]
                                 >
                             ) => VALUE
                             suppliers?: [...SUPPLIERS_OF_PROTOTYPE]
+                            optionals?: [...OPTIONALS_OF_PROTOTYPE]
                             assemblers?: [...ASSEMBLERS_OF_PROTOTYPE]
                             init?: (
                                 value: VALUE,
-                                supplies: $<SUPPLIERS_OF_PROTOTYPE>
+                                supplies: $<
+                                    SUPPLIERS_OF_PROTOTYPE,
+                                    OPTIONALS_OF_PROTOTYPE
+                                >
                             ) => void
                             lazy?: boolean
                         }
@@ -449,6 +500,7 @@ export const createMarket = () => {
                         const {
                             factory,
                             suppliers = [] as unknown as SUPPLIERS_OF_PROTOTYPE,
+                            optionals = [] as unknown as OPTIONALS_OF_PROTOTYPE,
                             assemblers = [] as unknown as ASSEMBLERS_OF_PROTOTYPE,
                             init,
                             lazy = false
@@ -456,6 +508,7 @@ export const createMarket = () => {
                         const supplier = {
                             name: this.name,
                             suppliers,
+                            optionals,
                             assemblers,
                             factory,
                             init,
@@ -490,6 +543,7 @@ export const createMarket = () => {
                             NAME,
                             VALUE,
                             SUPPLIERS,
+                            OPTIONALS,
                             ASSEMBLERS,
                             any,
                             any,
@@ -513,10 +567,12 @@ export const createMarket = () => {
                             any,
                             any,
                             any,
+                            any,
                             any
                         >[],
                         TRIED_SUPPLIERS extends ProductSupplier<
                             string,
+                            any,
                             any,
                             any,
                             any,
@@ -551,6 +607,7 @@ export const createMarket = () => {
                                               )
                                       )
                                   ] as unknown as MERGED_SUPPLIERS),
+                            optionals: [],
                             assemblers: [
                                 ...suppliers,
                                 ...this.assemblers.filter(
@@ -593,6 +650,7 @@ export const createMarket = () => {
                             any,
                             any,
                             any,
+                            any,
                             any
                         >,
                         SUPPLIERS extends Supplier<
@@ -602,10 +660,12 @@ export const createMarket = () => {
                             any,
                             any,
                             any,
+                            any,
                             any
                         >[],
                         WITH_SUPPLIERS extends ProductSupplier<
                             string,
+                            any,
                             any,
                             any,
                             any,
@@ -636,6 +696,7 @@ export const createMarket = () => {
                                 ...FILTERED_SUPPLIERS,
                                 ...WITH_SUPPLIERS
                             ],
+                            optionals: [],
                             assemblers: this.assemblers,
                             factory: this.factory,
                             init: this.init,
@@ -643,7 +704,7 @@ export const createMarket = () => {
                             pack,
                             assemble,
                             assemblersOnly,
-                            _isPrototype: true as const,
+                            _isPrototype: this._isPrototype,
                             _product: true as const
                         }
 
