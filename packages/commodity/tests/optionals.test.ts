@@ -316,7 +316,7 @@ describe("Optionals Feature", () => {
                 factory: () => 100
             })
 
-            const $$tried = $$main.with($$mockDep)
+            const $$tried = $$main.with([$$mockDep])
 
             const $result = $$tried.assemble({})
             expect($result.unpack()).toBe(100)
@@ -420,7 +420,7 @@ describe("Optionals Feature", () => {
             })
 
             const $batch = $$service1
-                .with($$service2)
+                .with([$$service2])
                 .assemble(index($$optional1.pack("test")))
 
             expect($batch.unpack()).toBe("S1: test")

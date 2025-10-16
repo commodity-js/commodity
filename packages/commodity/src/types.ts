@@ -21,15 +21,23 @@ export type Merge<U> = (U extends any ? (k: U) => void : never) extends (
  * @typeParam VALUE - The type of value this resource contains
  * @public
  */
-export type Resource<NAME extends string, VALUE> = {
+export type Resource<
+    NAME extends string = string,
+    VALUE = any,
+    CONSTRAINT = VALUE
+> = {
     /** The name/identifier of this resource */
     name: NAME
     /** Packs a new value into this resource, returning a new resource instance */
-    pack: (value: VALUE) => Resource<NAME, VALUE>
+    pack: <NEW_VALUE extends CONSTRAINT>(
+        value: NEW_VALUE
+    ) => Resource<NAME, NEW_VALUE, CONSTRAINT>
     /** Unpacks and returns the current value of this resource */
     unpack(): VALUE
     /** Type marker indicating this is a resource */
     _resource: true
+    /** The constraint type for values this resource can pack */
+    _constraint: CONSTRAINT
 }
 
 /**
@@ -41,11 +49,17 @@ export type Resource<NAME extends string, VALUE> = {
  * @typeParam CONSTRAINT - The type constraint for values this supplier can accept
  * @public
  */
-export type ResourceSupplier<NAME extends string, CONSTRAINT> = {
+export type ResourceSupplier<
+    NAME extends string = string,
+    VALUE = any,
+    CONSTRAINT = VALUE
+> = {
     /** The name/identifier of this resource supplier */
     name: NAME
     /** Packs a value into a resource, creating a new resource instance */
-    pack: (value: CONSTRAINT) => Resource<NAME, CONSTRAINT>
+    pack: <NEW_VALUE extends CONSTRAINT>(
+        value: NEW_VALUE
+    ) => Resource<NAME, NEW_VALUE, CONSTRAINT>
     /** Type marker indicating this is a resource supplier */
     _resource: true
     /** The constraint type for values this supplier can pack */
@@ -59,27 +73,52 @@ export type ResourceSupplier<NAME extends string, CONSTRAINT> = {
  *
  * @typeParam NAME - The unique identifier name for this product
  * @typeParam VALUE - The type of value this product produces
- * @typeParam SUPPLIES - The map of resolved dependencies this product uses
  * @public
  */
-export type Product<NAME extends string, VALUE, SUPPLIES extends SupplyMap> = {
+export type Product<
+    NAME extends string = string,
+    VALUE extends CONSTRAINT = any,
+    CONSTRAINT = VALUE,
+    SUPPLIES = unknown
+> = {
     /** The name/identifier of this product */
     name: NAME
-    /** The resolved dependencies this product was assembled with */
     supplies: SUPPLIES
+    /** Packs a new value into this product, returning a new product instance */
+    pack: <NEW_VALUE extends CONSTRAINT>(
+        value: NEW_VALUE
+    ) => Product<NAME, NEW_VALUE, CONSTRAINT>
     /** Unpacks and returns the current value of this product */
     unpack: () => VALUE
-    /** Packs a new value into this product, returning a new product instance */
-    pack: (value: VALUE) => Product<NAME, VALUE, SUPPLIES>
     /** Reassembles this product with new dependency overrides */
-    reassemble: (overrides: SupplyMap) => Product<NAME, VALUE, SUPPLIES>
+    reassemble: (
+        overrides: SupplyMap
+    ) => Product<NAME, VALUE, CONSTRAINT, SUPPLIES>
     /** Checks if this product depends on any of the given overrides */
     _dependsOnOneOf: (overrides: SupplyMap) => boolean
+    _constraint: CONSTRAINT
     /** Type marker indicating this is a product */
     _product: true
-    /** The supplier that created this product */
-    _supplier: ProductSupplier<NAME, VALUE, any, any, any, any, any>
 }
+
+export type ProductSupplierConfig<
+    VALUE = any,
+    SUPPLIERS extends BaseSupplier[] = BaseSupplier[],
+    OPTIONALS extends ResourceSupplier[] = ResourceSupplier[],
+    ASSEMBLERS extends BaseProductSupplier[] = BaseProductSupplier[]
+> = {
+    suppliers?: [...SUPPLIERS]
+    optionals?: [...OPTIONALS]
+    assemblers?: [...ASSEMBLERS]
+    factory: (
+        $: $<SUPPLIERS, OPTIONALS>,
+        $$: MapFromList<[...ASSEMBLERS, ...OPTIONALS]>
+    ) => VALUE
+    init?: (value: VALUE, $: $<SUPPLIERS, OPTIONALS>) => void
+    lazy?: boolean
+    _allowPrototypes?: never
+}
+
 /**
  * Represents a product supplier - a factory for creating products with dependencies.
  * Product suppliers define how to assemble complex objects from their dependencies.
@@ -95,23 +134,15 @@ export type Product<NAME extends string, VALUE, SUPPLIES extends SupplyMap> = {
  * @public
  */
 export type ProductSupplier<
-    NAME extends string,
-    VALUE,
-    SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[] = [],
-    OPTIONALS extends ResourceSupplier<string, any>[] = [],
-    ASSEMBLERS extends ProductSupplier<
-        string,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any
-    >[] = [],
-    SUPPLIES extends $<SUPPLIERS, OPTIONALS> = $<SUPPLIERS, OPTIONALS>,
-    $$_MAP extends MapFromList<[...ASSEMBLERS, ...OPTIONALS]> = MapFromList<
-        [...ASSEMBLERS, ...OPTIONALS]
-    >
+    NAME extends string = string,
+    VALUE extends CONSTRAINT = any,
+    CONSTRAINT = VALUE,
+    SUPPLIERS extends BaseSupplier[] = BaseSupplier[],
+    OPTIONALS extends ResourceSupplier[] = ResourceSupplier[],
+    ASSEMBLERS extends BaseProductSupplier[] = any[],
+    $_MAP extends $<SUPPLIERS, OPTIONALS> = any,
+    TO_SUPPLY extends ToSupply<SUPPLIERS, OPTIONALS> = any,
+    $$_MAP extends MapFromList<[...ASSEMBLERS, ...OPTIONALS]> = any
 > = {
     /** The name/identifier of this product supplier */
     name: NAME
@@ -122,13 +153,13 @@ export type ProductSupplier<
     /** Array of assemblers (lazy unassembled suppliers) */
     assemblers: ASSEMBLERS
     /** Factory function that creates the product value from its dependencies */
-    factory: (supplies: SUPPLIES, $$: $$_MAP) => VALUE
+    factory: ($: $_MAP, $$: $$_MAP) => VALUE
     /** Assembles the product by resolving dependencies */
-    assemble: (
-        toSupply: ToSupply<SUPPLIERS, OPTIONALS>
-    ) => Product<NAME, VALUE, SUPPLIES>
+    assemble: (toSupply: TO_SUPPLY) => Product<NAME, VALUE, CONSTRAINT>
     /** Packs a value into a product without dependencies */
-    pack: (value: VALUE) => Product<NAME, VALUE, Record<never, never>>
+    pack: <NEW_VALUE extends CONSTRAINT>(
+        value: NEW_VALUE
+    ) => Product<NAME, NEW_VALUE, CONSTRAINT>
     /** Tries alternative implementations of suppliers */
     /** Creates a prototype variant with different implementation */
     prototype?: ({
@@ -138,43 +169,70 @@ export type ProductSupplier<
         init,
         lazy
     }: {
-        factory: (
-            supplies: $<
-                Supplier<string, any, any, any, any, any, any>[],
-                ResourceSupplier<string, any>[]
-            >,
-            $$: MapFromList<Supplier<string, any, any, any, any, any, any>[]>
-        ) => VALUE
-        suppliers?: Supplier<string, any, any, any, any, any, any>[]
-        optionals?: ResourceSupplier<string, any>[]
-        assemblers?: ProductSupplier<string, any, any, any, any, any, any>[]
-        init?: (
-            value: VALUE,
-            supplies: $<
-                Supplier<string, any, any, any, any, any, any>[],
-                ResourceSupplier<string, any>[]
-            >
-        ) => void
+        factory: ($: $_MAP, $$: $$_MAP) => VALUE
+        suppliers?: BaseSupplier[]
+        optionals?: ResourceSupplier[]
+        assemblers?: BaseProductSupplier[]
+        init?: (value: VALUE, $: $_MAP) => void
         lazy?: boolean
-    }) => ProductSupplier<
-        NAME,
-        VALUE,
-        Supplier<string, any, any, any, any, any, any>[],
-        ResourceSupplier<string, any>[],
-        ProductSupplier<string, any, any, any, any, any, any>[],
-        any,
-        any
-    >
-    /** Allows assembling multiple suppliers at once */
-    with?: (
-        ...suppliers: ProductSupplier<string, any, any, any, any, any, any>[]
-    ) => ProductSupplier<NAME, VALUE, any, any, any, any, any>
+    }) => PrototypeSupplier
+    with: (
+        suppliers: BaseProductSupplier[],
+        assemblers?: BaseProductSupplier[]
+    ) => CompositeSupplier
     /** Optional initialization function called after factory */
-    init?: (value: VALUE, supplies: SUPPLIES) => void
+    init?: (value: VALUE, $: $_MAP) => void
     /** Whether this supplier should be lazily evaluated */
     lazy?: boolean
     /** Type marker indicating this is a product supplier */
     _product: true
+    /** The constraint type for values this supplier can pack */
+    _constraint: CONSTRAINT
+}
+
+export type BaseProductSupplier<PS extends ProductSupplier = ProductSupplier> =
+    Omit<PS, "_isPrototype" | "_isComposite" | "_isCompatible"> & {
+        _isPrototype: false
+        _isComposite: false
+        _isCompatible: true
+    }
+
+export type PrototypeSupplier<
+    IS_COMPATIBLE extends boolean = boolean,
+    BASE = ProductSupplier
+> = Omit<
+    BASE,
+    "_isPrototype" | "_isComposite" | "_isCompatible" | "prototype"
+> & {
+    _isPrototype: true
+    _isCompatible: IS_COMPATIBLE
+    _isComposite: false
+}
+
+export type CompositeSupplier<
+    BASE extends ProductSupplier = ProductSupplier,
+    WITH_SUPPLIERS extends (BaseProductSupplier | PrototypeSupplier)[] = (
+        | BaseProductSupplier
+        | PrototypeSupplier
+    )[]
+> = Omit<
+    BASE,
+    "prototype" | "_isPrototype" | "_isComposite" | "_isCompatible" | "assemble"
+> & {
+    _isPrototype: false
+    _isComposite: true
+    _isCompatible: false
+    assemble: (
+        toSupply: ToSupply<
+            MergeSuppliers<BASE["suppliers"], WITH_SUPPLIERS>,
+            BASE["optionals"]
+        >
+    ) => Product<
+        BASE["name"],
+        ReturnType<BASE["factory"]>,
+        BASE["_constraint"],
+        $<MergeSuppliers<BASE["suppliers"], WITH_SUPPLIERS>, BASE["optionals"]>
+    >
 }
 
 /**
@@ -193,24 +251,24 @@ export type ProductSupplier<
  * @public
  */
 export type Supplier<
-    NAME extends string,
-    VALUE,
-    SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[],
-    OPTIONALS extends ResourceSupplier<string, any>[],
-    ASSEMBLERS extends ProductSupplier<string, any, any, any, any, any, any>[],
-    SUPPLIES extends $<SUPPLIERS, OPTIONALS>,
-    $$_MAP extends MapFromList<[...ASSEMBLERS, ...OPTIONALS]>
+    NAME extends string = string,
+    VALUE extends CONSTRAINT = any,
+    CONSTRAINT = VALUE,
+    SUPPLIERS extends BaseSupplier[] = any[],
+    OPTIONALS extends ResourceSupplier[] = any[],
+    ASSEMBLERS extends BaseProductSupplier[] = any[]
 > =
-    | ProductSupplier<
-          NAME,
-          VALUE,
-          SUPPLIERS,
-          OPTIONALS,
-          ASSEMBLERS,
-          SUPPLIES,
-          $$_MAP
-      >
-    | ResourceSupplier<NAME, VALUE>
+    | ProductSupplier<NAME, VALUE, CONSTRAINT, SUPPLIERS, OPTIONALS, ASSEMBLERS>
+    | ResourceSupplier<NAME, VALUE, CONSTRAINT>
+
+export type BaseSupplier<SUPPLIER extends Supplier = Supplier> =
+    SUPPLIER extends ResourceSupplier
+        ? SUPPLIER
+        : SUPPLIER & {
+              _isPrototype: false
+              _isComposite: false
+              _isCompatible: true
+          }
 
 /**
  * Converts an array of objects with name properties into a map where keys are the names.
@@ -221,7 +279,7 @@ export type Supplier<
  * @public
  */
 export type MapFromList<LIST extends { name: string }[]> = LIST extends []
-    ? Record<never, never>
+    ? Record<string, never>
     : Merge<
           {
               [K in keyof LIST]: {
@@ -235,13 +293,10 @@ export type MapFromList<LIST extends { name: string }[]> = LIST extends []
  *
  * @public
  */
-export type SupplyMap = Record<
-    string,
-    Product<string, any, any> | Resource<string, any> | undefined
->
+export type SupplyMap = Record<string, Product | Resource | undefined>
 
 /**
- * Converts an array of suppliers and optionalsinto a corresponding $ supply map.
+ * Converts an array of suppliers and optionals into a corresponding $ supply map.
  *
  * @typeParam SUPPLIERS - Array of supplier types to convert into a supply map
  * @typeParam OPTIONALS - Array of optional supplier types to convert into a supply map
@@ -249,28 +304,29 @@ export type SupplyMap = Record<
  * @public
  */
 export type SupplyMapFromSuppliers<
-    SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[],
-    OPTIONALS extends ResourceSupplier<string, any>[]
+    SUPPLIERS extends Supplier[],
+    OPTIONALS extends Supplier[]
 > = {
-    [SUPPLIER in SUPPLIERS[number] as SUPPLIER["name"]]: SUPPLIER extends ProductSupplier<
+    [SUPPLIER in SUPPLIERS[number] as string extends SUPPLIER["name"]
+        ? never
+        : SUPPLIER["name"]]: SUPPLIER extends ProductSupplier<
         infer NAME,
-        infer VALUE,
-        any,
-        any,
-        any,
-        infer SUPPLIES,
-        any
+        infer VALUE
     >
-        ? Product<NAME, VALUE, SUPPLIES>
+        ? Product<NAME, VALUE>
         : SUPPLIER extends ResourceSupplier<infer NAME, infer VALUE>
         ? Resource<NAME, VALUE>
         : never
 } & {
-    [OPTIONAL in OPTIONALS[number] as OPTIONAL["name"]]?: OPTIONAL extends ResourceSupplier<
+    [OPTIONAL in OPTIONALS[number] as string extends OPTIONAL["name"]
+        ? never
+        : OPTIONAL["name"]]?: OPTIONAL extends ResourceSupplier<
         infer NAME,
         infer VALUE
     >
         ? Resource<NAME, VALUE>
+        : OPTIONAL extends ProductSupplier<infer NAME, infer VALUE>
+        ? Product<NAME, VALUE>
         : never
 }
 /**
@@ -282,10 +338,7 @@ export type SupplyMapFromSuppliers<
  * @returns A callable object that provides both property access and function call access to supplies
  * @public
  */
-export type $<
-    SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[],
-    OPTIONALS extends ResourceSupplier<string, any>[]
-> = (<
+export type $<SUPPLIERS extends Supplier[], OPTIONALS extends Supplier[]> = (<
     NAME extends keyof SupplyMapFromSuppliers<SUPPLIERS, OPTIONALS>
 >(supplier: {
     name: NAME
@@ -313,16 +366,14 @@ export type $<
  * @public
  */
 export type ExcludeSuppliersType<
-    SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[],
-    TYPE extends
-        | ProductSupplier<string, any, any, any, any, any, any>
-        | ResourceSupplier<string, any>
+    SUPPLIERS extends Supplier[],
+    TYPE extends Supplier
 > = SUPPLIERS extends readonly [infer Head, ...infer Tail]
     ? Head extends TYPE
-        ? Tail extends Supplier<string, any, any, any, any, any, any>[]
+        ? Tail extends Supplier[]
             ? ExcludeSuppliersType<Tail, TYPE>
             : []
-        : Tail extends Supplier<string, any, any, any, any, any, any>[]
+        : Tail extends Supplier[]
         ? [Head, ...ExcludeSuppliersType<Tail, TYPE>]
         : [Head]
     : []
@@ -337,38 +388,21 @@ export type ExcludeSuppliersType<
  * @returns A flattened array containing all suppliers and their transitive dependencies
  * @public
  */
-export type TransitiveSuppliers<
-    SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[]
-> = SUPPLIERS extends [infer FIRST, ...infer REST]
-    ? FIRST extends ProductSupplier<
-          string,
-          any,
-          infer CHILD_SUPPLIERS,
-          any,
-          any,
-          any,
-          any
-      >
-        ? [
-              FIRST,
-              ...TransitiveSuppliers<CHILD_SUPPLIERS>,
-              ...TransitiveSuppliers<
-                  REST extends Supplier<string, any, any, any, any, any, any>[]
-                      ? REST
-                      : []
-              >
-          ]
-        : FIRST extends ResourceSupplier<string, any>
-        ? [
-              FIRST,
-              ...TransitiveSuppliers<
-                  REST extends Supplier<string, any, any, any, any, any, any>[]
-                      ? REST
-                      : []
-              >
-          ]
-        : never
-    : []
+export type TransitiveSuppliers<SUPPLIERS extends Supplier[]> =
+    SUPPLIERS extends [infer FIRST, ...infer REST]
+        ? FIRST extends ProductSupplier<string, any, any, infer CHILD_SUPPLIERS>
+            ? [
+                  FIRST,
+                  ...TransitiveSuppliers<CHILD_SUPPLIERS>,
+                  ...TransitiveSuppliers<REST extends Supplier[] ? REST : []>
+              ]
+            : FIRST extends ResourceSupplier
+            ? [
+                  FIRST,
+                  ...TransitiveSuppliers<REST extends Supplier[] ? REST : []>
+              ]
+            : never
+        : []
 
 /**
  * Determines which suppliers need to be supplied externally when assembling a product.
@@ -381,14 +415,11 @@ export type TransitiveSuppliers<
  * @public
  */
 export type ToSupply<
-    SUPPLIERS extends Supplier<string, any, any, any, any, any, any>[],
-    OPTIONALS extends ResourceSupplier<string, any>[]
+    SUPPLIERS extends Supplier[],
+    OPTIONALS extends Supplier[]
 > = SupplyMapFromSuppliers<
-    ExcludeSuppliersType<
-        TransitiveSuppliers<SUPPLIERS>,
-        ProductSupplier<string, any, any, any, any, any, any>
-    >,
-    OPTIONALS
+    ExcludeSuppliersType<TransitiveSuppliers<SUPPLIERS>, ProductSupplier>,
+    [...TransitiveSuppliers<SUPPLIERS>, ...OPTIONALS]
 >
 
 /**
@@ -401,10 +432,10 @@ export type ToSupply<
  * @public
  */
 export type FilterSuppliers<
-    OLD extends Supplier<string, any, any, any, any, any, any>[],
-    NEW extends ProductSupplier<string, any, any, any, any, any, any>[]
+    OLD extends Supplier[],
+    NEW extends ProductSupplier[]
 > = OLD extends [infer Head, ...infer Tail]
-    ? Tail extends Supplier<string, any, any, any, any, any, any>[]
+    ? Tail extends Supplier[]
         ? Head extends { name: NEW[number]["name"] }
             ? FilterSuppliers<Tail, NEW>
             : [Head, ...FilterSuppliers<Tail, NEW>]
@@ -413,22 +444,37 @@ export type FilterSuppliers<
         : [Head]
     : []
 
+export type MergeSuppliers<
+    OLD extends Supplier[],
+    NEW extends ProductSupplier[]
+> = [...FilterSuppliers<OLD, NEW>, ...NEW]
+
 /**
  * Checks if a supplier has a circular dependency by seeing if its name appears
  * in the transitive dependencies of its own suppliers.
  * @public
  */
 export type HasCircularDependency<
-    SUPPLIER extends Pick<
-        ProductSupplier<string, any, any, any, any, any, any>,
-        "name" | "suppliers"
-    >
+    SUPPLIER extends { name: string; suppliers: any[] }
 > = SUPPLIER["name"] extends (
     TransitiveSuppliers<SUPPLIER["suppliers"]>[number] extends infer S
-        ? S extends Supplier<string, any, any, any, any, any, any>
+        ? S extends Supplier
             ? S["name"]
             : never
         : never
 )
+    ? true
+    : false
+
+export type CircularDependencyError = {
+    ERROR: "Circular dependency detected"
+}
+export type IsCompatible<
+    PROTOTYPE extends ProductSupplier,
+    ORIGINAL extends ProductSupplier
+> = ToSupply<PROTOTYPE["suppliers"], PROTOTYPE["optionals"]> extends ToSupply<
+    ORIGINAL["suppliers"],
+    ORIGINAL["optionals"]
+>
     ? true
     : false

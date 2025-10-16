@@ -4,6 +4,9 @@
  * @internal
  */
 
+import { Supplier } from "#types"
+import { transitiveSuppliers } from "#utils"
+
 /**
  * Validates that a value is a non-empty string.
  * @param value - The value to validate
@@ -11,10 +14,7 @@
  * @internal
  * @throws TypeError if the value is not a non-empty string
  */
-export function validateString(
-    value: unknown,
-    paramName: string
-): asserts value is string {
+export function validateString(value: unknown, paramName: string) {
     if (typeof value !== "string") {
         throw new TypeError(
             `${paramName} must be a string, got ${typeof value}`
@@ -29,10 +29,7 @@ export function validateString(
  * @internal
  * @throws TypeError if the value is not a plain object
  */
-export function validatePlainObject(
-    value: unknown,
-    paramName: string
-): asserts value is Record<string, any> {
+export function validatePlainObject(value: unknown, paramName: string) {
     if (value === null || typeof value !== "object") {
         throw new TypeError(
             `${paramName} must be an object, got ${
@@ -52,10 +49,7 @@ export function validatePlainObject(
  * @internal
  * @throws TypeError if the value is null or undefined
  */
-export function validateDefined<T>(
-    value: T,
-    paramName: string
-): asserts value is NonNullable<T> {
+export function validateDefined<T>(value: T, paramName: string) {
     if (value === null || value === undefined) {
         throw new TypeError(
             `${paramName} is required, got ${
@@ -72,10 +66,7 @@ export function validateDefined<T>(
  * @internal
  * @throws TypeError if the value is not a function
  */
-export function validateFunction(
-    value: unknown,
-    paramName: string
-): asserts value is (...args: any) => any {
+export function validateFunction(value: unknown, paramName: string) {
     if (typeof value !== "function") {
         throw new TypeError(
             `${paramName} must be a function, got ${typeof value}`
@@ -90,10 +81,7 @@ export function validateFunction(
  * @internal
  * @throws TypeError if the value is not an array
  */
-export function validateArray(
-    value: unknown,
-    paramName: string
-): asserts value is any[] {
+export function validateArray(value: unknown, paramName: string) {
     if (!Array.isArray(value)) {
         throw new TypeError(
             `${paramName} must be an array, got ${typeof value}`
@@ -102,89 +90,65 @@ export function validateArray(
 }
 
 /**
- * Validates the configuration object for asProduct.
+ * Validates the configuration object for product supplier.
  * @param config - The configuration object to validate
  * @internal
  * @throws TypeError if the configuration is invalid
  */
-export function validateProductConfig(config: unknown): asserts config is {
-    factory: (...args: any) => any
-    suppliers?: any[]
-    justInTime?: any[]
-    init?: (...args: any) => any
-    lazy?: boolean
-    isPrototype?: boolean
-} {
+export function validateProductConfig(name: string, config: unknown) {
     validatePlainObject(config, "config")
 
-    const cfg = config as Record<string, any>
+    const cfg = config
+
+    if (typeof cfg !== "object" || cfg === null) {
+        throw new TypeError("config must be an object")
+    }
 
     if (!("factory" in cfg)) {
         throw new TypeError("config.factory is required")
     }
+
     validateFunction(cfg.factory, "config.factory")
 
-    if ("suppliers" in cfg && cfg.suppliers !== undefined) {
-        validateArray(cfg.suppliers, "config.suppliers")
-    }
-
-    if ("justInTime" in cfg && cfg.justInTime !== undefined) {
-        validateArray(cfg.justInTime, "config.justInTime")
-    }
-
-    if ("init" in cfg && cfg.init !== undefined) {
-        validateFunction(cfg.init, "config.init")
-    }
-
-    if (
-        "lazy" in cfg &&
-        cfg.lazy !== undefined &&
-        typeof cfg.lazy !== "boolean"
-    ) {
-        throw new TypeError(
-            `config.lazy must be a boolean, got ${typeof cfg.lazy}`
+    if ("suppliers" in cfg) {
+        validateSuppliers(
+            cfg.suppliers,
+            "config.suppliers",
+            "_allowPrototypes" in cfg ? (cfg._allowPrototypes as any) : false
         )
+
+        transitiveSuppliers({ name, suppliers: cfg.suppliers as any })
     }
 
-    if (
-        "isPrototype" in cfg &&
-        cfg.isPrototype !== undefined &&
-        typeof cfg.isPrototype !== "boolean"
-    ) {
-        throw new TypeError(
-            `config.isPrototype must be a boolean, got ${typeof cfg.isPrototype}`
+    if ("optionals" in cfg && Array.isArray(cfg.optionals)) {
+        const suppliers = validateSuppliers(
+            cfg.optionals,
+            "config.optionals",
+            "_allowPrototypes" in cfg ? (cfg._allowPrototypes as any) : false
         )
-    }
-}
-
-/**
- * Validates the configuration object for prototype.
- * @param config - The configuration object to validate
- * @internal
- * @throws TypeError if the configuration is invalid
- */
-export function validatePrototypeConfig(config: unknown): asserts config is {
-    factory: (...args: any) => any
-    suppliers?: any[]
-    justInTime?: any[]
-    init?: (...args: any) => any
-    lazy?: boolean
-} {
-    validatePlainObject(config, "config")
-
-    const cfg = config as Record<string, any>
-
-    if (!("factory" in cfg)) {
-        throw new TypeError("config.factory is required")
-    }
-    validateFunction(cfg.factory, "config.factory")
-
-    if ("suppliers" in cfg && cfg.suppliers !== undefined) {
-        validateArray(cfg.suppliers, "config.suppliers")
+        if (
+            !suppliers.every(
+                (supplier) => "_resource" in supplier && supplier._resource
+            )
+        ) {
+            throw new TypeError("config.optionals must be resource suppliers")
+        }
     }
 
-    if ("justInTime" in cfg && cfg.justInTime !== undefined) {
-        validateArray(cfg.justInTime, "config.justInTime")
+    if ("assemblers" in cfg && Array.isArray(cfg.assemblers)) {
+        const assemblers = validateSuppliers(
+            cfg.assemblers,
+            "config.assemblers",
+            "_allowPrototypes" in cfg ? (cfg._allowPrototypes as any) : false
+        )
+
+        if (
+            !assemblers.every(
+                (assembler) => "_product" in assembler && assembler._product
+            )
+        ) {
+            throw new TypeError("config.assemblers must be product suppliers")
+        }
     }
 
     if ("init" in cfg && cfg.init !== undefined) {
@@ -210,9 +174,13 @@ export function validatePrototypeConfig(config: unknown): asserts config is {
  * @throws TypeError if any supplier is invalid
  */
 export function validateSuppliers(
-    suppliers: unknown[],
-    paramName: string
-): void {
+    suppliers: unknown,
+    paramName: string,
+    allowPrototypes: boolean = false
+) {
+    if (!Array.isArray(suppliers)) {
+        throw new TypeError(`${paramName} must be an array`)
+    }
     for (let i = 0; i < suppliers.length; i++) {
         const supplier = suppliers[i]
         if (supplier === null || typeof supplier !== "object") {
@@ -222,6 +190,7 @@ export function validateSuppliers(
                 }`
             )
         }
+
         if (
             !("name" in supplier) ||
             typeof (supplier as any).name !== "string"
@@ -230,5 +199,23 @@ export function validateSuppliers(
                 `${paramName}[${i}] must have a 'name' property of type string`
             )
         }
+
+        if ("_isComposite" in supplier && supplier?._isComposite) {
+            throw new TypeError(
+                `Cannot depend on ${supplier.name} composite supplier`
+            )
+        }
+
+        if (
+            !allowPrototypes &&
+            "_isPrototype" in supplier &&
+            supplier?._isPrototype
+        ) {
+            throw new TypeError(
+                `Cannot depend on ${supplier.name} prototype supplier here`
+            )
+        }
     }
+
+    return suppliers as Supplier[]
 }

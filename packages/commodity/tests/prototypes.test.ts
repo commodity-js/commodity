@@ -26,7 +26,7 @@ describe("Prototype Method", () => {
         })
     })
 
-    it("should allow prototypes in suppliers array", () => {
+    it("should not allow prototypes in suppliers array", () => {
         const market = createMarket()
 
         const $$base = market.offer("prototype").asProduct({
@@ -38,12 +38,12 @@ describe("Prototype Method", () => {
             factory: () => "prototype"
         })
 
-        const $$next = market.offer("next").asProduct({
-            suppliers: [$$prototype],
-            factory: ($) => $($$prototype)
-        })
-
-        expect($$next.assemble({}).unpack()).toEqual("prototype")
+        expect(() => {
+            const $$next = market.offer("next").asProduct({
+                //@ts-expect-error - prototype in suppliers array
+                suppliers: [$$prototype]
+            })
+        }).toThrow()
     })
 
     it("should handle init setting in prototype", async () => {
@@ -65,7 +65,7 @@ describe("Prototype Method", () => {
             factory: ($) => $($$base)()
         })
 
-        const $$tried = $$test.with($$prototyped)
+        const $$tried = $$test.with([$$prototyped])
 
         $$tried.assemble({})
         $$test.assemble({})
@@ -132,12 +132,13 @@ describe("Prototype Method", () => {
 
         // Try to create circular dependency using prototype
         // This should be caught by the circular dependency detection
-        const $$mockA = $$A.prototype({
-            factory: ($) => "mockA uses " + $($$B),
-            suppliers: [$$B] // This creates a potential circle
-        })
-
-        expectTypeOf($$mockA).not.toBeObject()
+        expect(() => {
+            //@ts-expect-error - circular dependency
+            const $$mockA = $$A.prototype({
+                factory: ($) => "mockA uses " + $($$B),
+                suppliers: [$$B] // This creates a potential circle
+            })
+        }).toThrow("Circular dependency detected")
     })
 })
 
@@ -177,7 +178,7 @@ describe("With Method", () => {
             suppliers: []
         })
 
-        const $$test = $$service.with($$mockDb, $$mockCache)
+        const $$test = $$service.with([$$mockDb, $$mockCache])
         const $test = $$test.assemble({})
 
         expect($test.unpack()).toEqual({
@@ -208,7 +209,7 @@ describe("With Method", () => {
             factory: () => "extra-service"
         })
 
-        const $$test = $$main.with($$unusedProto)
+        const $$test = $$main.with([$$unusedProto])
         const $test = $$test.assemble({})
 
         // The extra supplier is added to the suppliers list, but not to the result
@@ -223,7 +224,7 @@ describe("With Method", () => {
         })
 
         // With with no suppliers - should work fine
-        const $$test = $$main.with()
+        const $$test = $$main.with([])
         const $test = $$test.assemble({})
 
         expect($test.unpack()).toBe("main")
@@ -251,9 +252,11 @@ describe("With Method", () => {
             suppliers: []
         })
 
-        const $$mocked = $$main.with($$mockDb1, $$mockDb2)
-        const test = $$mocked.suppliers
-        expect(test).toEqual([$$mockDb1, $$mockDb2])
+        const $$mocked = $$main.with([$$mockDb1, $$mockDb2])
+        expect($$mocked.suppliers.map((s) => s.name)).toEqual([
+            $$mockDb1.name,
+            $$mockDb2.name
+        ])
         const result = $$mocked.assemble({}).unpack()
         expect(result).toEqual("main-mock-db-2")
     })
@@ -282,7 +285,7 @@ describe("With Method", () => {
         })
 
         const $result = $$A
-            .with($$B)
+            .with([$$B])
             .assemble(index($$shared.pack("shared-data"), $$unique.pack(123)))
 
         expect($result.unpack()).toEqual("A-shared-data")
@@ -312,7 +315,7 @@ describe("With Method", () => {
             }
         })
 
-        const $$combined = $$user.with($$session)
+        const $$combined = $$user.with([$$session])
 
         const db = $$db.pack("postgresql://localhost:5432/db")
         const cache = $$cache.pack("redis://localhost:6379")
@@ -343,7 +346,7 @@ describe("With Method", () => {
         })
 
         const $result = $$doubler
-            .with($$tripler)
+            .with([$$tripler])
             .assemble(index($$number.pack(5)))
 
         expect($result.unpack()).toBe(10) // 5 * 2
@@ -368,7 +371,7 @@ describe("With Method", () => {
             }
         })
 
-        const $result = $$working.with($$failing).assemble({})
+        const $result = $$working.with([$$failing]).assemble({})
         expect($result.unpack()).toBe("working-value")
         expect(() => {
             $result.supplies($$failing)

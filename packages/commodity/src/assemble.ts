@@ -54,6 +54,7 @@ export function hire(suppliers: ProductSupplier<string, any, any, any>[]) {
                 try {
                     $(supplier)
                 } catch (e) {
+                    console.error(e)
                     // If prerun fails, we don't want to break the entire supply chain
                     // The error will be thrown again when the dependency is actually needed
                 }
