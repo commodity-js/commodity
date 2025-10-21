@@ -8,7 +8,7 @@ import { once } from "#utils"
  * @returns An object with an assemble method for dependency resolution
  * @internal
  */
-export function hire(suppliers: ProductSupplier<string, any, any, any>[]) {
+export function hire(suppliers: ProductSupplier[]) {
     return {
         /**
          * Assembles all suppliers by resolving their dependencies.
@@ -18,49 +18,44 @@ export function hire(suppliers: ProductSupplier<string, any, any, any>[]) {
          * @returns The $ supply map
          */
         assemble: (supplied: Record<string, any>) => {
-            const $: any = (supplier: { name: string }) => {
-                const supply = $[supplier.name]
-                if (!supply?.unpack) {
-                    return undefined
-                }
-                return supply.unpack()
-            }
+            const supplies: Record<string, any> = {}
 
             Object.defineProperties(
-                $,
+                supplies,
                 Object.getOwnPropertyDescriptors(supplied)
             )
 
-            for (const supplier of suppliers) {
+            // Reverse the suppliers to respect last supplier in array wins convention.
+            for (const supplier of suppliers.toReversed()) {
                 if (
                     Object.prototype.hasOwnProperty.call(
-                        supplied,
+                        supplies,
                         supplier.name
                     )
                 ) {
                     continue
                 }
 
-                Object.defineProperty($, supplier.name, {
-                    get: once(() => supplier.assemble($)),
+                Object.defineProperty(supplies, supplier.name, {
+                    get: once(() => supplier.assemble(supplies)),
                     enumerable: true,
                     configurable: true
                 })
             }
 
             // Prerun supplier factories
-            for (const supplier of suppliers) {
+            for (const supplier of suppliers.toReversed()) {
                 if (supplier.lazy) continue
                 try {
-                    $(supplier)
+                    supplies[supplier.name]?.unpack()
                 } catch (e) {
-                    console.error(e)
+                    // console.error(e)
                     // If prerun fails, we don't want to break the entire supply chain
                     // The error will be thrown again when the dependency is actually needed
                 }
             }
 
-            return $
+            return supplies
         }
     }
 }

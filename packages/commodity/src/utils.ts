@@ -1,9 +1,4 @@
-import {
-    IsCompatible,
-    ProductSupplier,
-    Supplier,
-    type MapFromList
-} from "#types"
+import { Merge, ProductSupplier, Supplier } from "#types"
 
 /**
  * Minimal once implemetation
@@ -37,19 +32,40 @@ export function once<T extends () => any>(func: T) {
 
 /**
  * transforms an array into a map where each element is
- * keyed by its `name` property.
+ * keyed by its suppliers's `name` property.
  *
- * @typeParam LIST - An array type where each element has a `name` property
+ * @typeParam LIST - An array type where each element has a `supplier` property
  * @param list - Array of objects with name properties
  * @returns A map where keys are the name properties and values are the objects
  * @public
  */
-export function index<LIST extends { name: string }[]>(...list: LIST) {
+export function index<LIST extends { supplier: { name: string } }[]>(
+    ...list: LIST
+) {
     return list.reduce(
-        (acc, r) => ({ ...acc, [r.name]: r }),
+        (acc, r) => ({ ...acc, [r.supplier.name]: r }),
         {}
     ) as MapFromList<LIST>
 }
+
+/**
+ * Converts an array of objects with name properties into a map where keys are the names.
+ * This is used internally to create lookup maps from supplier arrays for type-safe access.
+ *
+ * @typeParam LIST - An array of objects that have a `name` property
+ * @returns A map type where each key is a name from the list and values are the corresponding objects
+ * @public
+ */
+export type MapFromList<LIST extends { supplier: { name: string } }[]> =
+    LIST extends []
+        ? Record<string, never>
+        : Merge<
+              {
+                  [K in keyof LIST]: {
+                      [NAME in LIST[K]["supplier"]["name"]]: LIST[K]
+                  }
+              }[number]
+          >
 
 /**
  * @param ms - Number of milliseconds to wait
@@ -70,14 +86,26 @@ export function sleep(ms: number) {
  * @returns A flattened array containing all suppliers and their transitive dependencies
  * @public
  */
-export function transitiveSuppliers(
-    root: Pick<ProductSupplier, "name" | "suppliers">,
+export function assertNoCircularDependency(
+    root: Pick<
+        ProductSupplier,
+        | "name"
+        | "suppliers"
+        | "optionals"
+        | "assemblers"
+        | "withSuppliers"
+        | "withAssemblers"
+    >,
     visited = new Set<string>(),
     suppliers?: Supplier[]
 ) {
-    const transitive = new Set<Supplier>()
-
-    for (const supplier of suppliers ?? root.suppliers) {
+    for (const supplier of suppliers ?? [
+        ...root.suppliers,
+        ...root.optionals,
+        ...root.assemblers,
+        ...root.withSuppliers,
+        ...root.withAssemblers
+    ]) {
         if (supplier.name === root.name) {
             throw new Error("Circular dependency detected")
         }
@@ -87,38 +115,16 @@ export function transitiveSuppliers(
         visited.add(supplier.name)
         // If the supplier itself is a resource, add it directly
         if (!("suppliers" in supplier) && "_resource" in supplier) {
-            transitive.add(supplier)
             continue
         } else {
             // Otherwise, collect its transitive dependencies
-            const deps = transitiveSuppliers(root, visited, supplier.suppliers)
-            deps.forEach((dep) => transitive.add(dep))
+            assertNoCircularDependency(root, visited, [
+                ...supplier.suppliers,
+                ...supplier.optionals,
+                ...supplier.assemblers,
+                ...supplier.withSuppliers,
+                ...supplier.withAssemblers
+            ])
         }
     }
-
-    return transitive
-}
-
-/**
- * Checks if a prototype has compatible dependencies with the original.
- * Compatible means the prototype requires the same or fewer resource dependencies.
- * @param original - The original product supplier
- * @param prototype - The prototype product supplier
- * @returns true if compatible (same or fewer deps), false otherwise
- * @export
- */
-export function isCompatible(
-    original: ProductSupplier,
-    prototype: ProductSupplier
-) {
-    const toSupplyOriginal = Array.from(transitiveSuppliers(original))
-        .filter((dep) => "_resource" in dep)
-        .map((dep) => dep.name)
-    const toSupplyPrototype = Array.from(transitiveSuppliers(prototype))
-        .filter((dep) => "_resource" in dep)
-        .map((dep) => dep.name)
-
-    return toSupplyPrototype.every((name) =>
-        toSupplyOriginal.includes(name)
-    ) as IsCompatible<typeof prototype, typeof original>
 }

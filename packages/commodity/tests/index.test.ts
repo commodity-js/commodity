@@ -75,8 +75,8 @@ describe("commodity", () => {
                 suppliers: [$$A, $$B],
                 factory: ($) => {
                     return {
-                        A: $($$A),
-                        B: $($$B)
+                        A: $($$A).unpack(),
+                        B: $($$B).unpack()
                     }
                 }
             })
@@ -105,8 +105,8 @@ describe("commodity", () => {
                 suppliers: [$$A, $$B],
                 factory: ($) => {
                     return {
-                        A: $($$A),
-                        B: $($$B)
+                        A: $($$A).unpack(),
+                        B: $($$B).unpack()
                     }
                 }
             })
@@ -128,7 +128,7 @@ describe("commodity", () => {
             const $$main = market.offer("main").asProduct({
                 suppliers: [$$product],
                 factory: ($) => {
-                    const product = $($$product)
+                    const product = $($$product).unpack()
                     return {
                         product
                     }
@@ -162,7 +162,7 @@ describe("commodity", () => {
                         debug: false
                     })
 
-                    const $logger = $[$$logger.name].pack({
+                    const $logger = $($$logger).supplier.pack({
                         level: "debug",
                         prefix: "TEST"
                     })
@@ -170,8 +170,8 @@ describe("commodity", () => {
                     return {
                         config: $config.unpack(),
                         logger: $logger.unpack(),
-                        suppliedConfig: $[$config.name].unpack(),
-                        suppliedLogger: $[$$logger.name].unpack()
+                        suppliedConfig: $($$config).unpack(),
+                        suppliedLogger: $($$logger).unpack()
                     }
                 }
             })
@@ -205,9 +205,9 @@ describe("commodity", () => {
                 suppliers: [$$config, $$name, $$count],
                 factory: ($) => {
                     return {
-                        config: $($$config),
-                        name: $($$name),
-                        count: $($$count)
+                        config: $($$config).unpack(),
+                        name: $($$name).unpack(),
+                        count: $($$count).unpack()
                     }
                 }
             })
@@ -270,43 +270,6 @@ describe("commodity", () => {
         })
     })
 
-    describe("Callable Object API", () => {
-        it("should support both property access and function calls for dependencies", () => {
-            const market = createMarket()
-            const $$resource = market.offer("resource").asResource<string>()
-            const $$product = market.offer("product").asProduct({
-                factory: () => "product"
-            })
-
-            const $$test = market.offer("test-product").asProduct({
-                suppliers: [$$resource, $$product],
-                factory: ($) => {
-                    return {
-                        propAccess: {
-                            resource: $[$$resource.name].unpack(),
-                            product: $[$$product.name].unpack()
-                        },
-                        funcAccess: {
-                            resource: $($$resource),
-                            product: $($$product)
-                        }
-                    }
-                }
-            })
-
-            const $result = $$test.assemble(index($$resource.pack("resource")))
-
-            expect($result.unpack().propAccess).toEqual({
-                resource: "resource",
-                product: "product"
-            })
-            expect($result.unpack().funcAccess).toEqual({
-                resource: "resource",
-                product: "product"
-            })
-        })
-    })
-
     describe("Factory memoization", () => {
         it("should create separate memoization contexts for different assembly calls", () => {
             const factorySpy = vi.fn().mockReturnValue("product")
@@ -340,8 +303,8 @@ describe("commodity", () => {
             const $$test = market.offer("test").asProduct({
                 suppliers: [$$spy],
                 factory: ($) => {
-                    $($$spy)
-                    $($$spy)
+                    $($$spy).unpack()
+                    $($$spy).unpack()
 
                     return "test"
                 }
@@ -363,7 +326,7 @@ describe("commodity", () => {
             const $$B = market.offer("B").asProduct({
                 suppliers: [$$A],
                 factory: ($) => {
-                    $($$A)
+                    $($$A).unpack()
                     return "B"
                 }
             })
@@ -372,8 +335,8 @@ describe("commodity", () => {
                 suppliers: [$$A, $$B],
                 factory: ($) => {
                     return {
-                        A: $($$A),
-                        B: $($$B)
+                        A: $($$A).unpack(),
+                        B: $($$B).unpack()
                     }
                 }
             })
@@ -417,10 +380,10 @@ describe("commodity", () => {
                 suppliers: [$$A, $$B, $$C, $$D],
                 factory: ($) => {
                     return {
-                        A: $($$A),
-                        B: $($$B),
-                        C: $($$C),
-                        D: $($$D)
+                        A: $($$A).unpack(),
+                        B: $($$B).unpack(),
+                        C: $($$C).unpack(),
+                        D: $($$D).unpack()
                     }
                 }
             })
@@ -435,14 +398,14 @@ describe("commodity", () => {
 
             // Override productA - this should trigger resupply of productB and productD
             // but productC should remain cached
-            const $newMain = $initialMain.reassemble(
-                index($$A.pack(Date.now()))
-            )
+            const newMain = $initialMain
+                .reassemble(index($$A.pack(Date.now())))
+                .unpack()
 
-            expect($newMain.unpack().A).not.toBe(initialA)
-            expect($newMain.unpack().B).not.toBe(initialB)
-            expect($newMain.unpack().C).toBe(initialC)
-            expect($newMain.unpack().D).not.toBe(initialD)
+            expect(newMain.A).not.toBe(initialA)
+            expect(newMain.B).not.toBe(initialB)
+            expect(newMain.C).toBe(initialC)
+            expect(newMain.D).not.toBe(initialD)
         })
 
         it("should handle recursive dependency chains correctly", async () => {
@@ -581,7 +544,7 @@ describe("commodity", () => {
             const $$main = market.offer("main").asProduct({
                 suppliers: [$$error],
                 factory: ($) => {
-                    return $($$error)()
+                    return $($$error).unpack()
                 }
             })
 
@@ -675,7 +638,7 @@ describe("commodity", () => {
             const $$main = market.offer("main").asProduct({
                 suppliers: [$$lazy],
                 factory: ($) => {
-                    const lazyValue = $($$lazy)
+                    const lazyValue = $($$lazy).unpack()
                     return { lazyValue }
                 }
             })
@@ -714,12 +677,12 @@ describe("commodity", () => {
             const $$main = market.offer("main").asProduct({
                 suppliers: [$$B],
                 factory: ($) => {
-                    const main = $($$B)
+                    const main = $($$B).unpack()
                     return { main }
                 }
             })
 
-            const $main = $$main.assemble({})
+            $$main.assemble({})
 
             await sleep(100)
 
@@ -740,7 +703,7 @@ describe("commodity", () => {
             const $$main = market.offer("main").asProduct({
                 suppliers: [$$lazy],
                 factory: ($) => {
-                    const lazyValue = $($$lazy)
+                    const lazyValue = $($$lazy).unpack()
                     return { lazyValue }
                 }
             })
@@ -773,7 +736,7 @@ describe("commodity", () => {
             const $$main = market.offer("main").asProduct({
                 suppliers: [$$original],
                 factory: ($) => {
-                    const value = $($$prototype)
+                    const value = $($$original).unpack()
                     return { value }
                 }
             })

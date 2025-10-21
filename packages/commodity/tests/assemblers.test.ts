@@ -15,7 +15,7 @@ describe("Assemblers Feature", () => {
             assemblers: [$$assembler],
             factory: ($, $$) => {
                 // Assemblers are passed but not auto-assembled
-                expect($$[$$assembler.name]).toBe($$assembler)
+                expect($$($$assembler).name).toBe($$assembler.name)
                 expect(factoryMock).not.toHaveBeenCalled()
 
                 return "main-result"
@@ -38,7 +38,7 @@ describe("Assemblers Feature", () => {
         const $$main = market.offer("main").asProduct({
             assemblers: [$$assembler],
             factory: ($, $$) => {
-                const assemblerProduct = $$[$$assembler.name].assemble({})
+                const assemblerProduct = $$($$assembler).assemble({})
                 const value = assemblerProduct.unpack()
 
                 expect(factoryMock).toHaveBeenCalledTimes(1)
@@ -85,14 +85,13 @@ describe("Assemblers Feature", () => {
             suppliers: [$$session, $$userFeature],
             assemblers: [$$adminFeature],
             factory: ($, $$) => {
-                const session = $($$session)
+                const session = $($$session).unpack()
                 const role = session.role
 
                 if (role === "admin") {
-                    const adminFeature = $$[$$adminFeature.name].assemble({
-                        ...$,
-                        ...index($$adminSession.pack({ ...session, role }))
-                    })
+                    const adminFeature = $$($$adminFeature).assemble(
+                        index($$adminSession.pack({ ...session, role }))
+                    )
 
                     return {
                         user: session.userId,
@@ -101,7 +100,7 @@ describe("Assemblers Feature", () => {
                 } else {
                     return {
                         user: session.userId,
-                        feature: $($$userFeature)
+                        feature: $($$userFeature).unpack()
                     }
                 }
             }
@@ -143,7 +142,7 @@ describe("Assemblers Feature", () => {
         const $$main = market.offer("main").asProduct({
             assemblers: [$$failing],
             factory: ($, $$) => {
-                $$[$$failing.name].assemble({}).unpack()
+                $$($$failing).assemble({}).unpack()
                 return "main"
             }
         })
@@ -184,7 +183,7 @@ describe("Assemblers Feature", () => {
         const $$repository = market.offer("repository").asProduct({
             suppliers: [$$db],
             factory: ($) => {
-                const db = $($$db)
+                const db = $($$db).unpack()
                 return "repo-" + db
             }
         })
@@ -192,7 +191,7 @@ describe("Assemblers Feature", () => {
         const $$feature = market.offer("feature").asProduct({
             suppliers: [$$repository],
             factory: ($) => {
-                const repo = $($$repository)
+                const repo = $($$repository).unpack()
                 return "feature-" + repo
             }
         })
@@ -200,7 +199,7 @@ describe("Assemblers Feature", () => {
         const $$main = market.offer("main").asProduct({
             assemblers: [$$feature],
             factory: ($, $$) => {
-                const $feature = $$[$$feature.name].assemble(
+                const $feature = $$($$feature).assemble(
                     index($$db.pack("postgresql://localhost:5432/mydb"))
                 )
 
@@ -222,7 +221,7 @@ describe("Assemblers Feature", () => {
         const $$squarer = market.offer("squarer").asProduct({
             suppliers: [$$number],
             factory: ($) => {
-                const number = $($$number)
+                const number = $($$number).unpack()
                 return number * number
             }
         })
@@ -231,7 +230,9 @@ describe("Assemblers Feature", () => {
             suppliers: [$$number],
             assemblers: [$$squarer],
             factory: ($, $$) => {
-                const assembled = $$[$$squarer.name].assemble($)
+                const assembled = $$($$squarer).assemble(
+                    index($$number.pack($($$number).unpack()))
+                )
                 const squared = assembled.unpack()
                 expect(squared).toEqual(25)
                 const reassembled = assembled.reassemble(
@@ -260,9 +261,9 @@ describe("Assemblers Feature", () => {
 
         const $$prototype = $$base.prototype({
             factory: ($, $$) => {
-                expect($$[$$assembler.name]).toBe($$assembler)
+                expect($$($$assembler).name).toBe($$assembler.name)
 
-                const assembled = $$[$$assembler.name].assemble({})
+                const assembled = $$($$assembler).assemble({})
                 const value = assembled.unpack()
 
                 return `base-value-${value}`
@@ -294,8 +295,8 @@ describe("Assemblers Feature", () => {
 
         const $$prototype = $$base.prototype({
             factory: ($, $$) => {
-                const assembler1 = $$[$$A.name].assemble({})
-                const assembler2 = $$[$$B.name].assemble({})
+                const assembler1 = $$($$A).assemble({})
+                const assembler2 = $$($$B).assemble({})
 
                 return `base-value-${assembler1.unpack()}-${assembler2.unpack()}`
             },
@@ -311,7 +312,7 @@ describe("Assemblers Feature", () => {
     it("should support with() method with assembler replacing original ones", () => {
         const market = createMarket()
         const originalSpy = vi.fn().mockReturnValue("original")
-        const triedSpy = vi.fn().mockReturnValue("tried")
+        const triedSpy = vi.fn().mockReturnValue("hired")
 
         const $$originalAssembler = market.offer("original").asProduct({
             factory: originalSpy
@@ -323,7 +324,7 @@ describe("Assemblers Feature", () => {
         const $$base = market.offer("base").asProduct({
             assemblers: [$$originalAssembler],
             factory: ($, $$) => {
-                return $$[$$originalAssembler.name].assemble({}).unpack()
+                return $$($$originalAssembler).assemble({}).unpack()
             }
         })
 
@@ -331,7 +332,7 @@ describe("Assemblers Feature", () => {
 
         const result = $$tried.assemble({}).unpack()
 
-        expect(result).toBe("tried")
+        expect(result).toBe("hired")
         expect(originalSpy).toHaveBeenCalledTimes(0)
         expect(triedSpy).toHaveBeenCalledTimes(1)
     })
@@ -369,7 +370,7 @@ describe("Assemblers Feature", () => {
         const $$prototype = $$base.prototype({
             factory: ($, $$) => {
                 expect(() => {
-                    $$[$$error.name].assemble({}).unpack()
+                    $$($$error).assemble({}).unpack()
                 }).toThrow("Assembler error")
                 return "prototype-value"
             },
@@ -399,7 +400,7 @@ describe("Assemblers Feature", () => {
             assemblers: [$$base],
             factory: ($, $$) => {
                 expect(() => {
-                    $$[$$base.name].assemble({}).unpack()
+                    $$($$base).assemble({}).unpack()
                 }).toThrow()
                 return "main"
             }
@@ -433,7 +434,7 @@ describe("Assemblers Feature", () => {
         const $$prototype = $$base.prototype({
             assemblers: [$$test],
             factory: ($, $$) => {
-                const $test = $$[$$test.name].assemble(
+                const $test = $$($$test).assemble(
                     index($$config.pack({ env: "test" }))
                 )
 
@@ -451,7 +452,7 @@ describe("Assemblers Feature", () => {
         const $$squarer = market.offer("squarer").asProduct({
             suppliers: [$$number],
             factory: ($) => {
-                const number = $($$number)
+                const number = $($$number).unpack()
                 return number * number
             }
         })
@@ -463,7 +464,7 @@ describe("Assemblers Feature", () => {
 
         const $$prototype = $$base.prototype({
             factory: ($, $$) => {
-                const assembler = $$[$$squarer.name].assemble(
+                const assembler = $$($$squarer).assemble(
                     index($$number.pack(5))
                 )
                 const squared = assembler.unpack()
@@ -488,7 +489,7 @@ describe("Assemblers Feature", () => {
         const $$squarer = market.offer("squarer").asProduct({
             suppliers: [$$number],
             factory: ($) => {
-                const number = $($$number)
+                const number = $($$number).unpack()
                 return number * number
             }
         })
@@ -496,7 +497,7 @@ describe("Assemblers Feature", () => {
         const $$triedSquarer = $$squarer.prototype({
             suppliers: [$$number],
             factory: ($) => {
-                const number = $($$number)
+                const number = $($$number).unpack()
                 return number * number * 2
             }
         })
@@ -504,7 +505,7 @@ describe("Assemblers Feature", () => {
         const $$base = market.offer("base").asProduct({
             assemblers: [$$squarer],
             factory: ($, $$) => {
-                const assembler = $$[$$squarer.name].assemble(
+                const assembler = $$($$squarer).assemble(
                     index($$number.pack(5))
                 )
                 const result = assembler.unpack()
@@ -544,7 +545,7 @@ describe("Assemblers Feature", () => {
         const $$base = market.offer("base").asProduct({
             assemblers: [$$original],
             factory: ($, $$) => {
-                return $$[$$original.name].assemble({}).unpack()
+                return $$($$original).assemble({}).unpack()
             }
         })
 
@@ -563,210 +564,206 @@ describe("Assemblers Feature", () => {
 
         const $$assembler1 = market.offer("assembler1").asProduct({
             suppliers: [$$resource],
-            factory: ($) => `A1: ${$($$resource)}`
+            factory: ($) => `A1: ${$($$resource).unpack()}`
         })
 
         const $$assembler2 = market.offer("assembler2").asProduct({
             suppliers: [$$resource],
-            factory: ($) => `A2: ${$($$resource)}`
+            factory: ($) => `A2: ${$($$resource).unpack()}`
         })
 
         const $$base = market.offer("base").asProduct({
             assemblers: [$$assembler1],
             factory: ($, $$) => {
-                return $$[$$assembler1.name]
+                return $$($$assembler1)
                     .assemble(index($$resource.pack("test")))
                     .unpack()
             }
         })
 
-        type test = typeof $$base.factory
-
         const $$extended = $$base.with([], [$$assembler2])
         const $result = $$extended.assemble({})
         expect($result.unpack()).toBe("A1: test")
     })
+})
 
-    describe("Assembler Constraint Validation", () => {
-        it("should allow replacing assembler with same dependencies", () => {
-            const market = createMarket()
-            const $$resource = market.offer("resource").asResource<number>()
+describe("Assembler Constraint Validation", () => {
+    it("should allow replacing assembler with same dependencies", () => {
+        const market = createMarket()
+        const $$resource = market.offer("resource").asResource<number>()
 
-            const $$original = market.offer("calculator").asProduct({
-                suppliers: [$$resource],
-                factory: ($) => $($$resource) * 2
-            })
-
-            const $$replacement = $$original.prototype({
-                suppliers: [$$resource],
-                factory: ($) => $($$resource) * 3
-            })
-
-            const $$base = market.offer("base").asProduct({
-                assemblers: [$$original],
-                factory: ($, $$) => {
-                    return $$[$$original.name]
-                        .assemble(index($$resource.pack(10)))
-                        .unpack()
-                }
-            })
-
-            // Should work - same dependencies
-            const $$replaced = $$base.with([], [$$replacement])
-            const $result = $$replaced.assemble({})
-            expect($result.unpack()).toBe(30) // Uses replacement
+        const $$original = market.offer("calculator").asProduct({
+            suppliers: [$$resource],
+            factory: ($) => $($$resource) * 2
         })
 
-        it("should allow replacing assembler with fewer dependencies", () => {
-            const market = createMarket()
-            const $$resource1 = market.offer("resource1").asResource<number>()
-            const $$resource2 = market.offer("resource2").asResource<number>()
-
-            const $$original = market.offer("calculator").asProduct({
-                suppliers: [$$resource1, $$resource2],
-                factory: ($) => $($$resource1) + $($$resource2)
-            })
-
-            // Replacement has fewer dependencies (only resource1)
-            const $$replacement = $$original.prototype({
-                suppliers: [$$resource1],
-                factory: ($) => $($$resource1) * 2
-            })
-
-            const $$base = market.offer("base").asProduct({
-                assemblers: [$$original],
-                factory: ($, $$) => {
-                    return $$[$$original.name]
-                        .assemble(
-                            index($$resource1.pack(10), $$resource2.pack(5))
-                        )
-                        .unpack()
-                }
-            })
-
-            // Should work - fewer dependencies are OK
-            const $$replaced = $$base.with([], [$$replacement])
-            const $result = $$replaced.assemble({})
-            expect($result.unpack()).toBe(20) // Uses replacement with just resource1
+        const $$replacement = $$original.prototype({
+            suppliers: [$$resource],
+            factory: ($) => $($$resource) * 3
         })
 
-        it("should reject replacing assembler with more dependencies at runtime", () => {
-            const market = createMarket()
-            const $$resource1 = market.offer("resource1").asResource<number>()
-            const $$resource2 = market.offer("resource2").asResource<number>()
-
-            const $$original = market.offer("calculator").asProduct({
-                suppliers: [$$resource1],
-                factory: ($) => $($$resource1) * 2
-            })
-
-            // Replacement has MORE dependencies (both resource1 and resource2)
-            const $$replacement = $$original.prototype({
-                suppliers: [$$resource1, $$resource2],
-                factory: ($) => $($$resource1) + $($$resource2)
-            })
-
-            const $$base = market.offer("base").asProduct({
-                assemblers: [$$original],
-                factory: ($, $$) => {
-                    return $$[$$original.name]
-                        .assemble(index($$resource1.pack(10)))
-                        .unpack()
-                }
-            })
-
-            // Should throw at runtime - more dependencies not allowed
-            expect(() => {
-                $$base.with([], [$$replacement])
-            }).toThrow(/incompatible/)
-            expect(() => {
-                $$base.with([], [$$replacement])
-            }).toThrow(/calculator/)
+        const $$base = market.offer("base").asProduct({
+            assemblers: [$$original],
+            factory: ($, $$) => {
+                return $$[$$original.name]
+                    .assemble(index($$resource.pack(10)))
+                    .unpack()
+            }
         })
 
-        it("should handle transitive dependencies correctly", () => {
-            const market = createMarket()
-            const $$resource1 = market.offer("resource1").asResource<number>()
-            const $$resource2 = market.offer("resource2").asResource<number>()
+        // Should work - same dependencies
+        const $$replaced = $$base.with([], [$$replacement])
+        const $result = $$replaced.assemble({})
+        expect($result.unpack()).toBe(30) // Uses replacement
+    })
 
-            const $$dependency = market.offer("dependency").asProduct({
-                suppliers: [$$resource1],
-                factory: ($) => $($$resource1) * 2
-            })
+    it("should allow replacing assembler with fewer dependencies", () => {
+        const market = createMarket()
+        const $$resource1 = market.offer("resource1").asResource<number>()
+        const $$resource2 = market.offer("resource2").asResource<number>()
 
-            const $$original = market.offer("calculator").asProduct({
-                suppliers: [$$dependency],
-                factory: ($) => $($$dependency) + 10
-            })
-
-            // Replacement adds another transitive dependency
-            const $$nestedDep = market.offer("nestedDep").asProduct({
-                suppliers: [$$resource1, $$resource2],
-                factory: ($) => $($$resource1) + $($$resource2)
-            })
-
-            const $$replacement = $$original.prototype({
-                suppliers: [$$nestedDep],
-                factory: ($) => $($$nestedDep) + 10
-            })
-
-            const $$base = market.offer("base").asProduct({
-                assemblers: [$$original],
-                factory: ($, $$) => {
-                    return $$[$$original.name]
-                        .assemble(index($$resource1.pack(5)))
-                        .unpack()
-                }
-            })
-
-            // Should throw - replacement requires resource2 transitively
-            expect(() => {
-                $$base.with([], [$$replacement])
-            }).toThrow(/incompatible/)
-            expect(() => {
-                $$base.with([], [$$replacement])
-            }).toThrow(/calculator/)
+        const $$original = market.offer("calculator").asProduct({
+            suppliers: [$$resource1, $$resource2],
+            factory: ($) => $($$resource1) + $($$resource2)
         })
 
-        it("should validate each assembler independently when replacing multiple", () => {
-            const market = createMarket()
-            const $$resource1 = market.offer("resource1").asResource<number>()
-            const $$resource2 = market.offer("resource2").asResource<number>()
-
-            const $$assembler1 = market.offer("assembler1").asProduct({
-                suppliers: [$$resource1],
-                factory: ($) => $($$resource1) * 2
-            })
-
-            const $$assembler2 = market.offer("assembler2").asProduct({
-                suppliers: [$$resource1],
-                factory: ($) => $($$resource1) * 3
-            })
-
-            const $$base = market.offer("base").asProduct({
-                assemblers: [$$assembler1, $$assembler2],
-                factory: () => "base"
-            })
-
-            // First replacement is fine (same deps)
-            const $$replacement1 = $$assembler1.prototype({
-                suppliers: [$$resource1],
-                factory: ($) => $($$resource1) * 4
-            })
-
-            // Second replacement is NOT fine (adds resource2)
-            const $$replacement2 = $$assembler2.prototype({
-                suppliers: [$$resource1, $$resource2],
-                factory: ($) => $($$resource1) + $($$resource2)
-            })
-
-            // Should throw because replacement2 is incompatible
-            expect(() => {
-                $$base.with([], [$$replacement1, $$replacement2])
-            }).toThrow(/incompatible/)
-            expect(() => {
-                $$base.with([], [$$replacement1, $$replacement2])
-            }).toThrow(/assembler2/)
+        // Replacement has fewer dependencies (only resource1)
+        const $$replacement = $$original.prototype({
+            suppliers: [$$resource1],
+            factory: ($) => $($$resource1) * 2
         })
+
+        const $$base = market.offer("base").asProduct({
+            assemblers: [$$original],
+            factory: ($, $$) => {
+                return $$[$$original.name]
+                    .assemble(index($$resource1.pack(10), $$resource2.pack(5)))
+                    .unpack()
+            }
+        })
+
+        // Should work - fewer dependencies are OK
+        const $$replaced = $$base.with([], [$$replacement])
+        const $result = $$replaced.assemble({})
+        expect($result.unpack()).toBe(20) // Uses replacement with just resource1
+    })
+
+    it("should reject replacing assembler with more dependencies at runtime", () => {
+        const market = createMarket()
+        const $$resource1 = market.offer("resource1").asResource<number>()
+        const $$resource2 = market.offer("resource2").asResource<number>()
+
+        const $$original = market.offer("calculator").asProduct({
+            suppliers: [$$resource1],
+            factory: ($) => $($$resource1) * 2
+        })
+
+        // Replacement has MORE dependencies (both resource1 and resource2)
+        const $$replacement = $$original.prototype({
+            suppliers: [$$resource1, $$resource2],
+            factory: ($) => $($$resource1) + $($$resource2)
+        })
+
+        const $$base = market.offer("base").asProduct({
+            assemblers: [$$original],
+            factory: ($, $$) => {
+                return $$[$$original.name]
+                    .assemble(index($$resource1.pack(10)))
+                    .unpack()
+            }
+        })
+
+        // Should throw at runtime - more dependencies not allowed
+        expect(() => {
+            $$base.with([], [$$replacement])
+        }).toThrow(/incompatible/)
+        expect(() => {
+            $$base.with([], [$$replacement])
+        }).toThrow(/calculator/)
+    })
+
+    it("should handle transitive dependencies correctly", () => {
+        const market = createMarket()
+        const $$resource1 = market.offer("resource1").asResource<number>()
+        const $$resource2 = market.offer("resource2").asResource<number>()
+
+        const $$dependency = market.offer("dependency").asProduct({
+            suppliers: [$$resource1],
+            factory: ($) => $($$resource1) * 2
+        })
+
+        const $$original = market.offer("calculator").asProduct({
+            suppliers: [$$dependency],
+            factory: ($) => $($$dependency) + 10
+        })
+
+        // Replacement adds another transitive dependency
+        const $$nestedDep = market.offer("nestedDep").asProduct({
+            suppliers: [$$resource1, $$resource2],
+            factory: ($) => $($$resource1) + $($$resource2)
+        })
+
+        const $$replacement = $$original.prototype({
+            suppliers: [$$nestedDep],
+            factory: ($) => $($$nestedDep) + 10
+        })
+
+        const $$base = market.offer("base").asProduct({
+            assemblers: [$$original],
+            factory: ($, $$) => {
+                return $$[$$original.name]
+                    .assemble(index($$resource1.pack(5)))
+                    .unpack()
+            }
+        })
+
+        // Should throw - replacement requires resource2 transitively
+        expect(() => {
+            $$base.with([], [$$replacement])
+        }).toThrow(/incompatible/)
+        expect(() => {
+            $$base.with([], [$$replacement])
+        }).toThrow(/calculator/)
+    })
+
+    it("should validate each assembler independently when replacing multiple", () => {
+        const market = createMarket()
+        const $$resource1 = market.offer("resource1").asResource<number>()
+        const $$resource2 = market.offer("resource2").asResource<number>()
+
+        const $$assembler1 = market.offer("assembler1").asProduct({
+            suppliers: [$$resource1],
+            factory: ($) => $($$resource1) * 2
+        })
+
+        const $$assembler2 = market.offer("assembler2").asProduct({
+            suppliers: [$$resource1],
+            factory: ($) => $($$resource1) * 3
+        })
+
+        const $$base = market.offer("base").asProduct({
+            assemblers: [$$assembler1, $$assembler2],
+            factory: () => "base"
+        })
+
+        // First replacement is fine (same deps)
+        const $$replacement1 = $$assembler1.prototype({
+            suppliers: [$$resource1],
+            factory: ($) => $($$resource1) * 4
+        })
+
+        // Second replacement is NOT fine (adds resource2)
+        const $$replacement2 = $$assembler2.prototype({
+            suppliers: [$$resource1, $$resource2],
+            factory: ($) => $($$resource1) + $($$resource2)
+        })
+
+        // Should throw because replacement2 is incompatible
+        expect(() => {
+            $$base.with([], [$$replacement1, $$replacement2])
+        }).toThrow(/incompatible/)
+        expect(() => {
+            $$base.with([], [$$replacement1, $$replacement2])
+        }).toThrow(/assembler2/)
     })
 })
