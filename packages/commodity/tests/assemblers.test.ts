@@ -582,7 +582,10 @@ describe("Assemblers Feature", () => {
         })
 
         const $$extended = $$base.with([], [$$assembler2])
-        const $result = $$extended.assemble({})
+
+        // @ts-expect-error - withAssemblers resources must be supplied also
+        $$extended.assemble({})
+        const $result = $$extended.assemble(index($$resource.pack("unused")))
         expect($result.unpack()).toBe("A1: test")
     })
 })

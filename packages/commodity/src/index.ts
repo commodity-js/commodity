@@ -192,18 +192,19 @@ export const createMarket = () => {
                                 return supplies[supplier.name]
                             }
 
-                            const $$ = (supplier: any) => {
-                                if ("_resource" in supplier) {
-                                    return supplier
+                            const $$ = (assembler: any) => {
+                                if ("_resource" in assembler) {
+                                    return assembler
                                 }
 
                                 const final =
                                     withAssemblers
                                         .toReversed()
                                         .find(
-                                            (assembler) =>
-                                                assembler.name === supplier.name
-                                        ) ?? supplier
+                                            (withAssembler) =>
+                                                withAssembler.name ===
+                                                assembler.name
+                                        ) ?? assembler
 
                                 return {
                                     ...final,
@@ -365,7 +366,21 @@ export const createMarket = () => {
                                 OPTIONALS,
                                 ASSEMBLERS,
                                 WITH_SUPPLIERS,
-                                WITH_ASSEMBLERS
+                                WITH_ASSEMBLERS,
+                                ToSupply<
+                                    SUPPLIERS,
+                                    OPTIONALS,
+                                    WITH_SUPPLIERS,
+                                    WITH_ASSEMBLERS
+                                >,
+                                Product<
+                                    CONSTRAINT,
+                                    ProductSupplier,
+                                    $<
+                                        [...SUPPLIERS, ...WITH_SUPPLIERS],
+                                        OPTIONALS
+                                    >
+                                >
                             >
 
                             const prototype = {
@@ -437,7 +452,25 @@ export const createMarket = () => {
                                 OPTIONALS,
                                 ASSEMBLERS,
                                 [...WITH_SUPPLIERS, ...WITH_SUPPLIERS_2],
-                                [...WITH_ASSEMBLERS, ...WITH_ASSEMBLERS_2]
+                                [...WITH_ASSEMBLERS, ...WITH_ASSEMBLERS_2],
+                                ToSupply<
+                                    SUPPLIERS,
+                                    OPTIONALS,
+                                    [...WITH_SUPPLIERS, ...WITH_SUPPLIERS_2],
+                                    [...WITH_ASSEMBLERS, ...WITH_ASSEMBLERS_2]
+                                >,
+                                Product<
+                                    CONSTRAINT,
+                                    ProductSupplier,
+                                    $<
+                                        [
+                                            ...SUPPLIERS,
+                                            ...WITH_SUPPLIERS,
+                                            ...WITH_SUPPLIERS_2
+                                        ],
+                                        OPTIONALS
+                                    >
+                                >
                             >
 
                             const composite = {
