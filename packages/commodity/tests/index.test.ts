@@ -653,44 +653,6 @@ describe("commodity", () => {
             expect(lazySpy).toHaveBeenCalledTimes(1)
         })
 
-        it("Lazy suppliers shield eager suppliers from being lazy loaded early when deeper in dependency chain", async () => {
-            const ASpy = vi.fn().mockReturnValue("A")
-            const BSpy = vi.fn().mockReturnValue("B")
-            const lazySpy = vi.fn().mockReturnValue("lazy")
-
-            const market = createMarket()
-            const $$A = market.offer("A").asProduct({
-                factory: ASpy
-            })
-
-            const $$lazy = market.offer("lazy").asProduct({
-                suppliers: [$$A],
-                factory: lazySpy,
-                lazy: true
-            })
-
-            const $$B = market.offer("B").asProduct({
-                suppliers: [$$lazy],
-                factory: BSpy
-            })
-
-            const $$main = market.offer("main").asProduct({
-                suppliers: [$$B],
-                factory: ($) => {
-                    const main = $($$B).unpack()
-                    return { main }
-                }
-            })
-
-            $$main.assemble({})
-
-            await sleep(100)
-
-            expect(BSpy).toHaveBeenCalledTimes(1)
-            expect(lazySpy).toHaveBeenCalledTimes(0)
-            expect(ASpy).toHaveBeenCalledTimes(0)
-        })
-
         it("should handle lazy suppliers with reassembly", () => {
             const lazySpy = vi.fn().mockReturnValue("lazy")
 

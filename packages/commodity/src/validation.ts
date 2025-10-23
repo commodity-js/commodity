@@ -5,7 +5,6 @@
  */
 
 import { ProductSupplier, ResourceSupplier, Supplier } from "#types"
-import { assertNoCircularDependency } from "#utils"
 
 /**
  * Validates that a value is a non-empty string.
@@ -105,15 +104,6 @@ export function assertProductConfig(
     assertProductSuppliers(name, assemblers)
     assertSuppliers(name, withSuppliers, true)
     assertProductSuppliers(name, withAssemblers, true)
-
-    assertNoCircularDependency({
-        name,
-        suppliers,
-        optionals,
-        assemblers,
-        withSuppliers,
-        withAssemblers
-    })
 
     if (config.init !== undefined) {
         assertFunction(name, config.init)

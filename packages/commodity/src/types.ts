@@ -64,9 +64,19 @@ export type ResourceSupplier<NAME extends string = string, CONSTRAINT = any> = {
 export type Product<
     VALUE = any,
     SUPPLIER extends ProductSupplier = ProductSupplier,
-    SUPPLIES extends (supplier: Supplier) => any = (
-        supplier: Supplier
-    ) => unknown
+    SUPPLIES extends (supplier: {
+        name: [
+            ...SUPPLIER["suppliers"],
+            ...SUPPLIER["optionals"],
+            ...SUPPLIER["withSuppliers"]
+        ][number]["name"]
+    }) => any = (supplier: {
+        name: [
+            ...SUPPLIER["suppliers"],
+            ...SUPPLIER["optionals"],
+            ...SUPPLIER["withSuppliers"]
+        ][number]["name"]
+    }) => unknown
 > = {
     /** Unpacks and returns the current value of this product */
     unpack: () => VALUE
@@ -74,8 +84,6 @@ export type Product<
     $: SUPPLIES
     /** Reassembles this product with new dependency overrides */
     reassemble: (overrides: SupplyMap) => Product<VALUE, SUPPLIER, SUPPLIES>
-    /** Checks if this product depends on any of the given overrides */
-    _dependsOnOneOf: (overrides: SupplyMap) => boolean
     supplier: SUPPLIER
 }
 
@@ -107,11 +115,7 @@ export type ProductSupplier<
         WITH_SUPPLIERS,
         WITH_ASSEMBLERS
     > = any,
-    PRODUCT extends Product<
-        CONSTRAINT,
-        ProductSupplier,
-        $<[...SUPPLIERS, ...WITH_SUPPLIERS], OPTIONALS>
-    > = any
+    PRODUCT extends Product<CONSTRAINT, ProductSupplier, any> = any
 > = {
     /** The name/identifier of this product supplier */
     name: NAME
@@ -123,11 +127,14 @@ export type ProductSupplier<
     assemblers: ASSEMBLERS
     withSuppliers: WITH_SUPPLIERS
     withAssemblers: WITH_ASSEMBLERS
+
+    team: Supplier[]
     /** Factory function that creates the product value from its dependencies */
     factory: (
         $: $<[...SUPPLIERS, ...WITH_SUPPLIERS], OPTIONALS>,
         $$: $$<[...ASSEMBLERS, ...WITH_ASSEMBLERS], OPTIONALS>
     ) => CONSTRAINT
+    _build: ($: any) => PRODUCT
     /** Assembles the product by resolving dependencies */
     assemble: (supplied: TO_SUPPLY) => PRODUCT
     /** Packs a value into a product without dependencies */
@@ -199,7 +206,10 @@ export type AsProductParameters<
  * A generic map of supplies where keys are supplier names and values are products or resources.
  * @public
  */
-export type SupplyMap = Record<string, Product | Resource | undefined>
+export type SupplyMap = Record<
+    string,
+    Product | Resource | (() => Product) | (() => Resource) | undefined
+>
 
 /**
  * Converts an array of suppliers and optionals into a corresponding $ supply map.
@@ -250,20 +260,22 @@ export type SupplyMapFromSuppliers<
  * @returns A callable object that provides both property access and function call access to supplies
  * @public
  */
-export type $<SUPPLIERS extends Supplier[], OPTIONALS extends Supplier[]> = <
-    SUPPLIER extends Pick<SUPPLIERS[number] | OPTIONALS[number], "name">
+export type $<SUPPLIERS extends Supplier[], OPTIONALS extends Supplier[]> = {
+    keys: (keyof SupplyMapFromSuppliers<SUPPLIERS, OPTIONALS>)[]
+} & (<
+    SUPPLIER extends {
+        name: keyof SupplyMapFromSuppliers<SUPPLIERS, OPTIONALS>
+    }
 >(
     supplier: SUPPLIER
-) => SUPPLIER["name"] extends keyof SupplyMapFromSuppliers<SUPPLIERS, OPTIONALS>
-    ? SupplyMapFromSuppliers<SUPPLIERS, OPTIONALS>[SUPPLIER["name"]]
-    : never
+) => SupplyMapFromSuppliers<SUPPLIERS, OPTIONALS>[SUPPLIER["name"]])
 
 export type $$<
     ASSEMBLERS extends ProductSupplier[],
     OPTIONALS extends ResourceSupplier[]
-> = <SUPPLIER extends ASSEMBLERS[number] | OPTIONALS[number]>(
-    supplier: SUPPLIER
-) => SUPPLIER
+> = <ASSEMBLER extends ASSEMBLERS[number] | OPTIONALS[number]>(
+    assembler: ASSEMBLER
+) => ASSEMBLER
 
 /**
  * Recursively filters out suppliers of a specific type from a supplier array.

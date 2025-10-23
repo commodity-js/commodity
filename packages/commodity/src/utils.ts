@@ -1,4 +1,4 @@
-import { Merge, ProductSupplier, Supplier } from "#types"
+import { Merge, Product, ProductSupplier, Supplier } from "#types"
 
 /**
  * Minimal once implemetation
@@ -76,55 +76,30 @@ export function sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-/**
- * Recursively collects all transitive dependencies of a supplier array.
- * This walks through the dependency tree, collecting each supplier and all of its
- * nested dependencies into a flattened array. This is essential for understanding
- * the complete dependency graph.
- *
- * @param suppliers - The array of suppliers to collect transitive dependencies from
- * @returns A flattened array containing all suppliers and their transitive dependencies
- * @public
- */
-export function assertNoCircularDependency(
-    root: Pick<
-        ProductSupplier,
-        | "name"
-        | "suppliers"
-        | "optionals"
-        | "assemblers"
-        | "withSuppliers"
-        | "withAssemblers"
-    >,
-    visited = new Set<string>(),
-    suppliers?: Supplier[]
-) {
-    for (const supplier of suppliers ?? [
-        ...root.suppliers,
-        ...root.optionals,
-        ...root.assemblers,
-        ...root.withSuppliers,
-        ...root.withAssemblers
-    ]) {
-        if (supplier.name === root.name) {
+export function team(name: string, suppliers: Supplier[]) {
+    const team = suppliers
+        .flatMap((supplier): Supplier[] => {
+            if (!("team" in supplier)) return [supplier]
+            return [supplier, ...supplier.team]
+        })
+        .filter((supplier) => supplier !== undefined)
+
+    const deduped: Record<string, Supplier> = {}
+    for (const supplier of team) {
+        if (supplier.name === name)
             throw new Error("Circular dependency detected")
-        }
-        if (visited.has(supplier.name)) {
-            continue
-        }
-        visited.add(supplier.name)
-        // If the supplier itself is a resource, add it directly
-        if (!("suppliers" in supplier) && "_resource" in supplier) {
-            continue
-        } else {
-            // Otherwise, collect its transitive dependencies
-            assertNoCircularDependency(root, visited, [
-                ...supplier.suppliers,
-                ...supplier.optionals,
-                ...supplier.assemblers,
-                ...supplier.withSuppliers,
-                ...supplier.withAssemblers
-            ])
-        }
+        deduped[supplier.name] = supplier
     }
+
+    return Object.values(deduped)
+}
+
+/**
+ * Type guard to check if a supply is a Product.
+ * @param supply - The supply to check
+ * @returns True if the supply is a Product, false otherwise
+ * @internal
+ */
+export function isProduct(supply: any): supply is Product {
+    return supply.supplier._product === true
 }

@@ -6,31 +6,20 @@ import {
     type $,
     type ToSupply,
     type HasCircularDependency,
-    type ExcludeSuppliersType,
     CircularDependencyError,
     Supplier,
     AsProductParameters,
     BaseProductSupplier,
-    BaseSupplier
+    BaseSupplier,
+    Resource
 } from "#types"
 
-import { hire } from "#assemble"
-import { once } from "#utils"
+import { once, team as buildTeam } from "#utils"
 import {
     assertString,
     assertPlainObject,
     assertProductConfig
 } from "#validation"
-
-/**
- * Type guard to check if a supply is a Product.
- * @param supply - The supply to check
- * @returns True if the supply is a Product, false otherwise
- * @internal
- */
-function isProduct(supply: any): supply is Product {
-    return supply.supplier._product === true
-}
 
 /**
  * Creates a new market instance for managing suppliers and products.
@@ -126,6 +115,7 @@ export const createMarket = () => {
                     >
                 ) {
                     assertProductConfig(name, config)
+
                     const {
                         suppliers = [] as unknown as SUPPLIERS,
                         optionals = [] as unknown as OPTIONALS,
@@ -137,83 +127,47 @@ export const createMarket = () => {
                         lazy = false as LAZY
                     } = config
 
+                    const team = buildTeam(name, [
+                        ...suppliers,
+                        ...withSuppliers
+                    ])
+
+                    const assemblersTeam = buildTeam(name, [
+                        ...assemblers,
+                        ...withAssemblers
+                    ])
+
                     const supplier = {
                         name,
                         _constraint: null as unknown as CONSTRAINT,
                         lazy,
                         factory,
                         init,
-                        /**
-                         * Assembles the product by resolving all dependencies and creating the final instance.
-                         * This method orchestrates the dependency resolution.
-                         * It autowires all product dependencies and requires only resource
-                         * dependencies to be supplied.
-                         *
-                         * @param toSupply - Map of resource supplies to use for dependency resolution
-                         * @returns A product instance with the resolved dependencies and unpack method
-                         * @public
-                         */
-                        assemble<
-                            THIS,
-                            SUPPLIERS extends Supplier[],
-                            OPTIONALS extends ResourceSupplier[],
-                            WITH_SUPPLIERS extends ProductSupplier[],
-                            WITH_ASSEMBLERS extends ProductSupplier[]
-                        >(
-                            this: THIS & {
-                                suppliers: SUPPLIERS
-                                optionals: OPTIONALS
-                                withSuppliers: WITH_SUPPLIERS
-                                withAssemblers: WITH_ASSEMBLERS
-                            },
-                            supplied: ToSupply<
-                                SUPPLIERS,
-                                OPTIONALS,
-                                WITH_SUPPLIERS,
-                                WITH_ASSEMBLERS
-                            >
-                        ) {
-                            assertPlainObject("supplied", supplied)
-                            const team = suppliers.filter(
-                                (supplier) =>
-                                    "_product" in supplier && supplier._product
-                            ) as ExcludeSuppliersType<
-                                SUPPLIERS,
-                                ResourceSupplier
-                            >
-
-                            // TODO: Type hole, fix after type refactoring
-                            const supplies = hire([
-                                ...team,
-                                ...withSuppliers
-                            ]).assemble(supplied)
-
-                            const $ = (supplier: any) => {
-                                return supplies[supplier.name]
-                            }
-
+                        _build($: any) {
                             const $$ = (assembler: any) => {
                                 if ("_resource" in assembler) {
                                     return assembler
                                 }
 
                                 const final =
-                                    withAssemblers
-                                        .toReversed()
-                                        .find(
-                                            (withAssembler) =>
-                                                withAssembler.name ===
-                                                assembler.name
-                                        ) ?? assembler
+                                    assemblersTeam.find(
+                                        (member) =>
+                                            member.name === assembler.name
+                                    ) ?? assembler
 
                                 return {
                                     ...final,
                                     assemble: (supplied: any) =>
                                         final.assemble({
-                                            ...supplies,
+                                            ...Object.fromEntries(
+                                                $.keys.map((name: string) => [
+                                                    name,
+                                                    $({ name })
+                                                ])
+                                            ),
                                             ...supplied
                                         })
-                                } as any
+                                }
                             }
 
                             return {
@@ -255,17 +209,21 @@ export const createMarket = () => {
                                     const unassembled: SupplyMap = overrides
 
                                     // Loop over all supplies and check if they need resupplying
-                                    for (const [name, supply] of Object.entries<
-                                        SupplyMap[keyof SupplyMap]
-                                    >(supplies)) {
+                                    for (const name of $.keys) {
                                         if (name in overrides) {
                                             continue
                                         }
 
+                                        const supply = $({ name }) as
+                                            | Product
+                                            | Resource
+
                                         // Save the old value if it doesn't depend on any of the overrides
                                         if (
-                                            !isProduct(supply) ||
-                                            !supply._dependsOnOneOf(overrides)
+                                            !("team" in supply.supplier) ||
+                                            supply.supplier.team.every(
+                                                (s) => !(s.name in overrides)
+                                            )
                                         ) {
                                             unassembled[name] = supply
                                         }
@@ -275,29 +233,82 @@ export const createMarket = () => {
                                         .with(withSuppliers, withAssemblers)
                                         .assemble(unassembled) as THIS
                                 },
-                                _dependsOnOneOf: (overrides: SupplyMap) => {
-                                    for (const supplier of [
-                                        ...suppliers,
-                                        ...optionals,
-                                        ...withSuppliers
-                                    ]) {
-                                        if (supplier.name in overrides) {
-                                            return true
-                                        }
 
-                                        const supply = supplies[supplier.name]
-
-                                        if (
-                                            isProduct(supply) &&
-                                            supply._dependsOnOneOf(overrides)
-                                        ) {
-                                            return true
-                                        }
-                                    }
-                                    return false
-                                },
                                 supplier
                             }
+                        },
+                        /**
+                         * Assembles the product by resolving all dependencies and creating the final instance.
+                         * This method orchestrates the dependency resolution.
+                         * It autowires all product dependencies and requires only resource
+                         * dependencies to be supplied.
+                         *
+                         * @param toSupply - Map of resource supplies to use for dependency resolution
+                         * @returns A product instance with the resolved dependencies and unpack method
+                         * @public
+                         */
+                        assemble<
+                            THIS,
+                            RES,
+                            SUPPLIERS extends Supplier[],
+                            OPTIONALS extends ResourceSupplier[],
+                            WITH_SUPPLIERS extends ProductSupplier[],
+                            WITH_ASSEMBLERS extends ProductSupplier[]
+                        >(
+                            this: THIS & {
+                                suppliers: SUPPLIERS
+                                optionals: OPTIONALS
+                                withSuppliers: WITH_SUPPLIERS
+                                withAssemblers: WITH_ASSEMBLERS
+                                _build: (...args: any[]) => RES
+                            },
+                            supplied: ToSupply<
+                                SUPPLIERS,
+                                OPTIONALS,
+                                WITH_SUPPLIERS,
+                                WITH_ASSEMBLERS
+                            >
+                        ) {
+                            assertPlainObject("supplied", supplied)
+
+                            const supplies: SupplyMap = supplied
+
+                            for (const supplier of Object.values(team)) {
+                                if (
+                                    !("_build" in supplier) ||
+                                    supplier.name in supplied
+                                )
+                                    continue
+                                supplies[supplier.name] = once(() =>
+                                    supplier._build($)
+                                )
+                            }
+
+                            const $ = (supplier: { name: string }) => {
+                                const supply = supplies[supplier.name]
+                                // A supply can only be a product, resource or function, so this is sufficient to discriminate.
+                                if (typeof supply === "function") {
+                                    return supply()
+                                }
+                                return supply
+                            }
+
+                            $.keys = Object.keys(supplies)
+
+                            // Prerun supplier factories
+                            for (const supplier of Object.values(team)) {
+                                if ("lazy" in supplier && supplier.lazy)
+                                    continue
+                                try {
+                                    $(supplier)?.unpack()
+                                } catch (e) {
+                                    // console.error(e)
+                                    // If prerun fails, we don't want to break the entire supply chain
+                                    // The error will be thrown again when the dependency is actually needed
+                                }
+                            }
+
+                            return this._build($)
                         },
                         pack<THIS, VALUE extends CONSTRAINT>(
                             this: THIS,
@@ -491,6 +502,7 @@ export const createMarket = () => {
                         assemblers,
                         withSuppliers,
                         withAssemblers,
+                        team,
                         offer: this
                     }
 

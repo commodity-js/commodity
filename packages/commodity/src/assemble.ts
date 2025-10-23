@@ -1,4 +1,4 @@
-import { ProductSupplier } from "#types"
+import { ProductSupplier, Supplier } from "#types"
 import { once } from "#utils"
 
 /**
@@ -12,42 +12,41 @@ export function hire(suppliers: ProductSupplier[]) {
     return {
         /**
          * Assembles all suppliers by resolving their dependencies.
-         * Creates a supply map where each supplier can access its dependencies.
          *
          * @param supplied - Pre-supplied dependencies (resources or alreary assembled products)
          * @returns The $ supply map
          */
         assemble: (supplied: Record<string, any>) => {
-            const supplies: Record<string, any> = {}
+            let supplies: Record<string, any> = {}
 
-            Object.defineProperties(
-                supplies,
-                Object.getOwnPropertyDescriptors(supplied)
-            )
-
-            // Reverse the suppliers to respect last supplier in array wins convention.
-            for (const supplier of suppliers.toReversed()) {
-                if (
-                    Object.prototype.hasOwnProperty.call(
-                        supplies,
-                        supplier.name
-                    )
-                ) {
-                    continue
-                }
-
-                Object.defineProperty(supplies, supplier.name, {
-                    get: once(() => supplier.assemble(supplies)),
-                    enumerable: true,
-                    configurable: true
-                })
+            for (const supplier of Object.values(suppliers)) {
+                supplies[supplier.name] = once(() =>
+                    supplier.assemble(supplies)
+                )
             }
 
+            supplies = { ...supplies, ...supplied }
+
+            const $ = (supplier: { name: string }) => {
+                const supply = supplies[supplier.name]
+                // A supply can only be a product, resource or function, so this is sufficient to discriminate.
+                if (typeof supply === "function") {
+                    return supply()
+                }
+                return supply
+            }
+
+            $.obj = once(() =>
+                Object.fromEntries(
+                    Object.keys(supplies).map((name) => [name, $({ name })])
+                )
+            )
+
             // Prerun supplier factories
-            for (const supplier of suppliers.toReversed()) {
+            for (const supplier of Object.values(suppliers)) {
                 if (supplier.lazy) continue
                 try {
-                    supplies[supplier.name]?.unpack()
+                    $(supplier)?.unpack()
                 } catch (e) {
                     // console.error(e)
                     // If prerun fails, we don't want to break the entire supply chain
@@ -55,7 +54,7 @@ export function hire(suppliers: ProductSupplier[]) {
                 }
             }
 
-            return supplies
+            return $
         }
     }
 }
