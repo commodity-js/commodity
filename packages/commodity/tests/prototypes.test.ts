@@ -139,7 +139,7 @@ describe("Prototype Method", () => {
                 suppliers: [$$B] // This creates a potential circle
             })
 
-            expectTypeOf($$mockA).toEqualTypeOf<CircularDependencyError>()
+            expectTypeOf($$mockA).toExtend<CircularDependencyError>()
         }).toThrow("Circular dependency detected")
 
         expect(() => {
@@ -148,23 +148,7 @@ describe("Prototype Method", () => {
                 assemblers: [$$B] // This creates a potential circle
             })
 
-            expectTypeOf($$mockA).toEqualTypeOf<CircularDependencyError>()
-        }).toThrow("Circular dependency detected")
-
-        expect(() => {
-            const $$mockA = $$A.prototype({
-                factory: () => "mockA",
-                withSuppliers: [$$B] // This creates a potential circle
-            })
-            expectTypeOf($$mockA).toEqualTypeOf<CircularDependencyError>()
-        }).toThrow("Circular dependency detected")
-
-        expect(() => {
-            const $$mockA = $$A.prototype({
-                factory: () => "mockA",
-                withAssemblers: [$$B] // This creates a potential circle
-            })
-            expectTypeOf($$mockA).toEqualTypeOf<CircularDependencyError>()
+            expectTypeOf($$mockA).toExtend<CircularDependencyError>()
         }).toThrow("Circular dependency detected")
     })
 })

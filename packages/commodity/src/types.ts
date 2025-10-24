@@ -141,18 +141,6 @@ export type ProductSupplier<
     pack: <VALUE extends CONSTRAINT>(
         value: VALUE
     ) => Product<VALUE, ProductSupplier>
-    /** Tries alternative implementations of suppliers */
-    /** Creates a prototype variant with different implementation */
-    prototype: (
-        params: AsProductParameters<CONSTRAINT>
-    ) => ProductSupplier<NAME, CONSTRAINT>
-    with: <
-        WITH_SUPPLIERS_2 extends ProductSupplier[] = ProductSupplier[],
-        WITH_ASSEMBLERS_2 extends ProductSupplier[] = ProductSupplier[]
-    >(
-        withSuppliers: WITH_SUPPLIERS_2,
-        withAssemblers?: WITH_ASSEMBLERS_2
-    ) => ProductSupplier<NAME, CONSTRAINT>
     /** Optional initialization function called after factory */
     init?: (value: CONSTRAINT, $: $<SUPPLIERS, OPTIONALS>) => void
     /** Whether this supplier should be lazily evaluated */
@@ -185,15 +173,11 @@ export type AsProductParameters<
     LAZY extends boolean = false,
     SUPPLIERS extends BaseSupplier[] = BaseSupplier[],
     OPTIONALS extends ResourceSupplier[] = ResourceSupplier[],
-    ASSEMBLERS extends BaseProductSupplier[] = BaseProductSupplier[],
-    WITH_SUPPLIERS extends ProductSupplier[] = ProductSupplier[],
-    WITH_ASSEMBLERS extends ProductSupplier[] = ProductSupplier[]
+    ASSEMBLERS extends BaseProductSupplier[] = BaseProductSupplier[]
 > = {
     suppliers?: [...SUPPLIERS]
     optionals?: [...OPTIONALS]
     assemblers?: [...ASSEMBLERS]
-    withSuppliers?: [...WITH_SUPPLIERS]
-    withAssemblers?: [...WITH_ASSEMBLERS]
     factory: (
         $: $<SUPPLIERS, OPTIONALS>,
         $$: $$<ASSEMBLERS, OPTIONALS>

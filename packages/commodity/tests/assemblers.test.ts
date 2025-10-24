@@ -505,15 +505,15 @@ describe("Assemblers Feature", () => {
         const $$base = market.offer("base").asProduct({
             assemblers: [$$squarer],
             factory: ($, $$) => {
-                const assembler = $$($$squarer).assemble(
+                const $assembler = $$($$squarer).assemble(
                     index($$number.pack(5))
                 )
-                const result = assembler.unpack()
+                const result = $assembler.unpack()
                 expect(result).toBe(50)
-                const reassembled = assembler.reassemble(
+                const $reassembled = $assembler.reassemble(
                     index($$number.pack(10))
                 )
-                const reassembledResult = reassembled.unpack()
+                const reassembledResult = $reassembled.unpack()
                 expect(reassembledResult).toBe(200)
                 return reassembledResult
             }

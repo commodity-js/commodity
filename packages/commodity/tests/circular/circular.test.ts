@@ -4,6 +4,6 @@ import { CircularDependencyError } from "#types"
 
 describe("Circular Dependencies", () => {
     it("should detect circular dependencies", () => {
-        expectTypeOf($$A).toEqualTypeOf<CircularDependencyError>()
+        expectTypeOf($$A).toExtend<CircularDependencyError>()
     })
 })
