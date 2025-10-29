@@ -10,11 +10,9 @@ describe("Optionals Feature", () => {
             const $$product = market.offer("product").asProduct({
                 optionals: [$$optional],
                 factory: ($) => {
-                    const optional = $[$$optional.name]
+                    const optional = $($$optional)
                     // The entire Resource is optional, not the value inside it
-                    assertType<Resource<"optional", string> | undefined>(
-                        optional
-                    )
+                    assertType<Resource<string> | undefined>(optional)
                     return optional?.unpack()
                 }
             })
@@ -39,8 +37,8 @@ describe("Optionals Feature", () => {
                 suppliers: [$$config],
                 optionals: [$$optional],
                 factory: ($) => {
-                    const config = $($$config)
-                    const optional = $[$$optional.name]
+                    const config = $($$config).unpack()
+                    const optional = $($$optional)
                     return {
                         config,
                         hasOptional: optional !== undefined,
@@ -70,10 +68,10 @@ describe("Optionals Feature", () => {
                 optionals: [$$opt1, $$opt2, $$opt3],
                 factory: ($) => {
                     return {
-                        required: $($$required),
-                        opt1: $[$$opt1.name]?.unpack(),
-                        opt2: $[$$opt2.name]?.unpack(),
-                        opt3: $[$$opt3.name]?.unpack()
+                        required: $($$required).unpack(),
+                        opt1: $($$opt1)?.unpack(),
+                        opt2: $($$opt2)?.unpack(),
+                        opt3: $($$opt3)?.unpack()
                     }
                 }
             })
@@ -103,24 +101,22 @@ describe("Optionals Feature", () => {
                 optionals: [$$optional],
                 factory: ($) => {
                     // Required supplier should be non-optional in $
-                    const requiredSupply = $[$$required.name]
-                    assertType<Resource<"required", string>>(requiredSupply)
+                    const requiredSupply = $($$required)
+                    assertType<Resource<string>>(requiredSupply)
 
                     // Optional supplier should be optional in $
-                    const optionalSupply = $[$$optional.name]
-                    assertType<Resource<"optional", number> | undefined>(
-                        optionalSupply
-                    )
+                    const optionalSupply = $($$optional)
+                    assertType<Resource<number> | undefined>(optionalSupply)
 
                     return "result"
                 }
             })
 
             // Should not require optional in ToSupply
-            const $result = $$product.assemble(index($$required.pack("test")))
+            $$product.assemble(index($$required.pack("test")))
 
             // But should allow it
-            const $result2 = $$product.assemble(
+            $$product.assemble(
                 index($$required.pack("test"), $$optional.pack(42))
             )
         })
@@ -137,10 +133,10 @@ describe("Optionals Feature", () => {
             })
 
             // @ts-expect-error - missing required supplier
-            const $fail = $$product.assemble(index($$optional.pack(42)))
+            $$product.assemble(index($$optional.pack(42)))
 
             // Should work without optional
-            const $ok = $$product.assemble(index($$required.pack("test")))
+            $$product.assemble(index($$required.pack("test")))
         })
     })
 
@@ -157,8 +153,10 @@ describe("Optionals Feature", () => {
                 assemblers: [$$assembler],
                 factory: ($, $$) => {
                     // Both should be in $$
-                    expect($$[$$optional.name]).toBe($$optional)
-                    expect($$[$$assembler.name]).toBe($$assembler)
+                    expect($$($$optional)).toBe($$optional)
+                    const { assemble: _, ...left } = $$($$assembler)
+                    const { assemble: __, ...right } = $$assembler
+                    expect(left).toEqual(right)
 
                     return "result"
                 }
@@ -184,10 +182,10 @@ describe("Optionals Feature", () => {
                 optionals: [$$optionalConfig],
                 factory: ($) => {
                     const base = $($$baseConfig)
-                    const optional = $[$$optionalConfig.name]
+                    const optional = $($$optionalConfig)
 
                     return {
-                        url: base.url,
+                        url: base.unpack().url,
                         apiKey: optional?.unpack().apiKey ?? "default-key"
                     }
                 }
@@ -196,7 +194,7 @@ describe("Optionals Feature", () => {
             const $$app = market.offer("app").asProduct({
                 suppliers: [$$api],
                 factory: ($) => {
-                    const api = $($$api)
+                    const api = $($$api).unpack()
                     return `Connecting to ${api.url} with ${api.apiKey}`
                 }
             })
@@ -228,14 +226,14 @@ describe("Optionals Feature", () => {
             const $$child = market.offer("child").asProduct({
                 optionals: [$$optional],
                 factory: ($) => {
-                    return $[$$optional.name]?.unpack() ?? "default"
+                    return $($$optional)?.unpack() ?? "default"
                 }
             })
 
             const $$parent = market.offer("parent").asProduct({
                 suppliers: [$$child],
                 factory: ($) => {
-                    return $($$child)
+                    return $($$child).unpack()
                 }
             })
 
@@ -244,18 +242,22 @@ describe("Optionals Feature", () => {
             expect($result1.unpack()).toBe("default")
 
             // Should accept optional
-            const $result2 = $$parent.assemble(index($$optional.pack("custom")))
+            const $result2 = $$parent.assemble({
+                optional: $$optional.pack("custom")
+            })
+            const $result3 = $$parent.assemble(index($$optional.pack("custom")))
             expect($result2.unpack()).toBe("custom")
+            expect($result3.unpack()).toBe("custom")
 
             // Should accept optional but type-check it if provided
             // @ts-expect-error - invalid optional type
-            const $result3 = $$parent.assemble(index($$optional.pack(55)))
-            expect($result3.unpack()).toBe(55)
+            const $result4 = $$parent.assemble(index($$optional.pack(55)))
+            expect($result4.unpack()).toBe(55)
         })
     })
 
-    describe("Optionals with Prototypes", () => {
-        it("should allow prototypes to have different optionals", () => {
+    describe("Optionals with Mocks", () => {
+        it("should allow mocks to have different optionals", () => {
             const market = createMarket()
             const $$required = market.offer("required").asResource<string>()
             const $$optional1 = market.offer("optional1").asResource<number>()
@@ -266,24 +268,24 @@ describe("Optionals Feature", () => {
                 optionals: [$$optional1],
                 factory: ($) => {
                     return {
-                        required: $($$required),
-                        value: $[$$optional1.name]?.unpack() ?? 0
+                        required: $($$required).unpack(),
+                        value: $($$optional1)?.unpack() ?? 0
                     }
                 }
             })
 
-            const $$prototyped = $$base.prototype({
+            const $$mocked = $$base.mock({
                 suppliers: [$$required],
                 optionals: [$$optional2],
                 factory: ($) => {
                     return {
-                        required: $($$required),
-                        value: ($[$$optional2.name]?.unpack() ?? 0) * 2
+                        required: $($$required).unpack(),
+                        value: ($($$optional2)?.unpack() ?? 0) * 2
                     }
                 }
             })
 
-            const $result = $$prototyped.assemble(
+            const $result = $$mocked.assemble(
                 index($$required.pack("test"), $$optional2.pack(21))
             )
 
@@ -302,23 +304,23 @@ describe("Optionals Feature", () => {
                 suppliers: [$$config],
                 optionals: [$$optional],
                 factory: ($) => {
-                    const opt = $[$$optional.name]
+                    const opt = $($$optional)
                     return opt ? opt.unpack() * 2 : 0
                 }
             })
 
             const $$main = market.offer("main").asProduct({
                 suppliers: [$$dependency],
-                factory: ($) => $($$dependency)
+                factory: ($) => $($$dependency).unpack()
             })
 
-            const $$mockDep = $$dependency.prototype({
+            const $$mockDep = $$dependency.mock({
                 factory: () => 100
             })
 
-            const $$tried = $$main.with($$mockDep)
+            const $$hired = $$main.hire([$$mockDep])
 
-            const $result = $$tried.assemble({})
+            const $result = $$hired.assemble({})
             expect($result.unpack()).toBe(100)
         })
     })
@@ -335,9 +337,9 @@ describe("Optionals Feature", () => {
                 optionals: [$$optional1, $$optional2],
                 factory: ($) => {
                     return {
-                        config: $($$config),
-                        optional1: $[$$optional1.name]?.unpack() ?? 0,
-                        optional2: $[$$optional2.name]?.unpack() ?? 0
+                        config: $($$config).unpack(),
+                        optional1: $($$optional1)?.unpack() ?? 0,
+                        optional2: $($$optional2)?.unpack() ?? 0
                     }
                 }
             })
@@ -375,8 +377,8 @@ describe("Optionals Feature", () => {
                 suppliers: [$$config],
                 optionals: [$$optional],
                 factory: ($) => ({
-                    config: $($$config),
-                    optional: $[$$optional.name]?.unpack()
+                    config: $($$config).unpack(),
+                    optional: $($$optional)?.unpack() ?? 0
                 })
             })
 
@@ -388,19 +390,19 @@ describe("Optionals Feature", () => {
                 optional: 42
             })
 
-            // Reassemble without optional (it should retain the old value)
+            // Reassemble without optional, it should use the default vlaue.
             const $reassembled = $initial.reassemble({
                 [$$optional.name]: undefined
             })
             expect($reassembled.unpack()).toEqual({
                 config: "test",
-                optional: undefined
+                optional: 0
             })
         })
     })
 
-    describe("Optionals with .with() Method", () => {
-        it("should handle optionals when using .with() for batch assembly", () => {
+    describe("Optionals with .hire() Method", () => {
+        it("should handle optionals when using .hire() for batch assembly", () => {
             const market = createMarket()
             const $$optional1 = market.offer("optional1").asResource<string>()
             const $$optional2 = market.offer("optional2").asResource<string>()
@@ -408,23 +410,23 @@ describe("Optionals Feature", () => {
             const $$service1 = market.offer("service1").asProduct({
                 optionals: [$$optional1],
                 factory: ($) => {
-                    return `S1: ${$[$$optional1.name]?.unpack() ?? "none"}`
+                    return `S1: ${$($$optional1)?.unpack() ?? "none"}`
                 }
             })
 
             const $$service2 = market.offer("service2").asProduct({
                 optionals: [$$optional2],
                 factory: ($) => {
-                    return `S2: ${$[$$optional2.name]?.unpack() ?? "none"}`
+                    return `S2: ${$($$optional2)?.unpack() ?? "none"}`
                 }
             })
 
             const $batch = $$service1
-                .with($$service2)
+                .hire([$$service2])
                 .assemble(index($$optional1.pack("test")))
 
             expect($batch.unpack()).toBe("S1: test")
-            expect($batch.supplies($$service2)).toBe("S2: none")
+            expect($batch.$($$service2).unpack()).toBe("S2: none")
         })
     })
 
@@ -436,7 +438,7 @@ describe("Optionals Feature", () => {
             const $$product = market.offer("product").asProduct({
                 suppliers: [$$config],
                 optionals: [],
-                factory: ($) => $($$config)
+                factory: ($) => $($$config).unpack()
             })
 
             const $result = $$product.assemble(index($$config.pack("test")))
@@ -452,8 +454,8 @@ describe("Optionals Feature", () => {
                 optionals: [$$optional1, $$optional2],
                 factory: ($) => {
                     return {
-                        opt1: $[$$optional1.name]?.unpack(),
-                        opt2: $[$$optional2.name]?.unpack()
+                        opt1: $($$optional1)?.unpack(),
+                        opt2: $($$optional2)?.unpack()
                     }
                 }
             })
@@ -491,10 +493,7 @@ describe("Optionals Feature", () => {
             const $$product = market.offer("product").asProduct({
                 suppliers: [$$resource],
                 optionals: [$$resource],
-                factory: ($) => {
-                    const required = $($$resource)
-                    return required
-                }
+                factory: ($) => $($$resource).unpack()
             })
 
             // @ts-expect-error - Required supplier takes precedence over optional
@@ -506,27 +505,21 @@ describe("Optionals Feature", () => {
         it("should handle init function with optionals", () => {
             const market = createMarket()
             const $$optional = market.offer("optional").asResource<number>()
-            let optStore: number = 0
+            let optStore: number | undefined = undefined
 
             const $$product = market.offer("product").asProduct({
                 optionals: [$$optional],
                 factory: ($) => {
-                    return $[$$optional.name]?.unpack() ?? 10
+                    return $($$optional)?.unpack() ?? 10
                 },
                 init: (value, $) => {
-                    // Can access optionals in init
-                    const opt = $[$$optional.name]
-                    if (opt) {
-                        optStore = opt.unpack()
-                    }
+                    optStore = $($$optional)?.unpack()
                 }
             })
 
             const $result1 = $$product.assemble({})
             expect($result1.unpack()).toBe(10)
-            expect(optStore).toEqual(0)
-
-            optStore = 0
+            expect(optStore).toEqual(undefined)
 
             const $result2 = $$product.assemble(index($$optional.pack(5)))
             expect($result2.unpack()).toBe(5)
@@ -548,7 +541,7 @@ describe("Optionals Feature", () => {
                 .asProduct({
                     suppliers: [$$ctx],
                     factory: ($) => {
-                        return $($$ctx)
+                        return $($$ctx).unpack()
                     }
                 })
 
@@ -560,8 +553,8 @@ describe("Optionals Feature", () => {
 
                     if (enabled) {
                         // Assemble the optional feature with the optional context
-                        const feature = $$[$$optionalFeature.name]
-                            .assemble(index($$[$$ctx.name].pack("ctx")))
+                        const feature = $$($$optionalFeature)
+                            .assemble(index($$ctx.pack("ctx")))
                             .unpack()
                         return feature
                     }
@@ -595,8 +588,8 @@ describe("Optionals Feature", () => {
                 suppliers: [$$publicData],
                 optionals: [$$userAuth],
                 factory: ($) => {
-                    const data = $($$publicData)
-                    const auth = $[$$userAuth.name]
+                    const data = $($$publicData).unpack()
+                    const auth = $($$userAuth)?.unpack()
 
                     return {
                         getPublic: () => data.title,
@@ -604,9 +597,7 @@ describe("Optionals Feature", () => {
                             if (!auth) {
                                 throw new Error("Not authenticated")
                             }
-                            return `${data.title} - User: ${
-                                auth.unpack().userId
-                            }`
+                            return `${data.title} - User: ${auth.userId}`
                         }
                     }
                 }
@@ -647,8 +638,8 @@ describe("Optionals Feature", () => {
                 suppliers: [$$config],
                 optionals: [$$cache],
                 factory: ($) => {
-                    const config = $($$config)
-                    const cache = $[$$cache.name]?.unpack()
+                    const config = $($$config).unpack()
+                    const cache = $($$cache)?.unpack()
 
                     return {
                         fetch: (key: string) => {

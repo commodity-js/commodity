@@ -11,13 +11,12 @@ type FeatureItem = {
 
 const FeatureList: FeatureItem[] = [
     {
-        title: "Fully Type-Safe",
+        title: "Fully Type-Inferred",
         icon: "🔒",
         description: (
             <>
-                Compile-time dependency validation and circular dependency
-                detection. TypeScript ensures your dependency graph is correct
-                before runtime.
+                Zero type hints, definitions or boilerplate. End-to-end type
+                safety with compile-time dependency validation
             </>
         )
     },
@@ -48,7 +47,7 @@ const FeatureList: FeatureItem[] = [
         description: (
             <>
                 Easy mocking and dependency swapping with <code>.pack()</code>{" "}
-                and <code>.prototype()</code>. Perfect for unit tests and A/B
+                and <code>.mock()</code>. Perfect for unit tests and A/B
                 testing.
             </>
         )
@@ -96,7 +95,7 @@ export default function HomepageFeatures(): ReactNode {
             <div className="container">
                 <div className="row">
                     <div className="col col--12 text--center margin-bottom--lg">
-                        <Heading as="h2">Why Commodity?</Heading>
+                        <Heading as="h2">Why Architype?</Heading>
                         <p className="text--muted">
                             Modern dependency injection without the complexity
                             of traditional containers

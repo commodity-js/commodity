@@ -1,9 +1,9 @@
 # Simple example
 
-Dummy todo app built with Commodity.
+Dummy todo app built with Architype.
 
 ```typescript
-import { createMarket, index } from "commodity"
+import { createMarket, index } from "architype"
 
 // 1. Create a market
 const market = createMarket()
@@ -17,8 +17,8 @@ const $$todosDb = market.offer("todosDb").asProduct({
 const $$addTodo = market.offer("addTodo").asProduct({
     suppliers: [$$session, $$todosDb],
     factory: ($) => (todo: string) => {
-        const session = $($$session)
-        const db = $($$todosDb)
+        const session = $($$session).unpack()
+        const db = $($$todosDb).unpack()
         const userTodos = db.get(session.userId) || []
         db.set(session.userId, [...userTodos, todo])
         return db.get(session.userId)
@@ -39,6 +39,6 @@ const addTodo = $$addTodo
     .assemble(index($$session.pack(session)))
     .unpack()
 
-console.log(addTodo("Learn Commodity")) // ["Learn Commodity"]
-console.log(addTodo("Build app")) // ["Learn Commodity", "Build app"]
+console.log(addTodo("Learn Architype")) // ["Learn Architype"]
+console.log(addTodo("Build app")) // ["Learn Architype", "Build app"]
 ```

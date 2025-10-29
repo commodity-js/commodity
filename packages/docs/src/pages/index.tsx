@@ -9,14 +9,14 @@ import SectionSeparator from "@site/src/components/SectionSeparator"
 
 import styles from "./index.module.css"
 
-const heroCode = `import { createMarket, index } from "commodity"
+const heroCode = `import { createMarket, index } from "architype"
 
 // Create market and define suppliers
 const market = createMarket()
 const $$session = market.offer("session").asResource<{ userId: string }>()
 const $$api = market.offer("api").asProduct({
     suppliers: [$$session],
-    factory: ($) => new ApiClient($($$session).userId)
+    factory: ($) => new ApiClient($($$session).unpack().userId)
 })
 
 // Assemble with type safety
@@ -40,11 +40,11 @@ const $$userService = market.offer("userService").asProduct({
     factory: ($) => {
         // No explicit types needed! They are all inferred.
 
-        const config = $($$config);
+        const config = $($$config).unpack();
         //      ^? const config: { api: { baseUrl: string } }
         //         (Inferred from the .asResource<T>() definition)
 
-        const db = $($$db);
+        const db = $($$db).unpack();
         //    ^? const db: DatabaseClient
         //       (Inferred from the $$db's factory return type)
 
@@ -71,7 +71,7 @@ const $$app = market.offer("app").asProduct({
             // The generator is created on the first call thanks to lazy loading.
             // Subsequent calls within the same context will reuse the
             // same, memoized instance without running the factory again.
-            const reporter = $($$reportGenerator);
+            const reporter = $($$reportGenerator).unpack();
             reporter.generate();
         }
     }
@@ -81,12 +81,12 @@ const testingExample = `// A product that depends on a real database.
 const $$userProfile = market.offer("userProfile").asProduct({
     suppliers: [$$db],
     factory: ($) => ({
-        bio: $($$db).fetchBio()
+        bio: $($$db).unpack().fetchBio()
     })
 });
 
-// For tests, create a prototype with no dependencies.
-const mockUserProfile = $$userProfile.prototype({
+// For tests, create a mock with no dependencies.
+const mockUserProfile = $$userProfile.mock({
     suppliers: [], // <-- No database needed!
     factory: () => ({
         bio: "This is a mock bio for testing."
@@ -96,12 +96,12 @@ const mockUserProfile = $$userProfile.prototype({
 // The component we want to test.
 const $$app = market.offer("app").asProduct({
     suppliers: [$$userProfile],
-    factory: ($) => \`<div>\${$$(userProfile).bio}</div>\`
+    factory: ($) => \`<div>\${$$(userProfile).unpack().bio}</div>\`
 });
 
-// In the test, just .try() the prototype.
+// In the test, just .hire() the mock.
 // No need to provide a database connection!
-const app = $$app.try(mockUserProfile).assemble().unpack();`
+const app = $$app.hire(mockUserProfile).assemble().unpack();`
 
 function Hero() {
     const { siteConfig } = useDocusaurusContext()
@@ -184,7 +184,7 @@ function Hero() {
                                     <span></span>
                                 </div>
                                 <span className={styles.codeTitle}>
-                                    commodity-demo.ts
+                                    architype-demo.ts
                                 </span>
                             </div>
                             <CodeBlock
@@ -206,7 +206,7 @@ function WhySection() {
         <section className={styles.whySection}>
             <div className="container">
                 <div className={styles.sectionHeader}>
-                    <Heading as="h2">Why choose Commodity?</Heading>
+                    <Heading as="h2">Why choose Architype?</Heading>
                     <p>
                         Built for modern TypeScript applications that demand
                         performance, safety, and simplicity.
@@ -217,9 +217,9 @@ function WhySection() {
                         <div className={styles.whyIcon}>💡</div>
                         <h3>Fully Type-Inferred</h3>
                         <p>
-                            Zero type boilerplate. End-to-end type safety with
-                            compile-time dependency validation and no extra type
-                            definitions.
+                            Zero type hints, definitions or boilerplate.
+                            End-to-end type safety with compile-time dependency
+                            validation.
                         </p>
                     </div>
                     <div className={styles.whyCard}>
@@ -346,7 +346,7 @@ function UseCasesSection() {
                 <div className={styles.sectionHeader}>
                     <Heading as="h2">Perfect for modern apps</Heading>
                     <p>
-                        From React components to API servers, Commodity adapts
+                        From React components to API servers, Architype adapts
                         to your architecture.
                     </p>
                 </div>
@@ -403,7 +403,9 @@ function CTASection() {
         <section className={styles.ctaSection}>
             <div className="container">
                 <div className={styles.ctaContent}>
-                    <Heading as="h2">Ready to revolutionize your DI?</Heading>
+                    <Heading as="h2">
+                        Ready to revolutionize your DI with Architype?
+                    </Heading>
                     <p>
                         Join developers who've already made the switch to
                         type-inferred dependency injection!
@@ -432,7 +434,7 @@ function CTASection() {
                     </div>
                     <div className={styles.ctaNote}>
                         <p>
-                            🚀 Install with <code>npm install commodity</code>
+                            🚀 Install with <code>npm install architype</code>
                         </p>
                     </div>
                 </div>
@@ -454,7 +456,7 @@ export default function Home(): ReactNode {
             <SectionSeparator />
             <FeatureSection
                 title="Fully Type-Inferred from End to End"
-                description="Catch dependency errors before they reach production. Commodity's architecture provides end-to-end type inference, eliminating entire classes of bugs and ensuring your dependency graph is always valid."
+                description="Catch dependency errors before they reach production. Architype's architecture provides end-to-end type inference, eliminating entire classes of bugs and ensuring your dependency graph is always valid."
                 code={typeExample}
             />
             <SectionSeparator />

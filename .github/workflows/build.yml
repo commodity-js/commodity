@@ -95,13 +95,13 @@ jobs:
               run: pnpm install
 
             - name: Build package
-              run: pnpm run build --filter=commodity
+              run: pnpm run build --filter=architype
 
             - name: Upload build artifacts
               if: ${{ github.event_name == 'release' }}
               uses: actions/upload-artifact@v4
               with:
-                  name: commodity-build
+                  name: architype-build
                   path: |
-                      packages/commodity/dist
-                      packages/commodity/package.json
+                      packages/architype/dist
+                      packages/architype/package.json

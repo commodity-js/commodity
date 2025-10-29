@@ -7,9 +7,9 @@ export const $$SelectSession = market.offer("SelectSession").asProduct({
     suppliers: [$$usersQuery, ctx.$$session],
     optionals: [ctx.$$post],
     factory: ($) => () => {
-        const [session, setSession] = $(ctx.$$session)
-        const { data: users } = useQuery($($$usersQuery))
-        const post = $(ctx.$$post)
+        const [session, setSession] = $(ctx.$$session).unpack()
+        const { data: users } = useQuery($($$usersQuery).unpack())
+        const post = $(ctx.$$post)?.unpack()
 
         if (!users) {
             return <div>Loading users...</div>

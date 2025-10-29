@@ -1,8 +1,8 @@
 {
-    "extends": "@config.commodity/typescript",
+    "extends": "@config.architype/typescript",
     "compilerOptions": {
         "target": "ES2020",
-        "lib": ["ES2020", "DOM"],
+        "lib": ["ES2023", "DOM"],
         "declaration": true,
         "declarationMap": true,
         "outDir": "./dist",

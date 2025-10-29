@@ -1,6 +1,6 @@
-# 🚀 Commodity + React (Client components) Demo
+# 🚀 Architype + React (Client components) Demo
 
-This example showcases a basic social media wireframe built entirely with Commodity's dependency injection patterns, demonstrating how to eliminate prop-drilling while maintaining type safety and testability.
+This example showcases a basic social media wireframe built entirely with Architype's dependency injection patterns, demonstrating how to eliminate prop-drilling while maintaining type safety and testability.
 
 A preview browser should automatically show up, but if it doesn't, simply click on the Terminal icon in the sidebar, then click on 3001 under PREVIEWS.
 
@@ -9,25 +9,25 @@ A preview browser should automatically show up, but if it doesn't, simply click 
 [![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 
-# Tips for using Commodity with React
+# Tips for using Architype with React
 
 -   **Rules of Hooks** - Don't call hooks in the factory's function body! If you call hooks, either in a component or custon hooks, be sure to call it in a function **returned** by the factory, like so:
 
 ```tsx
 {
     factory: ($, $$) => () => {
-        // useXYZ() or $(useXYZ)() if hook part of supplies
+        // useXYZ() or $($$useXYZ).unpack()() if hook part of supplies
     }
 }
 ```
 
--   **React Context alternative** - All you can achieve with React Context can be achieved using Commodity's API:
+-   **React Context alternative** - All you can achieve with React Context can be achieved using Architype's API:
 
     -   `createContext()` → define a new resource with `asResource()`
-    -   `useContext()` → access it through supplies with `$(someContextResourceSupplier)`
+    -   `useContext()` → access it through supplies with `$(someContextResourceSupplier).unpack()`
     -   <Provider > → call `reassemble()` on already supplied products, or use assemblers otherwise.
 
-    The current demo has been designed to showcase this, via a deeply nested component tree. See [Context Switching and Enrichment](https://commodity-js.github.io/commodity/docs/guides/context-switching) for full documentation.
+    The current demo has been designed to showcase this, via a deeply nested component tree. See [Context Switching and Enrichment](https://architype-js.github.io/architype/docs/guides/context-switching) for full documentation.
 
 -   **Elements** - If your component is pure and doesn't need to receive additional props (outside $ supplies) or call hooks, returning JSX elements from the factory directly works.
 
@@ -49,12 +49,12 @@ market.offer("Component").asProduct({
 })
 ```
 
--   **ESLint** - If you create hooks as products as described above, you'd call it like $(useXYZ)() which ESLint can't detect for the rules-of-hooks rule. You could store the hook in a temporary variable instead:
+-   **ESLint** - If you create hooks as products as described above, you'd call it like $(useXYZ).unpack()() which ESLint can't detect for the rules-of-hooks rule. You could store the hook in a temporary variable instead:
 
 ```tsx
 {
     factory: ($, $$) => () => {
-        const useXYZ = $(useXYZ)
+        const useXYZ = $(useXYZ).unpack()
         useXYZ() // ESLint rules-of-hooks should work
     }
 }
@@ -89,8 +89,8 @@ src/
 
 ## 📖 Related Documentation
 
--   [Commodity Core Library](https://github.com/commodity-js/commodity)
--   [Commodity Documentation](https://github.com/commodity-js/commodity#readme)
+-   [Architype Core Library](https://github.com/architype-js/architype)
+-   [Architype Documentation](https://github.com/architype-js/architype#readme)
 
 ## 🤝 Contributing
 
@@ -108,4 +108,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Built with ❤️ using [Commodity](https://github.com/commodity-js/commodity) - First fully type-inferred DI for TypeScript**
+**Built with ❤️ using [Architype](https://github.com/architype-js/architype) - First fully type-inferred DI for TypeScript**

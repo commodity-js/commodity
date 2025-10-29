@@ -1,10 +1,10 @@
-# commodity
+# architype
 
 IN CONSTRUCTION, please do not install versions v0.0.x!!!
 
 First fully type-inferred, type-safe and hyper-minimalistic DI solution for Typescript! No OOP, reflect-metadata, decorators, annotations or compiler magic, just pure functions!
 
-## Why Commodity?
+## Why Architype?
 
 -   ✅ **Scalable architecture** - Promotes SOLID, clean, and code-splittable design patterns.
 -   ✅ **Fully type-inferred** - Compile-time dependency validation.
@@ -20,10 +20,10 @@ First fully type-inferred, type-safe and hyper-minimalistic DI solution for Type
 ## Installation
 
 ```bash
-npm install commodity
+npm install architype
 ```
 
-## When to Use Commodity
+## When to Use Architype
 
 -   **Complex TypeScript applications** with deep function call hierarchies
 -   **Avoiding prop-drilling and waterfalls** in React (works in both Client and Server Components)
@@ -43,7 +43,7 @@ npm install commodity
 ## Quick Example
 
 ```ts
-import { createMarket, index } from "commodity"
+import { createMarket, index } from "architype"
 
 // 1. Create a market
 const market = createMarket()
@@ -57,8 +57,8 @@ const $$todosDb = market.offer("todosDb").asProduct({
 const $$addTodo = market.offer("addTodo").asProduct({
     suppliers: [$$session, $$todosDb],
     factory: ($) => (todo: string) => {
-        const session = $($$session)
-        const db = $($$todosDb)
+        const session = $($$session).unpack()
+        const db = $($$todosDb).unpack()
         const userTodos = db.get(session.userId) || []
         db.set(session.userId, [...userTodos, todo])
         return db.get(session.userId)
@@ -70,8 +70,8 @@ const session = { userId: "user123" }
 // 3. Assemble and use
 const addTodo = $$addTodo.assemble(index($session.pack(session))).unpack()
 
-console.log(addTodo("Learn Commodity")) // ["Learn Commodity"]
-console.log(addTodo("Build app")) // ["Learn Commodity", "Build app"]
+console.log(addTodo("Learn Architype")) // ["Learn Architype"]
+console.log(addTodo("Build app")) // ["Learn Architype", "Build app"]
 ```
 
 ## Intuitive, opinionated terminology
@@ -103,7 +103,7 @@ Here's an equivalence table to more classical, technical terms
 -   Declarative, immutable, functionally pure.
 -   Stateless - Dependencies are resolved via closures, not state. Some memoized state is kept for validation and optimization purposes only.
 -   Auto-wired - All products are built by the Supply Chain and resolve their dependencies automatically.
--   Maximal colocation - All product suppliers are registered right next to the function that uses them, not at the entry point.
+-   Maximal colocation - All product suppliers are registered right next to the factory that uses them, not at the entry point.
 
 📦 Context Propagation
 
@@ -115,19 +115,19 @@ Here's an equivalence table to more classical, technical terms
 ⚡ Waterfall Management
 
 -   Eager loading - Use lazy: false for immediate construction of all supplies in parallel in assemble() call (default).
--   Lazy loading - Use lazy: true for on-demand construction of a product when its value is first accessed.
+-   Lazy loading - Use lazy: true for on-demand construction of a product when its value is first accessed in a factory.
 
-🧪 Testing and Mocking
+🧪 Testing and Packing
 
 -   You can mock any product using pack(), which will use the provided value directly, bypassing the product's factory.
--   For more complex mocks which would benefit from a factory, see prototype() below.
+-   For more complex mocks which would benefit from a factory, see mock() below.
 
-🚀 Prototyping and A/B testing
+🚀 Mocking and A/B testing
 
--   Use `prototype()` to create alternative implementations of a product, that may depend on different suppliers than the original.
--   Prototypes' factories must return values of the same type than the original product's factory.
--   Define prototype suppliers or assemblers to `try()` at the entry-point of your app
--   For example, you can easily try different versions of a UI component for A/B testing.
+-   Use `mock()` to create alternative implementations of a product, that may depend on different suppliers than the original.
+-   Mocks' factories must return values of the same type than the original product's factory.
+-   Define mock suppliers or assemblers to `hire()` at the entry-point of your app
+-   For example, you can easily hire different versions of a UI component for A/B testing.
 
 ## Basic Usage
 
@@ -137,7 +137,7 @@ All suppliers are created from a `market`, which creates a scope shared by Resou
 You'll usually create one market per application. Markets register the names of the resources and products it `offers` so that no name conflicts occur. The name registry is the only state the market manages.
 
 ```ts
-import { createMarket } from "commodity"
+import { createMarket } from "architype"
 
 const market = createMarket()
 ```
@@ -162,19 +162,18 @@ const session = $session.unpack()
 
 ### 3. Define Products (Services)
 
-Products are your application's services, components or features. They are factory functions that can depend on other products or resources. Factories can return anything: simple vales, promises or other functions.
+Products are your application's services, components or features. They are factory functions that can depend on other products or resources. Factories can return anything: simple values, promises or other functions.
 
-Dependencies are accessed via the `$` object passed to the `factory` as argument. `$` is a shorthand for `supplies`, but it is just a suggestion, you can name the factory arg however you want. I like `$` because it is short and will be used a lot throughout the application.
+Dependencies are accessed via the `$` function passed to the `factory` as argument. `$` is a shorthand for `supplies`, but it is just a suggestion, you can name the factory arg however you want. I like `$` because it is short and will be used a lot throughout the application.
 
-Use `$[$$supplier.name]` to access the resource or product stored in supplies, and `$($$supplier)` as a shorthand to access the unpacked value of the product or resource directly. As a mnemonic, `$[]` looks like a box, so it accesses the packed, the "boxed", resource or product.
+Use `$($$supplier)` to access the resource or product stored in `$` supplies, and `$($$supplier).unpack()` to access the value of the product or resource directly.
 
 ```tsx
 const $$user = market.offer("user").asProduct({
     suppliers: [$$session, $$db], // Depends on session and db resources.
     factory: ($) => {
-        const session = $[$$session.name].unpack() //Access the session value
-        const session = $($$session) // Shorthand for the above.
-        const db = $($$db)
+        const session = $($$session).unpack() //Access the session value
+        const db = $($$db).unpack()
         return db.getUser(session.userId) // query the db to retrieve the user.
     }
 })
@@ -182,16 +181,16 @@ const $$user = market.offer("user").asProduct({
 
 #### Factory Lifecycle & Memoization
 
-**Important**: Your factory function will only ever be called **once per `assemble()` call**. This eliminates the need for traditional DI service lifecycles (transient, scoped, singleton, etc.).
+**Important**: Your factory function will only ever be called **once per `assemble()` or `reassemble()` call**. This eliminates the need for traditional DI service lifecycles (transient, scoped, singleton, etc.).
 
 -   **Need something called multiple times?** Return a function from your factory instead of a value
 
 ```ts
-// ✅ Good: Factory called once, returns a function for multiple calls
+// ✅ Good: Factory called once, returns a function for multiple calls or side-effects
 const $$createUser = market.offer("createUser").asProduct({
     suppliers: [$$db],
     factory: ($) => {
-        const db = $($$db)
+        const db = $($$db).unpack()
         // This setup code runs only once per assemble()
         const cache = new Map()
 
@@ -219,13 +218,14 @@ By default, all products are constructed on `assemble()` call immediately in the
 // Eager loading - constructed immediately when assemble() is called
 const $$eagerService = market.offer("eagerService").asProduct({
     suppliers: [$$db],
-    factory: ($) => BuildExpensiveService($($$db))
+    factory: ($) => buildExpensiveService($($$db))
+    lazy: false // default
 })
 
-// Lazy loading - initialized only when accessed
+// Lazy loading - constructed only when accessed
 const $$lazyService = market.offer("lazyService").asProduct({
     suppliers: [$$db],
-    factory: ($) => BuildExpensiveService($($$db)),
+    factory: ($) => buildExpensiveService($($$db)),
     lazy: true // Loaded when first accessed via $()
 })
 ```
@@ -240,7 +240,7 @@ const $$app = market.offer("app").asProduct({
     factory: ($) => {
         // Access the user value. Its type will be automatically inferred from $$user's
         // factory's inferred return type.
-        const user = $($$user)
+        const user = $($$user).unpack()
         return <h1>Hello, {user.name}! </h1>
     }
 })
@@ -257,24 +257,24 @@ const req = //...Get the current http request
 // Assemble the App, providing the Session and Db resources.
 // Bad but working syntax for demonstration purposes only. See index() below for syntactic sugar.
 const $app = $$app.assemble({
-    [$$session.name]: $$session.pack({
+    [$$session.supplier.name]: $$session.pack({
         userId: req.userId
     }),
-    [$$db.name]: $$db.pack(db)
+    [$$db.supplier.name]: $$db.pack(db)
 })
 
 const res = $app.unpack()
 // Return or render res...
 ```
 
-The flow of the assemble call is as follows: raw data is obtained, which is provided to `$$resource` suppliers using pack(). Then those resources are supplied to `$$app`'s suppliers recursively, which assemble their own product, and pass them up along the supply chain until they reach `$$app`, which assembles the final `$app product`. All this work happens in the background, no matter the complexity of your application.
+The flow of the assemble call is as follows: raw data is obtained, which is provided to `$$resource` suppliers using pack(). Then those resources are supplied to `$$app`'s suppliers recursively, which assemble their own product, and pass them up along the supply chain until they reach `$$app`, which assembles the final `$app` product. All this work happens in the background, no matter the complexity of your application.
 
-To simplify the assemble() call, you should use the index() utility, which transforms an array like
-`...[$resource1, $resource2]` into an indexed object like
-`{[$resource1.name]: $resource1, [$resource2.name]: $resource2}`. I unfortunately did not find a way to merge index() with assemble() without losing assemble's type-safety, because typescript doesn't have an unordered tuple type.
+To simplify the assemble() call, you should use the index() utility, which just transforms an array like
+`...[$resource1, $product1]` into an indexed object like
+`{[$resource1.supplier.name]: $resource1, [$product1.name]: $product1}`. I unfortunately did not find a way to merge index() with assemble() without losing assemble's type-safety, because typescript doesn't have an unordered tuple type.
 
 ```tsx
-import { index } from "commodity"
+import { index } from "architype"
 
 const $appProduct = $$app.assemble(
     index(
@@ -288,11 +288,11 @@ const $appProduct = $$app.assemble(
 
 ## Context propagation, switching and enrichment
 
-It is often a good architectural pattern to `hoist` pieces of data used multiple times throughout your application, such as user sessions or database connections, in a context object. But achieving it statelessly and immutably, without global variables, while maintaining full flexibility, can be a bit tricky. This is what React Context achieved for React components, but Commodity provides mechanisms to achieve this in a framework agnostic way using its DI primitives.
+It is often a good architectural pattern to `hoist` pieces of data used multiple times throughout your application, such as user sessions or database connections, in a context object. But achieving it statelessly and immutably, without global variables, while maintaining full flexibility, can be a bit tricky. This is what React Context achieved for React components, but Architype provides mechanisms to achieve this in a framework agnostic way using its DI primitives.
 
-For brevity of this README, please consult [the docs](https://commodity-js.github.io/commodity/docs/guides/context-switching) for more details.
+For brevity of this README, please consult [the docs](https://architype-js.github.io/architype/docs/guides/context-switching) for more details.
 
-## Testing and Mocking
+## Testing and Packing
 
 ### 1. Mocking in tests with `.pack()`
 
@@ -302,14 +302,14 @@ You usually use `pack()` to provide resources to `assemble()`, but you can also 
 const $$profile = market.offer("profile").asProduct({
     suppliers: [$$user],
     factory: () => {
-        return <h1>Profile of {$($$user).name}</h1>
+        return <h1>Profile of {$($$user)unpack().name}</h1>
     }
 })
 
 const $$user = market.offer("user").asProduct({
     suppliers: [$$db, $$session],
     factory: () => {
-        return $($$db).findUserById($($$session).userId)
+        return $($$db).unpack().findUserById($($$session).userId)
     }
 })
 
@@ -322,7 +322,7 @@ const $profile = $$profile.assemble(
          // since $$db and $session are in the supply chain...
         $$db.pack(undefined),
         // if you can't pass undefined, or some mock for them,
-        // prefer using `.prototype()` and `.try()` instead.
+        // prefer using `.mock()` and `.hire()` instead.
         $$session.pack(undefined),
     )
 )
@@ -330,51 +330,51 @@ const $profile = $$profile.assemble(
 // profile === <h1>Profile of John Doe</h1>
 ```
 
-### 2. `.prototype()` and `.try()` alternative implementations
+### 2. `.mock()` and `.hire()` alternative implementations
 
-For more complete alternative implementations, with complex dependency and context needs, you can use `.prototype()` and `.try()` instead of `.pack()` to access the whole power of your supply chain. The same example as above could be:
+For more complete alternative implementations, with complex dependency and context needs, you can use `.mock()` and `.hire()` instead of `.pack()` to access the whole power of your supply chain. The same example as above could be:
 
 ```tsx
 const $$profile = market.offer("profile").asProduct({
     suppliers: [$$user],
     factory: () => {
-        return <h1>Profile of {$($$user).name}</h1>
+        return <h1>Profile of {$($$user).unpack().name}</h1>
     }
 })
 
 const $$user = market.offer("user").asProduct({
     suppliers: [$$db, $$session],
     factory: () => {
-        return $($$db).findUserById($($$session).userId)
+        return $($$db).unpack()findUserById($($$session).userId)
     }
 })
 
-const userPrototype = $$user.prototype({
+const userMock = $$user.mock({
     suppliers: [],
     factory: () => "John Doe"
 })
 
-//You no longer need to pass some value for db and session, since userPrototype removes them from the supply chain.
-const profile = $$profile.try(userPrototype).assemble()
+//You no longer need to pass some value for db and session, since userMock removes them from the supply chain.
+const profile = $$profile.hire(userMock).assemble()
 
 profile === <h1>Profile of John Doe</h1>
 ```
 
-`.prototype()` and `.try()` can be used for testing, but also to swap implementations for sandboxing or A/B testing.
+`.mock()` and `.hire()` can be used for testing, but also to swap implementations at runtime for sandboxing or A/B testing.
 
 ## Design Philosophy: The Problem with Traditional DI
 
-DI containers have always felt abstract, technical, almost magical in how they work. Like a black box, you often have to dig into the source code of a third-party library to understand how data flows in your own application. It feels like you lose control of your own data when you use one, and your entire app becomes dependent on the container to even work. Commodity aims to make DI cool again! The pattern has real power, even if current implementations on the open-source market hide that power under a lot of complexity.
+DI containers have always felt abstract, technical, almost magical in how they work. Like a black box, you often have to dig into the source code of a third-party library to understand how data flows in your own application. It feels like you lose control of your own data when you use one, and your entire app becomes dependent on the container to even work. Architype aims to make DI cool again! The pattern has real power, even if current implementations on the open-source market hide that power under a lot of complexity.
 
 DI was complex to achieve in OOP world because of the absence of first-class functions in OOP languages. But in modern functional languages, DI should be easier, since DI itself is a functional pattern. However, TypeScript DI frameworks currently available seem to have been built by imitating how they were built in OOP languages...
 
 The problem DI was solving in OOP world still exists in the functional world. In OOP world, DI helped inject data and services freely within deeply nested class hierarchies and architectures. In the functional world, DI achieves the same: inject data and services freely in deeply nested function calls. Deeply nested function calls naturally emerge when trying to decouple and implement SOLID principles in medium to highly complex applications. Without DI, you cannot achieve maximal decoupling. Even if in principle you can reuse a function elsewhere, the function is still bound in some way to the particular call stack in which it finds itself, simply by the fact that it can only be called from a parent function that has access to all the data and dependencies it needs.
 
-Commodity's "Dependency Injection Supply Chain" (DISC) model can do everything containers do, but in a more elegant, simpler, and easier-to-reason-about manner.
+Architype's "Dependency Injection Supply Chain" (DISC) model can do everything containers do, but in a more elegant, simpler, and easier-to-reason-about manner.
 
 ## Under the hood
 
-Injection happens statelessly via a memoized recursive self-referential lazy object. Here is a simplified example:
+Injections happens statelessly via a memoized recursive self-referential lazy object. Here is a simplified example:
 
 ```ts
 const $ = {
@@ -389,7 +389,7 @@ const $ = {
 
 ## API reference
 
-See [the docs](https://commodity-js.github.io/commodity/docs/api-reference) for the full API reference!
+See [the docs](https://architype-js.github.io/architype/docs/api-reference) for the full API reference!
 
 ## Contributing
 

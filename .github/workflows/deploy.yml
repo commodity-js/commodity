@@ -34,7 +34,7 @@ jobs:
         needs: [build, validate-tag]
         environment:
             name: npm-publish
-            url: https://www.npmjs.com/package/commodity
+            url: https://www.npmjs.com/package/architype
         runs-on: ubuntu-latest
         permissions:
             contents: read # Required for checkout
@@ -56,11 +56,11 @@ jobs:
             - name: Download build artifacts
               uses: actions/download-artifact@v5
               with:
-                  name: commodity-build
-                  path: packages/commodity
+                  name: architype-build
+                  path: packages/architype
 
             - name: Set version from release tag
-              working-directory: ./packages/commodity
+              working-directory: ./packages/architype
               run: |
                   VERSION=${GITHUB_REF#refs/tags/}
                   VERSION=${VERSION#v}
@@ -70,31 +70,31 @@ jobs:
 
             - name: Dry publish
               if: contains(github.event.release.tag_name, 'dry')
-              working-directory: ./packages/commodity
+              working-directory: ./packages/architype
               run: |
                   npm publish --tag dry --dry-run
 
             - name: Publish to Canary
               if: contains(github.event.release.tag_name, 'canary')
-              working-directory: ./packages/commodity
+              working-directory: ./packages/architype
               run: |
                   npm publish --tag canary
 
             - name: Publish to Alpha
               if: contains(github.event.release.tag_name, 'alpha')
-              working-directory: ./packages/commodity
+              working-directory: ./packages/architype
               run: |
                   npm publish --tag alpha
 
             - name: Publish to Beta
               if: contains(github.event.release.tag_name, 'beta')
-              working-directory: ./packages/commodity
+              working-directory: ./packages/architype
               run: |
                   npm publish --tag beta
 
             - name: Publish to RC
               if: contains(github.event.release.tag_name, 'rc')
-              working-directory: ./packages/commodity
+              working-directory: ./packages/architype
               run: |
                   npm publish --tag rc
 
@@ -102,7 +102,7 @@ jobs:
               if: |
                   github.event.release.prerelease == false &&
                   contains(github.event.release.tag_name, '-') == false
-              working-directory: ./packages/commodity
+              working-directory: ./packages/architype
               run: |
                   npm publish --tag latest
 

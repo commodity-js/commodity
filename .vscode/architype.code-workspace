@@ -17,7 +17,7 @@
         "version": "2.0.0",
         "tasks": [
             {
-                "label": "Start Commodity Watch Mode",
+                "label": "Start Architype Watch Mode",
                 "type": "shell",
                 "command": "pnpm",
                 "args": ["run", "dev"],

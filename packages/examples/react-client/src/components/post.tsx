@@ -3,7 +3,7 @@ import { market } from "@/market"
 import type { Comment } from "@/api"
 import { useState } from "react"
 import { $$Comment } from "@/components/comment"
-import { index } from "commodity"
+import { index } from "architype"
 import { ctx } from "@/context"
 import { useQuery } from "@tanstack/react-query"
 import { $$SelectSession } from "./session"
@@ -18,10 +18,12 @@ export const $$Post = market.offer("Post").asProduct({
         $$SelectSession
     ],
     factory: ($) => () => {
-        const post = $(ctx.$$post)
-        const [session] = $(ctx.$$session)
-        const { data: users } = useQuery($($$usersQuery))
-        const { data: comments } = useQuery($($$commentsQuery)(post.id))
+        const post = $(ctx.$$post).unpack()
+        const [session] = $(ctx.$$session).unpack()
+        const { data: users } = useQuery($($$usersQuery).unpack())
+        const { data: comments } = useQuery(
+            $($$commentsQuery).unpack()(post.id)
+        )
         const [postSession, setPostSession] = useState(session)
 
         if (!users || !comments) {
@@ -30,14 +32,13 @@ export const $$Post = market.offer("Post").asProduct({
 
         const newCtx = index(
             ctx.$$session.pack([postSession, setPostSession]),
-            $[ctx.$$post.name]
+            $(ctx.$$post)
         )
 
-        const Comment = $[$$Comment.name].reassemble(newCtx).unpack()
+        const $Comment = $($$Comment).reassemble(newCtx, [$$SelectSession])
 
-        const SelectSession = $[$$SelectSession.name]
-            .reassemble(newCtx)
-            .unpack()
+        const SelectSession = $Comment.$($$SelectSession).unpack()
+        const Comment = $Comment.unpack()
 
         return (
             <div className="border-2 border-purple-500 rounded-lg p-4 bg-gray-800">

@@ -1,16 +1,12 @@
 # Context Switching & Enrichment
 
-Commodity provides powerful, type-safe mechanisms for altering or adding to the dependency context at runtime.
+Architype provides powerful, type-safe mechanisms for altering or adding to the dependency context at runtime.
 
 ## Enrich Context with Assemblers
 
 Assemblers allow you to use product suppliers in your factory that can't be assembled at the application's entry point because they depend on a resource (i.e., a piece of context) that is only known or computed deeper in the dependency chain.
 
-A good example of this is an `AdminPanel`. An `AdminPanel` can't be built until the current session has been validated as having an "admin" role, which doesn't need to be known when the application starts. You might want to compute it lazily, only if the user requests to see the `AdminPanel`. Here's how to do it with assemblers:
-
-1.  **Define Assemblers**: In your product definition, list any assemblers in the `assemblers` array.
-2.  **Access in Factory**: The factory function receives a second argument (`$$`) containing the unresolved assemblers.
-3.  **Assemble When Needed**: When you're ready, call `.assemble()` on the assembler, providing any new context required.
+Let's start with a simple example: an `AdminPanel`. An `AdminPanel` can't be built until the current session has been validated as having an "admin" role, which doesn't need to be known when the application starts. You might want to compute it lazily, only if the user requests to see the `AdminPanel`. Here's how to do it with assemblers:
 
 ```tsx
 type Session = { user: User; now: Date }
@@ -38,15 +34,18 @@ const $$App = market.offer("app").asProduct({
     suppliers: [$$session],
     // Put in assemblers[] all product suppliers depending on new context (resources) computed in this factory
     assemblers: [$$adminPanel]
+    // Pass that new context in optionals so you aren't forced to provide it at the entry point
+    // Optionals can also be accessed via $$()
+    optionals: [$$adminSession]
     // Factories receive assemblers as 2nd argument
     factory: ($, $$) => () => {
-        const session = $($$session)
+        const session = $($$session).unpack()
         const role = session.user.role
         if (role === "admin") {
             //Assemblers are not yet assembled, you need to assemble them with the new context.
-            return $$[$$adminPanel.name].assemble(
+            return $$($$adminPanel).assemble(
                 {
-                    ...$, // Keep all previous supplies if needed
+                    ...$, // Keep all previous supplies if needed (not needed here, for example purpose only)
                     ...index(
                         // Notice $$adminSession is NOT listed either in suppliers nor assemblers.
 
@@ -58,7 +57,7 @@ const $$App = market.offer("app").asProduct({
                         // It is not listed in assemblers because only products benefit from being listed in
                         // assemblers, to allow mocking them or trying different prototype implementations.
                         // Resource suppliers can just be hard-coded via closure without losing any decoupling.
-                        $$adminSession.pack(session as AdminSession)
+                        $$($$adminSession).pack(session as AdminSession)
 
                         // Or, even better, rebuild the session for full type-safety without assertions now that role has been
                         // type guarded.
@@ -95,20 +94,20 @@ Sometimes, you don't need to build a new product from scratch based on new conte
 
 When you reassemble, you only need to provide the resources you want to change. All other original dependencies from the initial `.assemble()` call are carried over automatically.
 
-Here is a classic problem `.reassemble()` solves: how can a user safely send money to another user if the sender does not have access to the receiver's account, without having to bypass the receiver's access control layer? Just impersonate the receiver with `.reassemble()`!
+Here is a classic problem `.reassemble()` solves: how can a user safely send money to another user when the sender does not have access to the receiver's account, without having to bypass the receiver's access control layer? Just impersonate the receiver with `.reassemble()`!
 
 ```typescript
 const $$sendMoney = market.offer("send-money").asProduct({
     suppliers: [$$addWalletEntry, $$session],
     factory: ($) => {
         return (toUserId: string, amount: number) => {
-            const addWalletEntry = $($$addWalletEntry)
+            const addWalletEntry = $($$addWalletEntry).unpack()
 
             // 1. Runs with the original session's account
             addWalletEntry(-amount)
 
             // 2. Reassemble the dependency with a new session context
-            const addTargetWalletEntry = $[$$addWalletEntry.name]
+            const addTargetWalletEntry = $($$addWalletEntry)
                 .reassemble(index($$session.pack({ userId: toUserId })))
                 .unpack()
 
@@ -121,19 +120,19 @@ const $$sendMoney = market.offer("send-money").asProduct({
 
 > **Analogy with React Context**
 >
-> Continuing the React analogy, `.reassemble()` is like calling `<ContextProvider />` a second time on the same context
-> with a new value deeper in the call stack.
+> Continuing the React analogy, `.reassemble()` is like calling `<ContextProvider />` a second time on the same
+> context with a new value deeper in the call stack.
 
-## Performance: Assembling Multiple Assemblers with `.with()` and `.supplies()`
+## Performance: Assembling Multiple Assemblers with `.hire()` and `.$()`
 
-Let's say you have multiple admin-only components to render now that you know the user is an admin.
+Let's say you have multiple admin-only components to render in React now that you know the user is an admin.
 
 ```tsx
 const $$App = market.offer("app").asProduct({
     suppliers: [$$session],
     assemblers: [$$adminPanel, $$adminDashboard, $$adminProfile],
     factory: ($, $$) => () => {
-        const session = $($$session)
+        const session = $($$session).unpack()
         const role = session.user.role
         if (role === "admin") {
             const newSupplies = {
@@ -141,11 +140,11 @@ const $$App = market.offer("app").asProduct({
                 ...index($$adminSession.pack(session as AdminSession))
             }
 
-            const Panel = $$[$$adminPanel].assemble(newSupplies).unpack()
-            const Dashboard = $$[$$adminDashboard]
+            const Panel = $$($$adminPanel).assemble(newSupplies).unpack()
+            const Dashboard = $$($$adminDashboard)
                 .assemble(newSupplies)
                 .unpack()
-            const Profile = $$[$$adminProfile].assemble(newSupplies).unpack()
+            const Profile = $$($$adminProfile).assemble(newSupplies).unpack()
 
             return (
                 <>
@@ -161,18 +160,18 @@ const $$App = market.offer("app").asProduct({
 })
 ```
 
-This is not efficient, as the assemble() context needs to be built three times independently. A better way is to use `with()`
+This is not efficient, as the assemble() context needs to be built three times independently. A better way is to use `hire()`
 
 ```tsx
 const $$App = market.offer("app").asProduct({
     suppliers: [$$session],
     assemblers: [$$adminPanel, $$adminDashboard, $$adminProfile],
     factory: ($, $$) => () => {
-        const session = $($$session)
+        const session = $($$session).unpack()
         const role = session.user.role
         if (role === "admin") {
-            const $Panel = $$[$$adminPanel]
-                .with($$adminDashboard, $$adminProfile)
+            const $Panel = $$($$adminPanel)
+                .hire($$adminDashboard, $$adminProfile)
                 .assemble({
                     ...$,
                     ...index(
@@ -184,11 +183,11 @@ const $$App = market.offer("app").asProduct({
                 })
 
             const Panel = $Panel.unpack()
-            // Since they were built together, Dashboard and Profile are available in Panel's supplies even
-            // if Panel does not need them in their factory. product.supplies() is the same as $(), but for usage outside
+            // Since they were built together, Dashboard and Profile are available in Panel's supplies ($) even
+            // if Panel does not need them in their factory. product.$() is the same as $(), but for usage outside
             // the factory, after the product has been built.
-            const Dashboard = $Panel.supplies($$adminDashboard)
-            const Profile = $Panel.supplies($$adminProfile)
+            const Dashboard = $Panel.$($$adminDashboard).unpack()
+            const Profile = $Panel.$($$adminProfile).unpack()
 
             return (
                 <>
