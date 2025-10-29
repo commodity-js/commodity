@@ -2,12 +2,12 @@
 
 ## Quick Start in 4 Steps
 
-Get up and running with Commodity in just a few minutes.
+Get up and running with Architype in just a few minutes.
 
 ### 1. Installation
 
 ```bash
-npm install commodity
+npm install architype
 ```
 
 ### 2. Create a Market
@@ -15,7 +15,7 @@ npm install commodity
 A `market` is a namespace where your suppliers are defined. You'll usually create one per application.
 
 ```typescript
-import { createMarket } from "commodity"
+import { createMarket } from "architype"
 
 const market = createMarket()
 ```
@@ -32,7 +32,7 @@ const $$session = market.offer("session").asResource<{ userId: string }>()
 const $$userService = market.offer("userService").asProduct({
     suppliers: [$session],
     factory: ($) => {
-        const session = $($$session) // Access the session data
+        const session = $($$session).unpack() // Access the session data
         return {
             id: session.userId,
             name: "Jane Doe"
@@ -46,7 +46,7 @@ const $$userService = market.offer("userService").asProduct({
 At your application's entry point, `assemble` your main product, providing any required resources. The `index()` utility simplifies this process.
 
 ```typescript
-import { index } from "commodity"
+import { index } from "architype"
 
 const session = { userId: "user-123" }
 
@@ -62,4 +62,4 @@ console.log(userService.id) // "user-123"
 
 -   Walk through a **[Basic Example](examples/simple-example)** of a complete application.
 -   Learn about **[Testing and Mocking](guides/testing)** strategies.
--   Dive into the **[Design philosophy and semantics](guides/design-philosophy)** of Commodity.
+-   Dive into the **[Design philosophy and semantics](guides/design-philosophy)** of Architype.

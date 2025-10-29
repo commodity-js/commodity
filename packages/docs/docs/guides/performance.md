@@ -1,6 +1,6 @@
 # Performance
 
-Commodity is designed for optimal performance, featuring a minimal bundle size, smart memory management, and powerful preloading strategies.
+Architype is designed for optimal performance, featuring a minimal bundle size, smart memory management, and powerful preloading strategies.
 
 ## Bundle Size & Footprint
 
@@ -19,7 +19,7 @@ Commodity is designed for optimal performance, featuring a minimal bundle size, 
 const $$createUser = market.offer("createUser").asProduct({
     suppliers: [$$db],
     factory: ($) => {
-        const db = $($$db)
+        const db = $($$db).unpack()
         // This setup code runs only once per assemble()
         const cache = new Map()
 
@@ -54,19 +54,24 @@ const $$cache = market.offer("cache").asProduct({
     factory: () => new Map()
 })
 
-const $app = $$app.assemble(supplies) // Starts constructing both at once
+const $$app = market.offer("app").asProduct({
+    suppliers: [$$db, $$cache],
+    factory: () => "Hello World!"
+})
+
+const $app = $$app.assemble({}) // Starts constructing both $$db and $$cache at once in parallel
 ```
 
 ### Lazy Loading with `lazy: true`
 
-For expensive services that are only used in certain situations (e.g., an admin panel service or a PDF export tool), you can enable lazy loading by setting `lazy: true`. The product will only be constructed the first time its value is accessed via `$(...)` or `unpack()`.
+For expensive services that are only used in certain situations (e.g., an admin panel service or a PDF export tool), you can enable lazy loading by setting `lazy: true`. The product will only be constructed the first time its value is accessed via `unpack()`.
 
 ```typescript
 const $$lazy = market.offer("lazy").asProduct({
     suppliers: [$$db],
     // Will only be loaded when `$($$lazyService)` is called in another service,
     // or when `$$lazyService.assemble().unpack()` is called at the entry point.
-    factory: ($) => new ExpensiveService($($$db)),
+    factory: ($) => new ExpensiveService($($$db).unpack()),
     lazy: true
 })
 ```
@@ -86,7 +91,7 @@ const $$profile = market.offer("profile").asProduct({
     init: (getProfile, $) => {
         // Allows to preload the current logged in user's profile.
         // the memoization cache will be prepopulated with the current user's profile if requested later.
-        await getProfile($($$currentUser).id)
+        await getProfile($($$currentUser).unpack().id)
     }
 })
 ```

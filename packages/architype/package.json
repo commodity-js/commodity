@@ -1,5 +1,5 @@
 {
-    "name": "commodity",
+    "name": "architype",
     "type": "module",
     "version": "0.0.0",
     "description": "First fully type-inferred DI solution for Typescript",
@@ -7,11 +7,11 @@
     "module": "dist/index.js",
     "types": "dist/index.d.ts",
     "sideEffects": false,
-    "author": "Commodity",
+    "author": "Architype",
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/commodity-js/commodity.git"
+        "url": "git+https://github.com/architype-js/architype.git"
     },
     "imports": {
         "#*": "./src/*.ts"
@@ -34,8 +34,8 @@
         "typecheck": "vitest run --typecheck.only"
     },
     "devDependencies": {
-        "@config.commodity/eslint": "*",
-        "@config.commodity/typescript": "*",
+        "@config.architype/eslint": "*",
+        "@config.architype/typescript": "*",
         "memoize": "^10.1.0",
         "tsup": "^8.5.0",
         "turbo": "^2.5.5",

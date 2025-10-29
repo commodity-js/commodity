@@ -9,12 +9,14 @@ export const $$Comment = market.offer("Comment").asProduct({
     factory:
         ($) =>
         ({ comment }: { comment: Comment }) => {
-            const { data: replies } = useQuery($($$repliesQuery)(comment.id))
+            const { data: replies } = useQuery(
+                $($$repliesQuery).unpack()(comment.id)
+            )
             if (!replies) {
                 return <div>Loading replies...</div>
             }
 
-            const Reply = $($$Reply)
+            const Reply = $($$Reply).unpack()
 
             return (
                 <div className="border-2 border-green-500 rounded-lg p-3 bg-gray-800 ml-4">

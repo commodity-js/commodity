@@ -39,13 +39,13 @@ const $$product = market.offer("product").asProduct({
     factory: ($, $$) => {
         // Factory function
         // $ = regular supplies
-        // $$ = assemblers (if any)
+        // $$ = assemblers and optionals (if any)
         return serviceImplementation
     }
 })
 ```
 
-### `$$supplier.pack(value) or $resource.pack() $product.pack()`
+### `$$supplier.pack(value) or $resource.pack(), $product.pack()`
 
 Provides a concrete value for a resource or product, bypassing the factory in the case of products.
 
@@ -67,49 +67,44 @@ const value = $product.unpack()
 
 ### `$product.reassemble(newSupplies)`
 
-Creates a new context with different supplies.
+Creates a new product instance built with some supplies overwritten.
 
 ```ts
 const $newProduct = $existingProduct.reassemble(newSuppliesObject)
 ```
 
-### `$$supplier.prototype(options)`
+### `$$supplier.mock(options)`
 
 Creates an alternative implementation.
 
 ```ts
-const $$alternative = $$originalSupplier.prototype({
+const $$alternative = $$originalSupplier.mock({
     suppliers: [$$differentDeps],
     factory: ($) => alternativeImplementation
 })
 ```
 
-### `$$supplier.try(...$$prototypes)`
+### `$$supplier.hire([...hiredSuppliers (mocks or originals)], [...hiredAssemblers (mocks only, no use case for originals yet...)]?)`
 
-Use a prototype instead of the original when resolving a product's suppliers or assemblers.
+`Composition root`-style method to wire additionnal suppliers and assemblers. Mocks will replace originals
+with the same name across the entire dependency chain.
 
 ```ts
-const $$modified = $$originalSupplier.try($$prototypeSupplier)
+const $$modified = $$originalSupplier.hire([$$prototypeSupplier])
 ```
 
-### `$$supplier.with(...$$suppliers)`
-
-Allows to assemble() multiple $$suppliers at the same time in a performant manner.
+You can also pass originals to hiredSuppliers to batch assemble multiple products together. You access other products via `$product.$($$otherSupplier)`
 
 ```ts
-const $A = $$A.with($$B, $$C).assemble({})
+const $A = $$A.with([$$B, $$C]).assemble({})
 // All assembled products will be available in $A's supplies() (see below)
-const $B = $A.supplies($$B)
-const $C = $A.supplies($$C)
+const $B = $A.$($$B)
+const $C = $A.$($$C)
 ```
 
-```ts
-const $$modified = $$originalSupplier.try($$prototypeSupplier)
-```
+### `$product.$()`
 
-### `$product.supplies()`
-
-Access a `$product`'s supplies (`$`to factory) but from outside a factory. See example above in`.with()` section.
+Access a `$product`'s supplies but from outside a factory. See example above in `$$supplier.hire()` section.
 
 ### `index(...$supplies)`
 
@@ -117,14 +112,12 @@ Utility to convert supply array to indexed object.
 
 ```ts
 const suppliesObject = index($supply1, $supply2, $supply3)
-// Equivalent to: { [$supply1.name]: $supply1, [$supply2.name]: $supply2, ... }
+// Equivalent to: { [$supply1.supplier.name]: $supply1, [$supply2.supplier.name]: $supply2, ... }
 ```
 
 ## Factory Function (`factory`)
 
 The factory function is where your service logic lives. It receives two arguments:
 
--   **`$` (Supplies)**: An object to access regular dependencies.
-    -   `$(supplier)`: Unpacks the dependency's value directly.
-    -   `$[supplier.name]`: Accesses the packed dependency instance, allowing you to call `.reassemble()` on it.
--   **`$$` (Assemblers)**: An object containing assemblers, which must be assembled manually.
+-   **`$` (Supplies)**: A function to access regular dependencies.
+-   **`$$` (Optionals or Assemblers)**: A function to access optional or assembler suppliers in a factory.

@@ -1,1 +1,1 @@
-packages/commodity/README.md
+./packages/architype/README.md

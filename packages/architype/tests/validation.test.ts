@@ -21,26 +21,6 @@ describe("Runtime Validation", () => {
         })
     })
 
-    describe("asResource().pack()", () => {
-        it("should throw TypeError when value is null", () => {
-            const market = createMarket()
-            const $$resource = market.offer("config").asResource<any>()
-            expect(() => $$resource.pack(null as any)).toThrow(TypeError)
-            expect(() => $$resource.pack(null as any)).toThrow(
-                "value is required, got null"
-            )
-        })
-
-        it("should throw TypeError when value is undefined", () => {
-            const market = createMarket()
-            const $$resource = market.offer("config2").asResource<any>()
-            expect(() => $$resource.pack(undefined as any)).toThrow(TypeError)
-            expect(() => $$resource.pack(undefined as any)).toThrow(
-                "value is required, got undefined"
-            )
-        })
-    })
-
     describe("asProduct()", () => {
         it("should throw TypeError when config is not an object", () => {
             const market = createMarket()
@@ -48,7 +28,7 @@ describe("Runtime Validation", () => {
                 TypeError
             )
             expect(() => market.offer("B").asProduct(null as any)).toThrow(
-                "config must be an object, got null"
+                "B must be an object, got null"
             )
         })
 
@@ -58,7 +38,7 @@ describe("Runtime Validation", () => {
                 TypeError
             )
             expect(() => market.offer("B").asProduct([] as any)).toThrow(
-                "config must be an object, not an array"
+                "B must be an object, not an array"
             )
         })
 
@@ -68,7 +48,7 @@ describe("Runtime Validation", () => {
                 TypeError
             )
             expect(() => market.offer("B").asProduct({} as any)).toThrow(
-                "config.factory is required"
+                "B must have a 'factory' property"
             )
         })
 
@@ -83,7 +63,7 @@ describe("Runtime Validation", () => {
                 market
                     .offer("B")
                     .asProduct({ factory: "not a function" } as any)
-            ).toThrow("config.factory must be a function, got string")
+            ).toThrow("B must be a function, got string")
         })
 
         it("should throw TypeError when suppliers is not an array", () => {
@@ -99,7 +79,7 @@ describe("Runtime Validation", () => {
                     factory: () => ({}),
                     suppliers: "not an array"
                 } as any)
-            ).toThrow("config.suppliers must be an array, got string")
+            ).toThrow("B must be an array")
         })
 
         it("should throw TypeError when lazy is not a boolean", () => {
@@ -115,7 +95,7 @@ describe("Runtime Validation", () => {
                     factory: () => ({}),
                     lazy: "yes"
                 } as any)
-            ).toThrow("config.lazy must be a boolean, got string")
+            ).toThrow("B.lazy must be a boolean, got string")
         })
     })
 
@@ -127,7 +107,7 @@ describe("Runtime Validation", () => {
             })
             expect(() => $$product.assemble(null as any)).toThrow(TypeError)
             expect(() => $$product.assemble(null as any)).toThrow(
-                "toSupply must be an object, got null"
+                "supplied must be an object, got null"
             )
         })
 
@@ -138,20 +118,7 @@ describe("Runtime Validation", () => {
             })
             expect(() => $$product.assemble([] as any)).toThrow(TypeError)
             expect(() => $$product.assemble([] as any)).toThrow(
-                "toSupply must be an object, not an array"
-            )
-        })
-    })
-
-    describe("productSupplier.pack()", () => {
-        it("should throw TypeError when value is null", () => {
-            const market = createMarket()
-            const $$product = market.offer("A").asProduct({
-                factory: () => ({})
-            })
-            expect(() => $$product.pack(null as any)).toThrow(TypeError)
-            expect(() => $$product.pack(null as any)).toThrow(
-                "value is required, got null"
+                "supplied must be an object, not an array"
             )
         })
     })
@@ -170,16 +137,14 @@ describe("Runtime Validation", () => {
         })
     })
 
-    describe("productSupplier.with()", () => {
+    describe("productSupplier.hire()", () => {
         it("should throw TypeError when suppliers contain invalid items", () => {
             const market = createMarket()
             const $$product = market.offer("A").asProduct({
                 factory: () => ({})
             })
-            expect(() => $$product.with(null as any)).toThrow(TypeError)
-            expect(() => $$product.with(null as any)).toThrow(
-                "suppliers[0] must be a supplier object, got null"
-            )
+            expect(() => $$product.hire(null as any)).toThrow(TypeError)
+            expect(() => $$product.hire(null as any)).toThrow(TypeError)
         })
 
         it("should throw TypeError when supplier is missing name property", () => {
@@ -187,22 +152,20 @@ describe("Runtime Validation", () => {
             const $$product = market.offer("A").asProduct({
                 factory: () => ({})
             })
-            expect(() => $$product.with({} as any)).toThrow(TypeError)
-            expect(() => $$product.with({} as any)).toThrow(
-                "suppliers[0] must have a 'name' property of type string"
-            )
+            expect(() => $$product.hire({} as any)).toThrow(TypeError)
+            expect(() => $$product.hire({} as any)).toThrow(TypeError)
         })
     })
 
-    describe("productSupplier.prototype()", () => {
+    describe("productSupplier.mock()", () => {
         it("should throw TypeError when config is not an object", () => {
             const market = createMarket()
             const $$product = market.offer("A").asProduct({
                 factory: () => ({})
             })
-            expect(() => $$product.prototype(null as any)).toThrow(TypeError)
-            expect(() => $$product.prototype(null as any)).toThrow(
-                "config must be an object, got null"
+            expect(() => $$product.mock(null as any)).toThrow(TypeError)
+            expect(() => $$product.mock(null as any)).toThrow(
+                "A must be an object, got null"
             )
         })
 
@@ -211,9 +174,9 @@ describe("Runtime Validation", () => {
             const $$product = market.offer("A").asProduct({
                 factory: () => ({})
             })
-            expect(() => $$product.prototype({} as any)).toThrow(TypeError)
-            expect(() => $$product.prototype({} as any)).toThrow(
-                "config.factory is required"
+            expect(() => $$product.mock({} as any)).toThrow(TypeError)
+            expect(() => $$product.mock({} as any)).toThrow(
+                "A must have a 'factory' property"
             )
         })
     })

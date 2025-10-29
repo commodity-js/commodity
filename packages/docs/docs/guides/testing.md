@@ -1,6 +1,6 @@
 # Testing and Mocking
 
-Commodity makes testing easy by providing two powerful mocking strategies, allowing you to isolate components and control dependencies during tests.
+Architype makes testing easy by providing two powerful mocking strategies, allowing you to isolate components and control dependencies during tests.
 
 ## Method 1: Mocking with `.pack()`
 
@@ -15,7 +15,7 @@ const $$db = market.offer("db").asProduct({
 })
 const $$userRepo = market.offer("userRepo").asProduct({
     suppliers: [$$db],
-    factory: ($) => new UserRepo($($$db))
+    factory: ($) => new UserRepo($($$db).unpack())
 })
 
 // In your test file
@@ -34,11 +34,11 @@ it("should return user data", async () => {
 })
 ```
 
-**Note**: When you `.pack()` a product, you must still pass to its assemble() method all the resources it depends on recursively, even if they aren't used by the mock. You can often provide `undefined` if the types allow. For more complex cases, consider using a prototype.
+**Note**: When you `.pack()` a product, you must still pass to its assemble() method all the resources it depends on recursively, even if they aren't used by the mock. You can often provide `undefined` if the types allow. For more complex cases, consider using a mock.
 
-## Method 2: Prototypes with `.prototype()` and `.try()`
+## Method 2: Mocking with `.mock()` and `.hire()`
 
-For more complex scenarios where your mock needs its own logic, state, or dependencies, you can create a **prototype**. A prototype is a complete, alternative implementation of a product supplier.
+For more complex scenarios where your mock needs its own logic, state, or dependencies, you can create a **mock**. A mock is a complete, alternative implementation of a product supplier.
 
 **Use this for:**
 
@@ -50,27 +50,27 @@ For more complex scenarios where your mock needs its own logic, state, or depend
 // Production user supplier
 const $$user = market.offer("user").asProduct({
     suppliers: [$$db, $$session],
-    factory: ($) => $($$db).findUserById($($$session).userId)
+    factory: ($) => $($$db).unpack().findUserById($($$session).unpack().userId)
 })
 
-// Create a prototype with a different factory and NO dependencies
-const $$userPrototype = $$user.prototype({
+// Create a mock with a different factory and NO dependencies
+const $$userMock = $$user.mock({
     suppliers: [], // No dependencies for this mock
     factory: () => ({ name: "Mock John Doe" })
 })
 
-// The product spplier to test
+// The product supplier to test
 const $$profile = market.offer("profile").asProduct({
     suppliers: [$$user],
-    factory: ($) => `<h1>Profile of ${$($$user).name}</h1>`
+    factory: ($) => `<h1>Profile of ${$($$user).unpack().name}</h1>`
 })
 
 const profile = $$profile
-    .try($$userPrototype) // Swaps the original $$user with the prototype
+    .hire($$userMock) // Swaps the original $$user with the prototype
     .assemble() // No resources needed, as the prototype has no dependencies
     .unpack()
 
 // profile === "<h1>Profile of Mock John Doe</h1>"
 ```
 
-By using `.try($$userPrototype)`, you instruct the `$$profile` to use the mock implementation instead of the real one. Because the prototype has no dependencies, the final `.assemble()` call is much simpler.
+By using `.hire($$userMock)`, you instruct the `$$profile` to use the mock implementation instead of the real one. Because the prototype has no dependencies, the final `.assemble()` call is much simpler.

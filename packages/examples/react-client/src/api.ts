@@ -1,6 +1,6 @@
 import { market } from "@/market"
 import { queryClient } from "@/query"
-import { sleep } from "commodity"
+import { sleep } from "architype"
 
 // Simple wireframe types with minimal IDs
 export interface User {
@@ -103,7 +103,10 @@ export const $$usersQuery = market.offer("usersQuery").asProduct({
     init: async (query, $) => {
         const users = await queryClient.fetchQuery(query)
         for (const user of users) {
-            queryClient.setQueryData($($$userQuery)(user.id).queryKey, user)
+            queryClient.setQueryData(
+                $($$userQuery).unpack()(user.id).queryKey,
+                user
+            )
         }
     }
 })
@@ -152,13 +155,13 @@ export const $$postsQuery = market.offer("postsQuery").asProduct({
         const posts = await queryClient.fetchQuery(query)
         for (const post of posts) {
             queryClient.setQueryData(
-                $($$commentsQuery)(post.id).queryKey,
+                $($$commentsQuery).unpack()(post.id).queryKey,
                 post.comments
             )
 
             for (const comment of post.comments) {
                 queryClient.setQueryData(
-                    $($$repliesQuery)(comment.id).queryKey,
+                    $($$repliesQuery).unpack()(comment.id).queryKey,
                     comment.replies
                 )
             }

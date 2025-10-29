@@ -5,7 +5,7 @@ import { $$SelectSession } from "@/components/session"
 import { ctx } from "@/context"
 import type { User } from "@/api"
 import { useState } from "react"
-import { index } from "commodity"
+import { index } from "architype"
 import { useQuery } from "@tanstack/react-query"
 
 export const $$App = market.offer("App").asProduct({
@@ -15,7 +15,7 @@ export const $$App = market.offer("App").asProduct({
         ($, $$) =>
         ({ defaultUserId }: { defaultUserId: string }) => {
             const { data: defaultSession } = useQuery(
-                $($$userQuery)(defaultUserId)
+                $($$userQuery).unpack()(defaultUserId)
             )
             const [session, setSession] = useState<User | undefined>()
 
@@ -23,8 +23,8 @@ export const $$App = market.offer("App").asProduct({
                 return <div>Loading default user...</div>
             }
 
-            const $FeedProduct = $$[$$Feed.name]
-                .with($$SelectSession)
+            const $FeedProduct = $$($$Feed)
+                .hire([$$SelectSession])
                 .assemble(
                     index(
                         ctx.$$session.pack([
@@ -35,7 +35,7 @@ export const $$App = market.offer("App").asProduct({
                 )
 
             const Feed = $FeedProduct.unpack()
-            const SelectSession = $FeedProduct.supplies($$SelectSession)
+            const SelectSession = $FeedProduct.$($$SelectSession).unpack()
 
             return (
                 <div className="min-h-screen bg-gray-900 text-white p-6">

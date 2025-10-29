@@ -6,8 +6,8 @@ export const $$Reply = market.offer("reply").asProduct({
     factory:
         ($) =>
         ({ reply }: { reply: Reply }) => {
-            const [session] = $(ctx.$$session)
-            const post = $(ctx.$$post)
+            const [session] = $(ctx.$$session).unpack()
+            const post = $(ctx.$$post).unpack()
             return (
                 <div className="border-2 border-orange-500 rounded-lg p-2 bg-gray-800 ml-6">
                     <div className="flex justify-between items-center">
