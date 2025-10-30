@@ -1,5 +1,5 @@
 {
-    "name": "@config.architype/eslint",
+    "name": "@config.typearch/eslint",
     "version": "0.1.0",
     "type": "module",
     "exports": {

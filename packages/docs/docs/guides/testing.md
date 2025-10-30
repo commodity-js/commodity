@@ -1,6 +1,6 @@
 # Testing and Mocking
 
-Architype makes testing easy by providing two powerful mocking strategies, allowing you to isolate components and control dependencies during tests.
+Typearch makes testing easy by providing two powerful mocking strategies, allowing you to isolate components and control dependencies during tests.
 
 ## Method 1: Mocking with `.pack()`
 

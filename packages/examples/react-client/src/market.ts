@@ -1,3 +1,3 @@
-import { createMarket } from "architype"
+import { createMarket } from "typearch"
 
 export const market = createMarket()

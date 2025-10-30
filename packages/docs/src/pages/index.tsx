@@ -9,7 +9,7 @@ import SectionSeparator from "@site/src/components/SectionSeparator"
 
 import styles from "./index.module.css"
 
-const heroCode = `import { createMarket, index } from "architype"
+const heroCode = `import { createMarket, index } from "typearch"
 
 // Create market and define suppliers
 const market = createMarket()
@@ -191,7 +191,7 @@ function Hero() {
                                     <span></span>
                                 </div>
                                 <span className={styles.codeTitle}>
-                                    architype-demo.ts
+                                    typearch-demo.ts
                                 </span>
                             </div>
                             <CodeBlock
@@ -213,7 +213,7 @@ function WhySection() {
         <section className={styles.whySection}>
             <div className="container">
                 <div className={styles.sectionHeader}>
-                    <Heading as="h2">Why choose Architype?</Heading>
+                    <Heading as="h2">Why choose Typearch?</Heading>
                     <p>
                         Built for modern TypeScript applications that demand
                         performance, safety, and simplicity.
@@ -354,8 +354,8 @@ function UseCasesSection() {
                 <div className={styles.sectionHeader}>
                     <Heading as="h2">Perfect for modern apps</Heading>
                     <p>
-                        From React components to API servers, Architype adapts
-                        to your architecture.
+                        From React components to API servers, Typearch adapts to
+                        your architecture.
                     </p>
                 </div>
                 <div className={styles.useCasesGrid}>
@@ -412,7 +412,7 @@ function CTASection() {
             <div className="container">
                 <div className={styles.ctaContent}>
                     <Heading as="h2">
-                        Ready to revolutionize your DI with Architype?
+                        Ready to revolutionize your DI with Typearch?
                     </Heading>
                     <p>
                         Join developers who've already made the switch to
@@ -442,7 +442,7 @@ function CTASection() {
                     </div>
                     <div className={styles.ctaNote}>
                         <p>
-                            🚀 Install with <code>npm install architype</code>
+                            🚀 Install with <code>npm install typearch</code>
                         </p>
                     </div>
                 </div>
@@ -464,7 +464,7 @@ export default function Home(): ReactNode {
             <SectionSeparator />
             <FeatureSection
                 title="Fully Type-Inferred from End to End"
-                description="Catch dependency errors before they reach production. Architype's architecture provides end-to-end type inference, eliminating entire classes of bugs and ensuring your dependency graph is always valid."
+                description="Catch dependency errors before they reach production. Typearch's architecture provides end-to-end type inference, eliminating entire classes of bugs and ensuring your dependency graph is always valid."
                 code={typeExample}
             />
             <SectionSeparator />

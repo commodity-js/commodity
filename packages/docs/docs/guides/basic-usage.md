@@ -1,10 +1,10 @@
 # Basic Usage
 
-This guide covers the fundamental concepts of Architype in detail, providing you with everything you need to build applications with the dependency injection supply chain pattern.
+This guide covers the fundamental concepts of Typearch in detail, providing you with everything you need to build applications with the dependency injection supply chain pattern.
 
 ## Understanding the Supply Chain Metaphor
 
-Architype uses a supply chain metaphor to make dependency injection intuitive. Instead of abstract containers and providers, you work with:
+Typearch uses a supply chain metaphor to make dependency injection intuitive. Instead of abstract containers and providers, you work with:
 
 -   **Markets** - Namespaces where suppliers are defined
 -   **Suppliers** - Entities that provide either resources or products
@@ -16,10 +16,10 @@ Think of it like a real supply chain: raw materials (resources) are transformed 
 
 ## Step 1: Creating a Market
 
-Every Architype application starts with a market. A market is a namespace that ensures all your suppliers have unique names and provides the foundation for type-safe dependency resolution.
+Every Typearch application starts with a market. A market is a namespace that ensures all your suppliers have unique names and provides the foundation for type-safe dependency resolution.
 
 ```typescript
-import { createMarket } from "architype"
+import { createMarket } from "typearch"
 
 const market = createMarket()
 ```
@@ -90,7 +90,7 @@ const $$logger = market.offer("logger").asResource<{
 
 ## Step 3: Defining Products
 
-Products are where the real power of Architype shines. Products are factory functions that can depend on other suppliers (both resources and other products) to create services, components, or any complex functionality.
+Products are where the real power of Typearch shines. Products are factory functions that can depend on other suppliers (both resources and other products) to create services, components, or any complex functionality.
 
 ### Basic Product Definition
 
@@ -166,7 +166,7 @@ const $$userProfile = market.offer("userProfile").asProduct({
 
 ## Step 4: The Factory Lifecycle
 
-Understanding how and when factories are called is crucial for effective use of Architype.
+Understanding how and when factories are called is crucial for effective use of Typearch.
 
 ### One Factory Call Per Assembly
 
@@ -279,14 +279,14 @@ const $app = $$app.assemble({
 const app = $app.unpack()
 ```
 
-This syntax works, but it's verbose. That's why Architype provides the `index()` utility.
+This syntax works, but it's verbose. That's why Typearch provides the `index()` utility.
 
 ### Using the `index()` Helper
 
 The `index()` function simplifies assembly by converting an array of packed resources into the object format `assemble()` expects:
 
 ```typescript
-import { index } from "architype"
+import { index } from "typearch"
 
 const $app = $$app.assemble(index($$database.pack(db), $$session.pack(session)))
 
@@ -349,7 +349,7 @@ const $app = $$app.assemble(index($$db.pack(database), $$session.pack(session)))
 
 ## Performance: Eager vs Lazy Loading
 
-By default, Architype eagerly constructs all products in parallel when you call `assemble()`. This eliminates waterfall loading issues common in traditional DI systems.
+By default, Typearch eagerly constructs all products in parallel when you call `assemble()`. This eliminates waterfall loading issues common in traditional DI systems.
 
 ### Eager Loading (Default)
 
@@ -414,7 +414,7 @@ const $$app = market.offer("app").asProduct({
 Let's put everything together with a realistic example:
 
 ```typescript
-import { createMarket, index } from "architype"
+import { createMarket, index } from "typearch"
 
 // 1. Create the market
 const market = createMarket()
@@ -570,7 +570,7 @@ Notice how:
 
 ## Naming Conventions
 
-While not required, the Architype community follows these conventions:
+While not required, the Typearch community follows these conventions:
 
 -   `$$supplier` - Supplier definitions (double dollar sign)
 -   `$$` - 2nd argument received by a factory, which provided in-factory access to suppliers (optionals or assemblers)
@@ -594,7 +594,7 @@ Now that you understand the basics, explore these advanced features:
 
 -   **[Testing and Mocking](testing)** - Learn how to test your products with mocks
 -   **[Performance Optimization](performance)** - Advanced lazy loading and initialization strategies
--   **[Design Philosophy](design-philosophy)** - Understanding the principles behind Architype
+-   **[Design Philosophy](design-philosophy)** - Understanding the principles behind Typearch
 
 For more advanced patterns:
 

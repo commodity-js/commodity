@@ -1,6 +1,6 @@
 # Performance
 
-Architype is designed for optimal performance, featuring a minimal bundle size, smart memory management, and powerful preloading strategies.
+Typearch is designed for optimal performance, featuring a minimal bundle size, smart memory management, and powerful preloading strategies.
 
 ## Bundle Size & Footprint
 

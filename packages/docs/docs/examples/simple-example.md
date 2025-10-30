@@ -1,9 +1,9 @@
 # Simple example
 
-Dummy todo app built with Architype.
+Dummy todo app built with Typearch.
 
 ```typescript
-import { createMarket, index } from "architype"
+import { createMarket, index } from "typearch"
 
 // 1. Create a market
 const market = createMarket()
@@ -39,6 +39,6 @@ const addTodo = $$addTodo
     .assemble(index($$session.pack(session)))
     .unpack()
 
-console.log(addTodo("Learn Architype")) // ["Learn Architype"]
-console.log(addTodo("Build app")) // ["Learn Architype", "Build app"]
+console.log(addTodo("Learn Typearch")) // ["Learn Typearch"]
+console.log(addTodo("Build app")) // ["Learn Typearch", "Build app"]
 ```

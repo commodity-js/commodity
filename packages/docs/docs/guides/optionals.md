@@ -1,6 +1,6 @@
 # Optionals
 
-Optionals are resource suppliers that a product _may_ depend on, but doesn't _require_ to function. When you declare a resource supplier in the `optionals` array instead of the `suppliers` array, you're telling architype that:
+Optionals are resource suppliers that a product _may_ depend on, but doesn't _require_ to function. When you declare a resource supplier in the `optionals` array instead of the `suppliers` array, you're telling typearch that:
 
 1. The product can be assembled without providing this resource
 2. The resource will be `undefined` if not provided
@@ -13,7 +13,7 @@ This is particularly useful for feature flags, authentication contexts, caching 
 Here's a simple example of using an optional resource:
 
 ```typescript
-import { createMarket, index } from "architype"
+import { createMarket, index } from "typearch"
 
 const market = createMarket()
 

@@ -14,10 +14,10 @@ importers:
 
   packages/architype:
     devDependencies:
-      '@config.architype/eslint':
+      '@config.typearch/eslint':
         specifier: '*'
         version: link:../config/eslint
-      '@config.architype/typescript':
+      '@config.typearch/typescript':
         specifier: '*'
         version: link:../config/typescript
       memoize:
@@ -117,9 +117,6 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.90.2
         version: 5.90.2(react@18.3.1)
-      architype:
-        specifier: '*'
-        version: link:../../architype
       clsx:
         specifier: ^2.0.0
         version: 2.1.1
@@ -132,6 +129,9 @@ importers:
       react-dom:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
+      typearch:
+        specifier: '*'
+        version: link:../../architype
     devDependencies:
       '@testing-library/jest-dom':
         specifier: ^6.0.0

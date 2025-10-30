@@ -1,6 +1,6 @@
 import { market } from "@/market"
 import { queryClient } from "@/query"
-import { sleep } from "architype"
+import { sleep } from "typearch"
 
 // Simple wireframe types with minimal IDs
 export interface User {

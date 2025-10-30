@@ -1,26 +1,26 @@
 {
-    "name": "@architype-js/examples-react-client",
+    "name": "@typearch-js/examples-react-client",
     "version": "0.0.0",
     "type": "module",
     "private": false,
-    "description": "A comprehensive React example showcasing all Architype features with a social media wireframe",
+    "description": "A comprehensive React example showcasing all Typearch features with a social media wireframe",
     "keywords": [
         "react",
-        "architype",
+        "typearch",
         "dependency-injection",
         "typescript",
         "vite",
         "example"
     ],
-    "author": "architype-js",
+    "author": "typearch-js",
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "https://github.com/architype-js/examples-react-client.git"
+        "url": "https://github.com/typearch-js/examples-react-client.git"
     },
-    "homepage": "https://github.com/architype-js/examples-react-client#readme",
+    "homepage": "https://github.com/typearch-js/examples-react-client#readme",
     "bugs": {
-        "url": "https://github.com/architype-js/examples-react-client/issues"
+        "url": "https://github.com/typearch-js/examples-react-client/issues"
     },
     "scripts": {
         "dev": "vite",
@@ -35,7 +35,7 @@
         "@tanstack/query-core": "^5.90.2",
         "@tanstack/react-query": "^5.90.2",
         "clsx": "^2.0.0",
-        "architype": "*",
+        "typearch": "*",
         "date-fns": "^2.30.0",
         "react": "^18.3.1",
         "react-dom": "^18.3.1"

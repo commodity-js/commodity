@@ -1,8 +1,8 @@
-# architype
+# typearch
 
 First fully type-inferred, type-safe and hyper-minimalistic SOLID architecture solution for Typescript! No OOP, reflect-metadata, decorators, annotations or compiler magic, just pure functions!
 
-## Why Architype?
+## Why Typearch?
 
 -   ✅ **Scalable architecture** - Promotes SOLID, clean, and code-splittable design patterns.
 -   ✅ **Fully type-inferred** - Compile-time dependency validation.
@@ -18,10 +18,10 @@ First fully type-inferred, type-safe and hyper-minimalistic SOLID architecture s
 ## Installation
 
 ```bash
-npm install architype
+npm install typearch
 ```
 
-## When to Use Architype
+## When to Use Typearch
 
 -   **Complex TypeScript applications** with deep function call hierarchies
 -   **Avoiding prop-drilling and waterfalls** in React (works in both Client and Server Components)
@@ -41,7 +41,7 @@ npm install architype
 ## Quick Example
 
 ```ts
-import { createMarket, index } from "architype"
+import { createMarket, index } from "typearch"
 
 // 1. Create a market
 const market = createMarket()
@@ -68,8 +68,8 @@ const session = { userId: "user123" }
 // 3. Assemble and use
 const addTodo = $$addTodo.assemble(index($session.pack(session))).unpack()
 
-console.log(addTodo("Learn Architype")) // ["Learn Architype"]
-console.log(addTodo("Build app")) // ["Learn Architype", "Build app"]
+console.log(addTodo("Learn Typearch")) // ["Learn Typearch"]
+console.log(addTodo("Build app")) // ["Learn Typearch", "Build app"]
 ```
 
 ## Intuitive, opinionated terminology
@@ -135,7 +135,7 @@ All suppliers are created from a `market`, which creates a scope shared by Resou
 You'll usually create one market per application. Markets register the names of the resources and products it `offers` so that no name conflicts occur. The name registry is the only state the market manages.
 
 ```ts
-import { createMarket } from "architype"
+import { createMarket } from "typearch"
 
 const market = createMarket()
 ```
@@ -272,7 +272,7 @@ To simplify the assemble() call, you should use the index() utility, which just 
 `{[$resource1.supplier.name]: $resource1, [$product1.name]: $product1}`. I unfortunately did not find a way to merge index() with assemble() without losing assemble's type-safety, because typescript doesn't have an unordered tuple type.
 
 ```tsx
-import { index } from "architype"
+import { index } from "typearch"
 
 const $appProduct = $$app.assemble(
     index(
@@ -288,13 +288,13 @@ const $appProduct = $$app.assemble(
 
 Sometimes a product can work with or without certain dependencies. For these cases, use the `optionals` parameter alongside `suppliers`. Optional resources may be `undefined` at runtime, and TypeScript will enforce proper undefined checks. You can also use optionals if a piece of context is not yet known at the entry point of the application, so you don't want Typescript to enforce it being supplied in the assemble() call. Using optionals is most of the time required to use assemblers (see below).
 
-[Learn more about optionals →](https://architype-js.github.io/architype/docs/guides/optionals)
+[Learn more about optionals →](https://typearch-js.github.io/typearch/docs/guides/optionals)
 
 ## Assemblers
 
 Not all products in your supply chain can be assembled at the entry point of the application. Sometimes, a product depends on a resource that is not yet known at the entry point, but only computed later on in a product's factory. In these situations, you need assemblers.
 
-[Learn more about assemblers →](https://architype-js.github.io/architype/docs/guides/context-switching)
+[Learn more about assemblers →](https://typearch-js.github.io/typearch/docs/guides/context-switching)
 
 ## Testing and Packing
 
@@ -368,13 +368,13 @@ profile === <h1>Profile of John Doe</h1>
 
 ## Design Philosophy: The Problem with Traditional DI
 
-DI containers have always felt abstract, technical, almost magical in how they work. Like a black box, you often have to dig into the source code of a third-party library to understand how data flows in your own application. It feels like you lose control of your own data when you use one, and your entire app becomes dependent on the container to even work. Architype aims to make DI cool again! The pattern has real power, even if current implementations on the open-source market hide that power under a lot of complexity.
+DI containers have always felt abstract, technical, almost magical in how they work. Like a black box, you often have to dig into the source code of a third-party library to understand how data flows in your own application. It feels like you lose control of your own data when you use one, and your entire app becomes dependent on the container to even work. Typearch aims to make DI cool again! The pattern has real power, even if current implementations on the open-source market hide that power under a lot of complexity.
 
 DI was complex to achieve in OOP world because of the absence of first-class functions in OOP languages. But in modern functional languages, DI should be easier, since DI itself is a functional pattern. However, TypeScript DI frameworks currently available seem to have been built by imitating how they were built in OOP languages...
 
 The problem DI was solving in OOP world still exists in the functional world. In OOP world, DI helped inject data and services freely within deeply nested class hierarchies and architectures. In the functional world, DI achieves the same: inject data and services freely in deeply nested function calls. Deeply nested function calls naturally emerge when trying to decouple and implement SOLID principles in medium to highly complex applications. Without DI, you cannot achieve maximal decoupling. Even if in principle you can reuse a function elsewhere, the function is still bound in some way to the particular call stack in which it finds itself, simply by the fact that it can only be called from a parent function that has access to all the data and dependencies it needs.
 
-Architype's "Dependency Injection Supply Chain" (DISC) model can do everything containers do, but in a more elegant, simpler, and easier-to-reason-about manner.
+Typearch's "Dependency Injection Supply Chain" (DISC) model can do everything containers do, but in a more elegant, simpler, and easier-to-reason-about manner.
 
 ## Under the hood
 
@@ -393,7 +393,7 @@ const $ = {
 
 ## API reference
 
-See [the docs](https://architype-js.github.io/architype/docs/api-reference) for the full API reference!
+See [the docs](https://typearch-js.github.io/typearch/docs/api-reference) for the full API reference!
 
 ## Contributing
 
