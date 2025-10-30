@@ -1,6 +1,6 @@
 # Performance
 
-Architype is designed for optimal performance, featuring a minimal bundle size, smart memory management, and powerful preloading strategies.
+Typearch is designed for optimal performance, featuring a minimal bundle size, smart memory management, and powerful preloading strategies.
 
 ## Bundle Size & Footprint
 
@@ -12,7 +12,7 @@ Architype is designed for optimal performance, featuring a minimal bundle size, 
 
 **Important**: Your factory function will only ever be called **once per `assemble()` call**. This eliminates the need for traditional DI service lifecycles (transient, scoped, singleton, etc.).
 
--   **Need something called multiple times?** Return a function from your factory instead of a value
+-   **Need something called multiple times, or run side-effects?** Return a function from your factory instead of a value
 
 ```typescript
 // ✅ Good: Factory called once, returns a function for multiple calls

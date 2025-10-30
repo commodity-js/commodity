@@ -1,5 +1,5 @@
 {
-    "extends": "@config.architype/typescript",
+    "extends": "@config.typearch/typescript",
     "compilerOptions": {
         "target": "ES2020",
         "lib": ["ES2023", "DOM"],

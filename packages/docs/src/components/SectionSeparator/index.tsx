@@ -7,8 +7,8 @@ export default function SectionSeparator(): ReactNode {
             <div className={styles.line} />
             <div className={styles.logoContainer}>
                 <img
-                    src="img/architype-logo.png"
-                    alt="Architype Logo"
+                    src="img/typearch-logo.png"
+                    alt="Typearch Logo"
                     className={styles.logo}
                 />
             </div>

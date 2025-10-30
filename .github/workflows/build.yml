@@ -95,13 +95,13 @@ jobs:
               run: pnpm install
 
             - name: Build package
-              run: pnpm run build --filter=architype
+              run: pnpm run build --filter=typearch
 
             - name: Upload build artifacts
               if: ${{ github.event_name == 'release' }}
               uses: actions/upload-artifact@v4
               with:
-                  name: architype-build
+                  name: typearch-build
                   path: |
-                      packages/architype/dist
-                      packages/architype/package.json
+                      packages/typearch/dist
+                      packages/typearch/package.json

@@ -5,10 +5,10 @@ import type * as Preset from "@docusaurus/preset-classic"
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 const config: Config = {
-    title: "Architype",
+    title: "Typearch",
     tagline:
         "Functional, fully type-safe and stateless dependency injection for TypeScript",
-    favicon: "img/architype-logo.png",
+    favicon: "img/typearch-logo.png",
 
     // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
     future: {
@@ -16,15 +16,15 @@ const config: Config = {
     },
 
     // Set the production url of your site here
-    url: "https://architype-js.github.io",
+    url: "https://typearch-js.github.io",
     // Set the /<baseUrl>/ pathname under which your site is served
     // For GitHub pages deployment, it is often '/<projectName>/'
-    baseUrl: "/architype/",
+    baseUrl: "/typearch/",
 
     // GitHub pages deployment config.
     // If you aren't using GitHub pages, you don't need these.
-    organizationName: "architype-js", // Usually your GitHub org/user name.
-    projectName: "architype", // Usually your repo name.
+    organizationName: "typearch-js", // Usually your GitHub org/user name.
+    projectName: "typearch", // Usually your repo name.
 
     onBrokenLinks: "throw",
 
@@ -51,7 +51,7 @@ const config: Config = {
                     // Please change this to your repo.
                     // Remove this to remove the "edit this page" links.
                     editUrl:
-                        "https://github.com/architype-js/architype/tree/main/packages/docs/"
+                        "https://github.com/typearch-js/typearch/tree/main/packages/docs/"
                 },
                 blog: false,
                 theme: {
@@ -62,13 +62,18 @@ const config: Config = {
     ],
 
     themeConfig: {
+        colorMode: {
+            defaultMode: "dark",
+            disableSwitch: true,
+            respectPrefersColorScheme: false
+        },
         // Replace with your project's social card
-        image: "img/architype-logo.png",
+        image: "img/typearch-logo.png",
         navbar: {
-            title: "Architype",
+            title: "Typearch",
             logo: {
-                alt: "Architype Logo",
-                src: "img/architype-logo.png"
+                alt: "Typearch Logo",
+                src: "img/typearch-logo.png"
             },
             items: [
                 {
@@ -78,12 +83,12 @@ const config: Config = {
                     label: "Docs"
                 },
                 {
-                    href: "https://www.npmjs.com/package/architype",
+                    href: "https://www.npmjs.com/package/typearch",
                     label: "npm",
                     position: "right"
                 },
                 {
-                    href: "https://github.com/architype-js/architype",
+                    href: "https://github.com/typearch-js/typearch",
                     label: "GitHub",
                     position: "right"
                 }
@@ -110,11 +115,11 @@ const config: Config = {
                     items: [
                         {
                             label: "GitHub Issues",
-                            href: "https://github.com/architype-js/architype/issues"
+                            href: "https://github.com/typearch-js/typearch/issues"
                         },
                         {
                             label: "GitHub Discussions",
-                            href: "https://github.com/architype-js/architype/discussions"
+                            href: "https://github.com/typearch-js/typearch/discussions"
                         }
                     ]
                 },
@@ -123,20 +128,20 @@ const config: Config = {
                     items: [
                         {
                             label: "npm Package",
-                            href: "https://www.npmjs.com/package/architype"
+                            href: "https://www.npmjs.com/package/typearch"
                         },
                         {
                             label: "GitHub",
-                            href: "https://github.com/architype-js/architype"
+                            href: "https://github.com/typearch-js/typearch"
                         }
                     ]
                 }
             ],
-            copyright: `Copyright © ${new Date().getFullYear()} Architype. Built with Docusaurus.`
+            copyright: `Copyright © ${new Date().getFullYear()} Typearch. Built with Docusaurus.`
         },
         prism: {
-            theme: prismThemes.gruvboxMaterialDark,
-            darkTheme: prismThemes.gruvboxMaterialDark,
+            theme: prismThemes.jettwaveDark,
+            darkTheme: prismThemes.jettwaveDark,
             additionalLanguages: ["typescript", "tsx", "javascript", "jsx"]
         }
     } satisfies Preset.ThemeConfig

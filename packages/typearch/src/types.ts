@@ -144,7 +144,7 @@ export type ProductSupplier<
  * Union type representing any kind of supplier.
  * A supplier can be either a product supplier (complex objects with dependencies)
  * or a resource supplier (simple value containers).
- * This is the base type used throughout the architype system for dependency injection.
+ * This is the base type used throughout the typearch system for dependency injection.
  * @public
  */
 export type Supplier = ProductSupplier | ResourceSupplier
@@ -486,7 +486,7 @@ export type MergeSuppliers<
  * in the transitive dependencies of its own suppliers.
  * @public
  */
-export type HasCircularDependency<
+export type CircularDependencyGuard<
     SUPPLIER extends Pick<
         ProductSupplier,
         | "name"
@@ -511,8 +511,8 @@ export type HasCircularDependency<
             : never
         : never
 )
-    ? true
-    : false
+    ? CircularDependencyError
+    : SUPPLIER
 
 export type CircularDependencyError = {
     ERROR: "Circular dependency detected"

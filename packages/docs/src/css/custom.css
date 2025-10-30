@@ -1,146 +1,274 @@
-/**
- * Any CSS included here will be global. The classic template
- * bundles Infima by default. Infima is a CSS framework designed to
- * work well for content-centric websites.
- */
-
-/* You can override the default Infima variables here. */
-:root {
-    --ifm-color-primary: #f97316;
-    --ifm-color-primary-dark: #ea580c;
-    --ifm-color-primary-darker: #dc2626;
-    --ifm-color-primary-darkest: #c2410c;
-    --ifm-color-primary-light: #fb923c;
-    --ifm-color-primary-lighter: #fdba74;
-    --ifm-color-primary-lightest: #fed7aa;
-    --ifm-code-font-size: 95%;
-    --docusaurus-highlighted-code-line-bg: rgba(249, 115, 22, 0.1);
-    --ifm-font-family-base: "Inter", system-ui, -apple-system, sans-serif;
-}
-
-/* For readability concerns, you should choose a lighter palette in dark mode. */
-[data-theme="dark"] {
-    --ifm-color-primary: #fb923c;
-    --ifm-color-primary-dark: #f97316;
-    --ifm-color-primary-darker: #ea580c;
-    --ifm-color-primary-darkest: #c2410c;
-    --ifm-color-primary-light: #fdba74;
-    --ifm-color-primary-lighter: #fed7aa;
-    --ifm-color-primary-lightest: #fef3e2;
-    --docusaurus-highlighted-code-line-bg: rgba(251, 146, 60, 0.2);
-}
-
-/* Custom fonts */
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 
-/* Hero customizations */
+:root {
+    color-scheme: dark;
+    --ifm-font-family-base: "Inter", system-ui, -apple-system, sans-serif;
+    --ifm-color-primary: #1ad1ff;
+    --ifm-color-primary-dark: #12b0ff;
+    --ifm-color-primary-darker: #0c92f0;
+    --ifm-color-primary-darkest: #0a6fc6;
+    --ifm-color-primary-light: #42dbff;
+    --ifm-color-primary-lighter: #7ce8ff;
+    --ifm-color-primary-lightest: #c1f4ff;
+    --ifm-code-font-size: 95%;
+    --ifm-background-color: #05080f;
+    --ifm-background-surface-color: #0b121f;
+    --ifm-font-color-base: #edf5ff;
+    --ifm-heading-color: #f6fbff;
+    --ifm-navbar-background-color: rgba(5, 8, 16, 0.88);
+    --ifm-navbar-shadow: 0 16px 40px rgba(0, 27, 60, 0.35);
+    --ifm-footer-background-color: #05080f;
+    --ifm-footer-color: rgba(255, 255, 255, 0.72);
+    --ifm-menu-color-background-active: rgba(26, 209, 255, 0.12);
+    --docusaurus-highlighted-code-line-bg: rgba(26, 209, 255, 0.08);
+}
+
+html {
+    scroll-behavior: smooth;
+    background-color: #05080f;
+}
+
+body {
+    min-height: 100vh;
+    margin: 0;
+    background: radial-gradient(
+            120% 120% at 20% 20%,
+            rgba(16, 98, 255, 0.35) 0%,
+            rgba(5, 8, 16, 0) 60%
+        ),
+        radial-gradient(
+            90% 120% at 80% 0%,
+            rgba(10, 212, 255, 0.28) 0%,
+            rgba(5, 8, 16, 0) 55%
+        ),
+        #05080f;
+    color: var(--ifm-font-color-base);
+}
+
+.main-wrapper {
+    background: transparent;
+}
+
+.navbar {
+    background: var(--ifm-navbar-background-color) !important;
+    border-bottom: 1px solid rgba(122, 204, 255, 0.08);
+    backdrop-filter: blur(14px);
+    box-shadow: var(--ifm-navbar-shadow);
+}
+
+.navbar__title,
+.navbar__link {
+    color: rgba(236, 243, 255, 0.88) !important;
+    transition: color 0.2s ease;
+}
+
+.navbar__link:hover,
+.navbar__link--active {
+    color: #ffffff !important;
+}
+
+.dropdown__menu {
+    background: rgba(8, 14, 25, 0.95);
+    border: 1px solid rgba(122, 204, 255, 0.14);
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
+}
+
+.hero {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(
+        140deg,
+        rgba(5, 8, 16, 0.9) 0%,
+        rgba(6, 17, 32, 0.9) 60%,
+        rgba(5, 8, 16, 0.94) 100%
+    );
+    border-bottom: 1px solid rgba(122, 204, 255, 0.1);
+    padding-top: 6rem;
+    padding-bottom: 6rem;
+}
+
+.hero::after {
+    content: "";
+    position: absolute;
+    inset: -40% 15% 20% 50%;
+    background: radial-gradient(
+        circle at center,
+        rgba(26, 209, 255, 0.5) 0%,
+        rgba(26, 209, 255, 0) 55%
+    );
+    opacity: 0.7;
+    pointer-events: none;
+}
+
 .hero__title {
-    font-size: 4rem !important;
+    position: relative;
+    font-size: clamp(3rem, 8vw, 4.5rem) !important;
     font-weight: 700 !important;
-    background: linear-gradient(120deg, #ffffff 0%, #e8f4fd 100%);
+    background: linear-gradient(120deg, #87f2ff 0%, #2fc7ff 40%, #0f8ff0 80%);
     -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
     background-clip: text;
-    margin-bottom: 1rem !important;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 1.25rem !important;
 }
 
 .hero__subtitle {
-    font-size: 1.4rem !important;
-    color: rgba(255, 255, 255, 0.95) !important;
+    position: relative;
+    font-size: clamp(1.3rem, 2.2vw, 1.6rem) !important;
+    color: rgba(233, 244, 255, 0.82) !important;
     font-weight: 400 !important;
-    margin-bottom: 0 !important;
+    max-width: 640px;
 }
 
-/* Button improvements */
 .button {
-    border-radius: 8px;
+    border-radius: 10px;
     font-weight: 600;
-    transition: all 0.2s ease;
+    letter-spacing: 0.01em;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
-.button--secondary {
-    background: var(--ifm-color-primary);
-    color: #ffffff;
+.button--secondary,
+.button.button--primary {
+    background: linear-gradient(120deg, #1ad1ff 0%, #0f8ff0 100%);
     border: none;
+    color: #031626;
+    box-shadow: 0 14px 30px rgba(13, 102, 189, 0.35);
 }
 
-.button--secondary:hover {
-    background: var(--ifm-color-primary-dark);
-    color: #ffffff;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+.button--secondary:hover,
+.button.button--primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 20px 40px rgba(13, 102, 189, 0.45);
 }
 
 .button--outline {
-    border: 2px solid rgba(255, 255, 255, 0.8);
-    color: white;
+    border: 1px solid rgba(124, 232, 255, 0.6);
+    color: #e9f3ff;
+    background: rgba(14, 32, 56, 0.45);
 }
 
 .button--outline:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: white;
-    color: white;
-    transform: translateY(-2px);
+    background: rgba(16, 108, 203, 0.35);
+    border-color: rgba(124, 232, 255, 0.9);
+    transform: translateY(-3px);
 }
 
-/* Code block improvements */
-.theme-code-block {
+.theme-doc-sidebar-menu .menu__link,
+.menu__link {
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    color: rgba(224, 237, 255, 0.78);
 }
 
-/* Navbar improvements */
-.navbar {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+.menu__link:hover,
+.menu__link--active {
+    color: #ffffff;
+    background: rgba(26, 209, 255, 0.12);
 }
 
-[data-theme="dark"] .navbar {
-    background: rgba(24, 25, 26, 0.95);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+.card {
+    background: rgba(8, 18, 33, 0.85);
+    border: 1px solid rgba(122, 204, 255, 0.12);
+    box-shadow: 0 20px 35px rgba(4, 12, 24, 0.45);
 }
 
-/* Footer improvements */
+.theme-doc-markdown code,
+code {
+    background: rgba(12, 25, 45, 0.8);
+    border: 1px solid rgba(38, 139, 255, 0.25);
+    color: #7fe8ff;
+    border-radius: 6px;
+    padding: 0.15rem 0.4rem;
+}
+
+.theme-code-block {
+    border-radius: 12px;
+    border: 1px solid rgba(38, 139, 255, 0.25);
+    box-shadow: 0 32px 50px rgba(2, 10, 22, 0.6);
+    background: rgba(5, 10, 20, 0.9);
+}
+
+.theme-code-block:hover {
+    border-color: rgba(124, 232, 255, 0.35);
+}
+
 .footer {
-    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    background: linear-gradient(
+        160deg,
+        rgba(5, 8, 16, 0.95) 0%,
+        rgba(9, 22, 41, 0.95) 80%
+    );
+    border-top: 1px solid rgba(122, 204, 255, 0.1);
 }
 
-/* Responsive font sizes */
-@media screen and (max-width: 996px) {
-    .hero__title {
-        font-size: 2.5rem !important;
-    }
-
-    .hero__subtitle {
-        font-size: 1.2rem !important;
-    }
+.footer__title {
+    color: rgba(255, 255, 255, 0.82);
 }
 
-/* Smooth scrolling */
-html {
-    scroll-behavior: smooth;
+.footer__item a:hover {
+    color: #ffffff;
 }
 
-/* Link hover effects */
-.navbar__item a:hover {
-    color: var(--ifm-color-primary) !important;
+.pagination-nav__link {
+    border-radius: 10px;
+    border: 1px solid rgba(122, 204, 255, 0.16);
+    background: rgba(7, 16, 30, 0.85);
 }
 
-/* Custom scrollbar */
+.table-of-contents__link--active,
+.table-of-contents__link:hover {
+    color: #ffffff;
+}
+
+.alert.alert--info {
+    background: rgba(5, 24, 43, 0.85);
+    border-color: rgba(38, 139, 255, 0.35);
+    color: rgba(200, 233, 255, 0.92);
+}
+
+.alert.alert--success {
+    background: rgba(4, 34, 31, 0.85);
+    border-color: rgba(34, 197, 144, 0.35);
+}
+
+.alert.alert--warning {
+    background: rgba(39, 28, 8, 0.85);
+    border-color: rgba(252, 160, 63, 0.4);
+}
+
+.alert.alert--danger {
+    background: rgba(40, 13, 24, 0.85);
+    border-color: rgba(255, 99, 132, 0.35);
+}
+
+blockquote {
+    border-left: 3px solid rgba(124, 232, 255, 0.45);
+    background: rgba(8, 16, 28, 0.65);
+    color: rgba(228, 241, 255, 0.82);
+}
+
 ::-webkit-scrollbar {
     width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: rgba(5, 8, 16, 0.75);
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--ifm-color-primary);
-    border-radius: 3px;
+    background: linear-gradient(180deg, #1ad1ff 0%, #0f8ff0 100%);
+    border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--ifm-color-primary-dark);
+    background: linear-gradient(180deg, #42dbff 0%, #12b0ff 100%);
+}
+
+@media screen and (max-width: 996px) {
+    .hero {
+        padding-top: 4.5rem;
+        padding-bottom: 4.5rem;
+    }
+
+    .navbar {
+        backdrop-filter: blur(12px);
+    }
 }

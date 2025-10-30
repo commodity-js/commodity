@@ -1,17 +1,17 @@
 {
-    "name": "architype",
+    "name": "typearch",
     "type": "module",
     "version": "0.0.0",
-    "description": "First fully type-inferred DI solution for Typescript",
+    "description": "First fully type-inferred SOLID architecture solution for Typescript",
     "main": "dist/index.cjs",
     "module": "dist/index.js",
     "types": "dist/index.d.ts",
     "sideEffects": false,
-    "author": "Architype",
+    "author": "Typearch",
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/architype-js/architype.git"
+        "url": "git+https://github.com/typearch-js/typearch.git"
     },
     "imports": {
         "#*": "./src/*.ts"
@@ -34,8 +34,8 @@
         "typecheck": "vitest run --typecheck.only"
     },
     "devDependencies": {
-        "@config.architype/eslint": "*",
-        "@config.architype/typescript": "*",
+        "@config.typearch/eslint": "*",
+        "@config.typearch/typescript": "*",
         "memoize": "^10.1.0",
         "tsup": "^8.5.0",
         "turbo": "^2.5.5",

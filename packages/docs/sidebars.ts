@@ -21,21 +21,23 @@ const sidebars: SidebarsConfig = {
                 {
                     type: "doc",
                     id: "examples/simple-example",
-                    label: "Simple"
+                    label: "Simple example"
                 },
                 {
                     type: "link",
                     href: "/examples/react-client",
-                    label: "React"
+                    label: "React example"
                 }
             ]
         },
         {
             Guides: [
-                "guides/design-philosophy",
-                "guides/context-switching",
+                "guides/basic-usage",
+                "guides/optionals",
+                "guides/assemblers",
                 "guides/testing",
-                "guides/performance"
+                "guides/performance",
+                "guides/design-philosophy"
             ]
         },
         "api-reference",

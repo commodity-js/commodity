@@ -9,7 +9,7 @@ import SectionSeparator from "@site/src/components/SectionSeparator"
 
 import styles from "./index.module.css"
 
-const heroCode = `import { createMarket, index } from "architype"
+const heroCode = `import { createMarket, index } from "typearch"
 
 // Create market and define suppliers
 const market = createMarket()
@@ -120,7 +120,8 @@ function Hero() {
                         <p className={styles.heroSubtitle}>
                             The <span className={styles.highlight}>first</span>{" "}
                             fully type-inferred, type-safe and
-                            hyper-minimalistic DI solution for Typescript!
+                            hyper-minimalistic SOLID architecture solution for
+                            Typescript!
                             <br />
                             No OOP, reflect-metadata, decorators, annotations or
                             compiler magic, just{" "}
@@ -156,9 +157,15 @@ function Hero() {
                         </div>
                         <div className={styles.heroStats}>
                             <div className={styles.stat}>
-                                <span className={styles.statNumber}>~3KB</span>
+                                <span className={styles.statNumber}>~5KB</span>
                                 <span className={styles.statLabel}>
-                                    Bundle size
+                                    Minified
+                                </span>
+                            </div>
+                            <div className={styles.stat}>
+                                <span className={styles.statNumber}>~2KB</span>
+                                <span className={styles.statLabel}>
+                                    Minzipped
                                 </span>
                             </div>
                             <div className={styles.stat}>
@@ -184,7 +191,7 @@ function Hero() {
                                     <span></span>
                                 </div>
                                 <span className={styles.codeTitle}>
-                                    architype-demo.ts
+                                    typearch-demo.ts
                                 </span>
                             </div>
                             <CodeBlock
@@ -206,7 +213,7 @@ function WhySection() {
         <section className={styles.whySection}>
             <div className="container">
                 <div className={styles.sectionHeader}>
-                    <Heading as="h2">Why choose Architype?</Heading>
+                    <Heading as="h2">Why choose Typearch?</Heading>
                     <p>
                         Built for modern TypeScript applications that demand
                         performance, safety, and simplicity.
@@ -236,7 +243,8 @@ function WhySection() {
                         <h3>Performance Focused</h3>
                         <p>
                             Smart memoization, lazy loading, and a tiny bundle
-                            size (~3KB). Designed for minimal runtime overhead.
+                            size (~5KB minified, ~2KB minzipped). Designed for
+                            minimal runtime overhead.
                         </p>
                     </div>
                     <div className={styles.whyCard}>
@@ -346,8 +354,8 @@ function UseCasesSection() {
                 <div className={styles.sectionHeader}>
                     <Heading as="h2">Perfect for modern apps</Heading>
                     <p>
-                        From React components to API servers, Architype adapts
-                        to your architecture.
+                        From React components to API servers, Typearch adapts to
+                        your architecture.
                     </p>
                 </div>
                 <div className={styles.useCasesGrid}>
@@ -404,7 +412,7 @@ function CTASection() {
             <div className="container">
                 <div className={styles.ctaContent}>
                     <Heading as="h2">
-                        Ready to revolutionize your DI with Architype?
+                        Ready to revolutionize your DI with Typearch?
                     </Heading>
                     <p>
                         Join developers who've already made the switch to
@@ -434,7 +442,7 @@ function CTASection() {
                     </div>
                     <div className={styles.ctaNote}>
                         <p>
-                            🚀 Install with <code>npm install architype</code>
+                            🚀 Install with <code>npm install typearch</code>
                         </p>
                     </div>
                 </div>
@@ -456,7 +464,7 @@ export default function Home(): ReactNode {
             <SectionSeparator />
             <FeatureSection
                 title="Fully Type-Inferred from End to End"
-                description="Catch dependency errors before they reach production. Architype's architecture provides end-to-end type inference, eliminating entire classes of bugs and ensuring your dependency graph is always valid."
+                description="Catch dependency errors before they reach production. Typearch's architecture provides end-to-end type inference, eliminating entire classes of bugs and ensuring your dependency graph is always valid."
                 code={typeExample}
             />
             <SectionSeparator />
@@ -470,7 +478,7 @@ export default function Home(): ReactNode {
             <SectionSeparator />
             <FeatureSection
                 title="Effortless Testing"
-                description="Isolate components completely. With .prototype(), you can create alternative implementations for testing that remove entire dependency trees, leading to cleaner and more robust tests."
+                description="Isolate components completely. With .mock(), you can create alternative implementations for testing that remove entire dependency trees, leading to cleaner and more robust tests."
                 code={testingExample}
             />
             <SectionSeparator />
