@@ -486,7 +486,7 @@ export type MergeSuppliers<
  * in the transitive dependencies of its own suppliers.
  * @public
  */
-export type HasCircularDependency<
+export type CircularDependencyGuard<
     SUPPLIER extends Pick<
         ProductSupplier,
         | "name"
@@ -511,8 +511,8 @@ export type HasCircularDependency<
             : never
         : never
 )
-    ? true
-    : false
+    ? CircularDependencyError
+    : SUPPLIER
 
 export type CircularDependencyError = {
     ERROR: "Circular dependency detected"

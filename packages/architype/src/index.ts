@@ -4,7 +4,7 @@ import {
     SupplyMap,
     type ResourceSupplier,
     type ToSupply,
-    type HasCircularDependency,
+    type CircularDependencyGuard,
     type $,
     CircularDependencyError,
     Supplier,
@@ -510,11 +510,9 @@ export const createMarket = () => {
                                 }
                             }
 
-                            return supplier as HasCircularDependency<
+                            return supplier as CircularDependencyGuard<
                                 typeof supplier
-                            > extends true
-                                ? CircularDependencyError
-                                : typeof supplier
+                            >
                         },
                         /**
                          * Hires additional suppliers into the dependency chain of this product.
@@ -580,20 +578,14 @@ export const createMarket = () => {
                                 }
                             }
 
-                            return supplier as HasCircularDependency<
+                            return supplier as CircularDependencyGuard<
                                 typeof supplier
-                            > extends true
-                                ? CircularDependencyError
-                                : typeof supplier
+                            >
                         },
                         ..._base(config)
                     }
 
-                    return supplier as HasCircularDependency<
-                        typeof supplier
-                    > extends true
-                        ? CircularDependencyError
-                        : typeof supplier
+                    return supplier as CircularDependencyGuard<typeof supplier>
                 }
             }
         }

@@ -1,7 +1,5 @@
 # architype
 
-IN CONSTRUCTION, please do not install versions v0.0.x!!!
-
 First fully type-inferred, type-safe and hyper-minimalistic DI solution for Typescript! No OOP, reflect-metadata, decorators, annotations or compiler magic, just pure functions!
 
 ## Why Architype?

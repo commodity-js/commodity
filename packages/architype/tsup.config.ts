@@ -9,11 +9,8 @@ export default defineConfig([
         clean: true,
         treeshake: true,
         sourcemap: true,
-        splitting: false,
         // Additional optimizations
         target: "es2020",
-        bundle: true,
-        minifyWhitespace: true,
-        minifySyntax: true
+        bundle: true
     }
 ])

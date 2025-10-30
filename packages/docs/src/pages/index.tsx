@@ -156,9 +156,15 @@ function Hero() {
                         </div>
                         <div className={styles.heroStats}>
                             <div className={styles.stat}>
-                                <span className={styles.statNumber}>~3KB</span>
+                                <span className={styles.statNumber}>~5KB</span>
                                 <span className={styles.statLabel}>
-                                    Bundle size
+                                    Minified
+                                </span>
+                            </div>
+                            <div className={styles.stat}>
+                                <span className={styles.statNumber}>~2KB</span>
+                                <span className={styles.statLabel}>
+                                    Minzipped
                                 </span>
                             </div>
                             <div className={styles.stat}>
@@ -236,7 +242,8 @@ function WhySection() {
                         <h3>Performance Focused</h3>
                         <p>
                             Smart memoization, lazy loading, and a tiny bundle
-                            size (~3KB). Designed for minimal runtime overhead.
+                            size (~5KB minified, ~2KB minzipped). Designed for
+                            minimal runtime overhead.
                         </p>
                     </div>
                     <div className={styles.whyCard}>
