@@ -1,1 +1,1 @@
-./packages/architype/README.md
+packages/typearch/README.md
