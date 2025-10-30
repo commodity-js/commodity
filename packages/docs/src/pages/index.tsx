@@ -120,7 +120,8 @@ function Hero() {
                         <p className={styles.heroSubtitle}>
                             The <span className={styles.highlight}>first</span>{" "}
                             fully type-inferred, type-safe and
-                            hyper-minimalistic DI solution for Typescript!
+                            hyper-minimalistic SOLID architecture solution for
+                            Typescript!
                             <br />
                             No OOP, reflect-metadata, decorators, annotations or
                             compiler magic, just{" "}
@@ -477,7 +478,7 @@ export default function Home(): ReactNode {
             <SectionSeparator />
             <FeatureSection
                 title="Effortless Testing"
-                description="Isolate components completely. With .prototype(), you can create alternative implementations for testing that remove entire dependency trees, leading to cleaner and more robust tests."
+                description="Isolate components completely. With .mock(), you can create alternative implementations for testing that remove entire dependency trees, leading to cleaner and more robust tests."
                 code={testingExample}
             />
             <SectionSeparator />

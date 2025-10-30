@@ -66,11 +66,11 @@ const $$profile = market.offer("profile").asProduct({
 })
 
 const profile = $$profile
-    .hire($$userMock) // Swaps the original $$user with the prototype
-    .assemble() // No resources needed, as the prototype has no dependencies
+    .hire($$userMock) // Swaps the original $$user with the mock
+    .assemble() // No resources needed, as the mock has no dependencies
     .unpack()
 
 // profile === "<h1>Profile of Mock John Doe</h1>"
 ```
 
-By using `.hire($$userMock)`, you instruct the `$$profile` to use the mock implementation instead of the real one. Because the prototype has no dependencies, the final `.assemble()` call is much simpler.
+By using `.hire($$userMock)`, you instruct the `$$profile` to use the mock implementation instead of the real one. Because the mock has no dependencies, the final `.assemble()` call is much simpler.

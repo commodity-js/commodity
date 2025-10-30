@@ -28,18 +28,19 @@ Architype uses an intuitive supply chain metaphor to make dependency injection e
 Injection happens statelessly via a memoized, recursive, self-referential, lazy object. Here is a simplified conceptual model:
 
 ```typescript
-const $ = {
+const $obj = {
     // Resources are provided directly
     resourceA,
     resourceB,
 
     // Products are wrapped in a function to be lazily evaluated and memoized.
-    // The `$` object is passed to assemble, creating a recursive structure.
-    productA: once(() => productA.supplier.assemble($)),
-    productB: once(() => productB.supplier.assemble($))
+    // The `$obj` object is passed to assemble, creating a recursive structure.
+    productA: once(() => productA.supplier.assemble($obj)),
+    productB: once(() => productB.supplier.assemble($obj))
     // ...
 }
 ```
 
-The `assemble()` call builds the above $ object, each product now ready to be injected and built right away if eager, or on-demand if lazy.
+The `assemble()` call builds the above $ object, each product now ready to be injected and built right away if eager, or on-demand if lazy. The `$($$supplier)` function you use in your factories simply uses the supplier's name to find the product you want in the above object.
+
 This functional approach avoids the complexity of traditional DI containers while providing the same power in a more elegant and understandable way.

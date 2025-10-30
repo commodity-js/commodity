@@ -1,10 +1,12 @@
-# Context Switching & Enrichment
+# Assemblers
 
-Architype provides powerful, type-safe mechanisms for altering or adding to the dependency context at runtime.
+:::info
 
-## Enrich Context with Assemblers
+Using assemblers requires using optionals most of the time, so please read [optionals docs](optionals) before this one.
 
-Assemblers allow you to use product suppliers in your factory that can't be assembled at the application's entry point because they depend on a resource (i.e., a piece of context) that is only known or computed deeper in the dependency chain.
+:::
+
+Not all products in your supply chain can be assembled at the entry point of the application. Sometimes, a product depends on a resource that is not yet known at the entry point, but only computed later on in a product's factory. In these situations, you need assemblers.
 
 Let's start with a simple example: an `AdminPanel`. An `AdminPanel` can't be built until the current session has been validated as having an "admin" role, which doesn't need to be known when the application starts. You might want to compute it lazily, only if the user requests to see the `AdminPanel`. Here's how to do it with assemblers:
 
@@ -34,10 +36,9 @@ const $$App = market.offer("app").asProduct({
     suppliers: [$$session],
     // Put in assemblers[] all product suppliers depending on new context (resources) computed in this factory
     assemblers: [$$adminPanel]
-    // Pass that new context in optionals so you aren't forced to provide it at the entry point
-    // Optionals can also be accessed via $$()
+    // Pass that new context in optionals so you aren't forced to provide it yet at the entry point
     optionals: [$$adminSession]
-    // Factories receive assemblers as 2nd argument
+    // Factories receive assemblers and optionals suppliers as 2nd argument
     factory: ($, $$) => () => {
         const session = $($$session).unpack()
         const role = session.user.role
@@ -47,16 +48,6 @@ const $$App = market.offer("app").asProduct({
                 {
                     ...$, // Keep all previous supplies if needed (not needed here, for example purpose only)
                     ...index(
-                        // Notice $$adminSession is NOT listed either in suppliers nor assemblers.
-
-                        // It is not listed in suppliers because its value and type is not known before the
-                        // factory is called. You'd get a missing supply type error in assemble() call at the
-                        // entry point if you list in suppliers but don't provide a compatible value when you
-                        // assemble.
-
-                        // It is not listed in assemblers because only products benefit from being listed in
-                        // assemblers, to allow mocking them or trying different prototype implementations.
-                        // Resource suppliers can just be hard-coded via closure without losing any decoupling.
                         $$($$adminSession).pack(session as AdminSession)
 
                         // Or, even better, rebuild the session for full type-safety without assertions now that role has been
@@ -184,7 +175,7 @@ const $$App = market.offer("app").asProduct({
 
             const Panel = $Panel.unpack()
             // Since they were built together, Dashboard and Profile are available in Panel's supplies ($) even
-            // if Panel does not need them in their factory. product.$() is the same as $(), but for usage outside
+            // if Panel does not need them in their factory. $product.$() is the same as $(), but for usage outside
             // the factory, after the product has been built.
             const Dashboard = $Panel.$($$adminDashboard).unpack()
             const Profile = $Panel.$($$adminProfile).unpack()

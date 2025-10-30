@@ -1,6 +1,6 @@
 # architype
 
-First fully type-inferred, type-safe and hyper-minimalistic DI solution for Typescript! No OOP, reflect-metadata, decorators, annotations or compiler magic, just pure functions!
+First fully type-inferred, type-safe and hyper-minimalistic SOLID architecture solution for Typescript! No OOP, reflect-metadata, decorators, annotations or compiler magic, just pure functions!
 
 ## Why Architype?
 
@@ -181,7 +181,7 @@ const $$user = market.offer("user").asProduct({
 
 **Important**: Your factory function will only ever be called **once per `assemble()` or `reassemble()` call**. This eliminates the need for traditional DI service lifecycles (transient, scoped, singleton, etc.).
 
--   **Need something called multiple times?** Return a function from your factory instead of a value
+-   **Need something called multiple times, or to run side-effects?** Return a function from your factory instead of a value
 
 ```ts
 // ✅ Good: Factory called once, returns a function for multiple calls or side-effects
@@ -284,11 +284,17 @@ const $appProduct = $$app.assemble(
 )
 ```
 
-## Context propagation, switching and enrichment
+## Optionals
 
-It is often a good architectural pattern to `hoist` pieces of data used multiple times throughout your application, such as user sessions or database connections, in a context object. But achieving it statelessly and immutably, without global variables, while maintaining full flexibility, can be a bit tricky. This is what React Context achieved for React components, but Architype provides mechanisms to achieve this in a framework agnostic way using its DI primitives.
+Sometimes a product can work with or without certain dependencies. For these cases, use the `optionals` parameter alongside `suppliers`. Optional resources may be `undefined` at runtime, and TypeScript will enforce proper undefined checks. You can also use optionals if a piece of context is not yet known at the entry point of the application, so you don't want Typescript to enforce it being supplied in the assemble() call. Using optionals is most of the time required to use assemblers (see below).
 
-For brevity of this README, please consult [the docs](https://architype-js.github.io/architype/docs/guides/context-switching) for more details.
+[Learn more about optionals →](https://architype-js.github.io/architype/docs/guides/optionals)
+
+## Assemblers
+
+Not all products in your supply chain can be assembled at the entry point of the application. Sometimes, a product depends on a resource that is not yet known at the entry point, but only computed later on in a product's factory. In these situations, you need assemblers.
+
+[Learn more about assemblers →](https://architype-js.github.io/architype/docs/guides/context-switching)
 
 ## Testing and Packing
 

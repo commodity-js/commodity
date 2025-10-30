@@ -27,9 +27,9 @@ const $$addTodo = market.offer("addTodo").asProduct({
 
 /*Here, we define two types of suppliers:
 
--   `$session`: A **Resource** that will hold the current user's session data.
--   `$$todosDb`: A **Product** that provides an in-memory `Map` to act as a database. It has no dependencies.
--   `$$addTodo`: A **Product** that creates our main `addTodo` function. It depends on both the `$session` and `$$todosDb`. */
+-   `$$session`: A **Resource** supplier that will hold the current user's session data.
+-   `$$todosDb`: A **Product** supplier that provides an in-memory `Map` to act as a database. It has no dependencies.
+-   `$$addTodo`: A **Product** supplier Sthat creates our main `addTodo` function. It depends on both the `$$session` and `$$todosDb`. */
 
 const session = { userId: "user123" }
 

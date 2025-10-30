@@ -61,5 +61,5 @@ console.log(userService.id) // "user-123"
 ## Next Steps
 
 -   Walk through a **[Basic Example](examples/simple-example)** of a complete application.
--   Learn about **[Testing and Mocking](guides/testing)** strategies.
+-   Follow the more in-depth **[Basic Usage](guides/basic-usage)** guide.
 -   Dive into the **[Design philosophy and semantics](guides/design-philosophy)** of Architype.

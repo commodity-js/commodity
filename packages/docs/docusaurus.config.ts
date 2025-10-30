@@ -62,6 +62,11 @@ const config: Config = {
     ],
 
     themeConfig: {
+        colorMode: {
+            defaultMode: "dark",
+            disableSwitch: true,
+            respectPrefersColorScheme: false
+        },
         // Replace with your project's social card
         image: "img/architype-logo.png",
         navbar: {
@@ -135,8 +140,8 @@ const config: Config = {
             copyright: `Copyright © ${new Date().getFullYear()} Architype. Built with Docusaurus.`
         },
         prism: {
-            theme: prismThemes.gruvboxMaterialDark,
-            darkTheme: prismThemes.gruvboxMaterialDark,
+            theme: prismThemes.jettwaveDark,
+            darkTheme: prismThemes.jettwaveDark,
             additionalLanguages: ["typescript", "tsx", "javascript", "jsx"]
         }
     } satisfies Preset.ThemeConfig
