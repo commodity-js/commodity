@@ -84,7 +84,7 @@ const $$alternative = $$originalSupplier.mock({
 })
 ```
 
-### `$$supplier.hire([...hiredSuppliers (mocks or originals)], [...hiredAssemblers (mocks only, no use case for originals yet...)]?)`
+### `$$supplier.hire([...hiredSuppliers], [...hiredAssemblers]?)`
 
 `Composition root` method to wire additionnal suppliers and assemblers. Mocks will replace originals
 with the same name across the entire dependency chain.
@@ -104,7 +104,7 @@ const $C = $A.$($$C)
 
 ### `$product.$()`
 
-Access a `$product`'s supplies, but from outside a factory. See example above in `$$supplier.hire()` section. Typescript only displays supplies it is sure the product has, which is often `unknown` in factories since the supplier from which the product has been created may have been swapped with a mock with unknown supplies. But hired suppliers will always be available in supplies to enable batch assemble as seen in the previous section.
+Access a `$product`'s supplies, but from outside a factory. See example above in `$$supplier.hire()` section. Typescript only displays supplies it is sure the product has, which is often `unknown` in factories since the supplier from which the product has been created may have been swapped with a mock with unknown supplies. But hired suppliers will always be available in supplies to enable batch assemble as seen in `$$supplier.hire()` section.
 
 ### `index(...$supplies)`
 

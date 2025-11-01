@@ -25,9 +25,9 @@ A preview browser should automatically show up, but if it doesn't, simply click 
 
     -   `createContext()` → define a new resource with `asResource()`
     -   `useContext()` → access it through supplies with `$(someContextResourceSupplier).unpack()`
-    -   <Provider > → call `reassemble()` on already supplied products, or use assemblers otherwise.
+    -   `<Provider >` → call `reassemble()` on already supplied products, or use assemblers otherwise.
 
-    The current demo has been designed to showcase this, via a deeply nested component tree. See [Context Switching and Enrichment](https://typearch-js.github.io/typearch/docs/guides/context-switching) for full documentation.
+    The current demo has been designed to showcase this, via a deeply nested component tree. See [Assemblers](https://typearch-js.github.io/typearch/docs/guides/assemblers) for full documentation.
 
 -   **Elements** - If your component is pure and doesn't need to receive additional props (outside $ supplies) or call hooks, returning JSX elements from the factory directly works.
 
