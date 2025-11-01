@@ -1,6 +1,6 @@
 # typearch
 
-First fully type-inferred, type-safe and hyper-minimalistic SOLID architecture solution for Typescript! No OOP, reflect-metadata, decorators, annotations or compiler magic, just pure functions!
+First fully type-inferred, type-safe and hyper-minimalistic SOLID architecture framework for Typescript! Dependency injection (DI) without OOP, reflect-metadata, decorators, annotations or compiler magic, just simple functions!
 
 ## Why Typearch?
 
@@ -381,15 +381,21 @@ Typearch's "Dependency Injection Supply Chain" (DISC) model can do everything co
 Injections happens statelessly via a memoized recursive self-referential lazy object. Here is a simplified example:
 
 ```ts
-const $ = {
+const $obj = {
     resourceA,
     resourceB,
-    //Wrapped in a getter in the code to provide direct $[productA.name] access
-    productA: once(() => productA.assemble($)),
-    productB: once(() => productA.assemble($))
+
+    // Products are wrapped in a function to be lazily evaluated and memoized.
+    // The `$obj` object is passed to assemble, creating a recursive structure.
+    productA: once(() => productA.assemble($obj)),
+    productB: once(() => productA.assemble($obj))
     //...
 }
 ```
+
+The `assemble()` call builds the above $obj object, each product now ready to be injected and built right away if eager, or on-demand if lazy. The `$($$supplier)` function you use in your factories simply uses the supplier's name to find the product or resource you want in the above object.
+
+This functional approach avoids the complexity of traditional DI containers while providing the same power in a more elegant and understandable way.
 
 ## API reference
 

@@ -120,10 +120,11 @@ function Hero() {
                         <p className={styles.heroSubtitle}>
                             The <span className={styles.highlight}>first</span>{" "}
                             fully type-inferred, type-safe and
-                            hyper-minimalistic SOLID architecture solution for
+                            hyper-minimalistic SOLID architecture framework for
                             Typescript!
                             <br />
-                            No OOP, reflect-metadata, decorators, annotations or
+                            Dependency injection (DI) without OOP,
+                            reflect-metadata, decorators, annotations or
                             compiler magic, just{" "}
                             <span className={styles.highlight}>
                                 simple functions

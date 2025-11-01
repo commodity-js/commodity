@@ -25,7 +25,7 @@ Typearch uses an intuitive supply chain metaphor to make dependency injection ea
 
 ## How it Works Under the Hood
 
-Injection happens statelessly via a memoized, recursive, self-referential, lazy object. Here is a simplified conceptual model:
+Injection happens statelessly via a memoized, recursive, self-referential, lazy object. Here is a simplified example:
 
 ```typescript
 const $obj = {
@@ -41,6 +41,6 @@ const $obj = {
 }
 ```
 
-The `assemble()` call builds the above $ object, each product now ready to be injected and built right away if eager, or on-demand if lazy. The `$($$supplier)` function you use in your factories simply uses the supplier's name to find the product you want in the above object.
+The `assemble()` call builds the above $obj object, each product now ready to be injected and built right away if eager, or on-demand if lazy. The `$($$supplier)` function you use in your factories simply uses the supplier's name to find the product or resource you want in the above object.
 
 This functional approach avoids the complexity of traditional DI containers while providing the same power in a more elegant and understandable way.

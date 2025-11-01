@@ -2,7 +2,7 @@
     "name": "typearch",
     "type": "module",
     "version": "0.0.0",
-    "description": "First fully type-inferred SOLID architecture solution for Typescript",
+    "description": "First fully type-inferred SOLID architecture framework for Typescript",
     "main": "dist/index.cjs",
     "module": "dist/index.js",
     "types": "dist/index.d.ts",
