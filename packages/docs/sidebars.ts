@@ -37,7 +37,12 @@ const sidebars: SidebarsConfig = {
                 "guides/assemblers",
                 "guides/testing",
                 "guides/performance",
-                "guides/design-philosophy"
+                "guides/design-philosophy",
+                {
+                    type: "doc",
+                    id: "guides/react-context-alternative",
+                    label: "React Context alternative"
+                }
             ]
         },
         "api-reference",
